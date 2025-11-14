@@ -106,6 +106,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         correct: isCorrect,
+        correctAnswer: question.correctAnswer,
         nextReviewDate: sm2Result.nextReviewDate,
         interval: sm2Result.interval,
       });

@@ -16,10 +16,17 @@ export default function QuizPage() {
   const [isCorrect, setIsCorrect] = useState(false);
   const [shuffledOptions, setShuffledOptions] = useState<{ text: string; originalIndex: number }[]>([]);
   const [correctAnswerIndex, setCorrectAnswerIndex] = useState<number>(0);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [sessionStartCount, setSessionStartCount] = useState<number | null>(null);
+  const [answeredInSession, setAnsweredInSession] = useState(0);
 
-  const { data: dueQuestions, isLoading } = useQuery<QuizQuestion[]>({
+  const { data: dueQuestions, isLoading, isFetching } = useQuery<QuizQuestion[]>({
     queryKey: ["/api/quiz/due"],
+    onSuccess: (data) => {
+      // Only set session count on first successful fetch when null
+      if (data && data.length > 0 && sessionStartCount === null) {
+        setSessionStartCount(data.length);
+      }
+    },
   });
 
   const submitAnswerMutation = useMutation({
@@ -27,15 +34,22 @@ export default function QuizPage() {
       return await apiRequest("POST", "/api/quiz/answer", data);
     },
     onSuccess: (response) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/quiz/due"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/statistics"] });
-      
+      // Find the shuffled index of the correct answer
+      const correctShuffledIndex = shuffledOptions.findIndex(
+        opt => opt.originalIndex === response.correctAnswer
+      );
+      setCorrectAnswerIndex(correctShuffledIndex);
       setIsCorrect(response.correct);
       setIsAnswered(true);
+      
+      // Only invalidate statistics, NOT the due questions query
+      // We'll invalidate due questions when user clicks "Next Question"
+      queryClient.invalidateQueries({ queryKey: ["/api/statistics"] });
     },
   });
 
-  const currentQuestion = dueQuestions?.[currentQuestionIndex];
+  // Always show the first question in the list (backend removes answered ones)
+  const currentQuestion = dueQuestions?.[0];
 
   // Shuffle options when question changes
   useEffect(() => {
@@ -67,7 +81,6 @@ export default function QuizPage() {
     if (selectedAnswer === null || !currentQuestion) return;
 
     const originalAnswerIndex = shuffledOptions[selectedAnswer].originalIndex;
-    setCorrectAnswerIndex(shuffledOptions.findIndex(opt => opt.originalIndex === 0));
 
     submitAnswerMutation.mutate({
       questionId: currentQuestion.id,
@@ -76,16 +89,26 @@ export default function QuizPage() {
   };
 
   const handleNextQuestion = () => {
-    if (currentQuestionIndex < (dueQuestions?.length ?? 0) - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-    } else {
+    // Reset answer state immediately to prevent double-clicking
+    setIsAnswered(false);
+    setSelectedAnswer(null);
+    setAnsweredInSession(prev => prev + 1);
+    
+    const isLastQuestion = (dueQuestions?.length ?? 0) === 1;
+    
+    if (isLastQuestion) {
+      // Last question - show completion message and reset session
+      const completedCount = sessionStartCount ?? answeredInSession + 1;
       toast({
         title: "Session Complete!",
-        description: "You've completed all due questions. Great work!",
+        description: `You've completed ${completedCount} ${completedCount === 1 ? 'question' : 'questions'}. Great work!`,
       });
-      setCurrentQuestionIndex(0);
-      queryClient.invalidateQueries({ queryKey: ["/api/quiz/due"] });
+      setSessionStartCount(null);
+      setAnsweredInSession(0);
     }
+    
+    // Invalidate to get the next question (answered one is removed by backend)
+    queryClient.invalidateQueries({ queryKey: ["/api/quiz/due"] });
   };
 
   if (isLoading) {
@@ -115,7 +138,11 @@ export default function QuizPage() {
     );
   }
 
-  const progressPercentage = ((currentQuestionIndex + 1) / dueQuestions.length) * 100;
+  const currentQuestionNumber = answeredInSession + 1;
+  const totalQuestions = sessionStartCount ?? (dueQuestions?.length ?? 1);
+  // Progress based on answered questions (not including current unanswered question)
+  const answeredQuestions = isAnswered ? answeredInSession + 1 : answeredInSession;
+  const progressPercentage = totalQuestions > 0 ? (answeredQuestions / totalQuestions) * 100 : 0;
   const difficultyLevel = Math.min(5, Math.max(1, Math.floor(Math.random() * 3) + 2)); // Mock difficulty for now
 
   return (
@@ -125,7 +152,7 @@ export default function QuizPage() {
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">
-              Question {currentQuestionIndex + 1} of {dueQuestions.length}
+              Question {currentQuestionNumber} of {totalQuestions}
             </span>
             <span className="font-medium">
               {Math.round(progressPercentage)}% Complete
@@ -139,7 +166,7 @@ export default function QuizPage() {
           <CardHeader className="space-y-4">
             <div className="flex items-start justify-between gap-4">
               <Badge variant="secondary" className="shrink-0" data-testid="badge-question-number">
-                #{currentQuestionIndex + 1}
+                #{currentQuestionNumber}
               </Badge>
               <div className="flex items-center gap-1" data-testid="indicator-difficulty">
                 {Array.from({ length: 5 }).map((_, i) => (
@@ -151,7 +178,7 @@ export default function QuizPage() {
               </div>
             </div>
             {currentQuestion.category && (
-              <Badge variant="outline" className="w-fit" data-testid={`badge-category-${currentQuestionIndex}`}>
+              <Badge variant="outline" className="w-fit" data-testid="badge-category">
                 {currentQuestion.category}
               </Badge>
             )}
@@ -165,8 +192,9 @@ export default function QuizPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {shuffledOptions.map((option, index) => {
                 const isSelected = selectedAnswer === index;
-                const showCorrect = isAnswered && index === correctAnswerIndex;
-                const showIncorrect = isAnswered && isSelected && !isCorrect;
+                const isCorrectAnswer = index === correctAnswerIndex;
+                const showAsCorrect = isAnswered && isCorrectAnswer;
+                const showAsIncorrect = isAnswered && isSelected && !isCorrect;
 
                 return (
                   <button
@@ -177,8 +205,8 @@ export default function QuizPage() {
                     className={`
                       relative p-4 rounded-lg border-2 text-left transition-all
                       ${isSelected && !isAnswered ? "border-primary bg-primary/5" : "border-border"}
-                      ${showCorrect ? "border-green-500 bg-green-50 dark:bg-green-950/30" : ""}
-                      ${showIncorrect ? "border-destructive bg-destructive/5" : ""}
+                      ${showAsCorrect ? "border-green-600 bg-green-50 dark:bg-green-950/40 border-[3px]" : ""}
+                      ${showAsIncorrect ? "border-destructive bg-destructive/10 border-[3px]" : ""}
                       ${!isAnswered ? "hover-elevate active-elevate-2 cursor-pointer" : "cursor-default"}
                       disabled:opacity-100
                     `}
@@ -188,16 +216,25 @@ export default function QuizPage() {
                         className={`
                           flex items-center justify-center w-8 h-8 rounded-full shrink-0 font-semibold text-sm
                           ${isSelected && !isAnswered ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}
-                          ${showCorrect ? "bg-green-500 text-white" : ""}
-                          ${showIncorrect ? "bg-destructive text-destructive-foreground" : ""}
+                          ${showAsCorrect ? "bg-green-600 text-white" : ""}
+                          ${showAsIncorrect ? "bg-destructive text-destructive-foreground" : ""}
                         `}
                       >
                         {String.fromCharCode(65 + index)}
                       </span>
-                      <span className="flex-1 pt-1">{option.text}</span>
-                      {showCorrect && <CheckCircle2 className="w-6 h-6 text-green-600 shrink-0" />}
-                      {showIncorrect && <XCircle className="w-6 h-6 text-destructive shrink-0" />}
+                      <span className={`flex-1 pt-1 ${showAsCorrect ? "font-medium" : ""}`}>
+                        {option.text}
+                      </span>
+                      {showAsCorrect && <CheckCircle2 className="w-6 h-6 text-green-600 shrink-0" />}
+                      {showAsIncorrect && <XCircle className="w-6 h-6 text-destructive shrink-0" />}
                     </div>
+                    {showAsCorrect && (
+                      <div className="mt-2 pt-2 border-t border-green-600/20">
+                        <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                          ✓ Correct Answer
+                        </span>
+                      </div>
+                    )}
                   </button>
                 );
               })}
@@ -218,9 +255,10 @@ export default function QuizPage() {
                 <Button
                   onClick={handleNextQuestion}
                   size="lg"
+                  disabled={isFetching}
                   data-testid="button-next-question"
                 >
-                  {currentQuestionIndex < dueQuestions.length - 1 ? "Next Question" : "Finish Session"}
+                  {isFetching ? "Loading..." : ((dueQuestions?.length ?? 0) > 1 ? "Next Question" : "Finish Session")}
                 </Button>
               )}
             </div>
@@ -229,19 +267,31 @@ export default function QuizPage() {
 
         {/* Feedback Message */}
         {isAnswered && (
-          <Card className={`border-2 ${isCorrect ? "border-green-500 bg-green-50 dark:bg-green-950/30" : "border-amber-500 bg-amber-50 dark:bg-amber-950/30"}`}>
+          <Card className={`border-2 ${isCorrect ? "border-green-600 bg-green-50 dark:bg-green-950/40" : "border-amber-600 bg-amber-50 dark:bg-amber-950/40"}`}>
             <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                {isCorrect ? (
-                  <CheckCircle2 className="w-6 h-6 text-green-600 shrink-0" />
-                ) : (
-                  <XCircle className="w-6 h-6 text-amber-600 shrink-0" />
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  {isCorrect ? (
+                    <CheckCircle2 className="w-7 h-7 text-green-600 shrink-0" />
+                  ) : (
+                    <XCircle className="w-7 h-7 text-amber-600 shrink-0" />
+                  )}
+                  <div>
+                    <p className="font-semibold text-lg">
+                      {isCorrect ? "Correct!" : "Incorrect"}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {isCorrect
+                        ? "Great job! You got it right."
+                        : "The correct answer is highlighted in green above."}
+                    </p>
+                  </div>
+                </div>
+                {!isCorrect && (
+                  <p className="text-sm text-muted-foreground pl-10">
+                    This question will be reviewed again soon to help you master it.
+                  </p>
                 )}
-                <p className="font-medium">
-                  {isCorrect
-                    ? "Correct! Well done."
-                    : "Not quite right. The question will be reviewed again soon."}
-                </p>
               </div>
             </CardContent>
           </Card>
