@@ -1,0 +1,62 @@
+[
+  {
+    "id": "q1",
+    "question": "Which grape variety is used to make Barolo wine?",
+    "category": "Grape Varieties",
+    "options": [
+      "Nebbiolo",
+      "Sangiovese",
+      "Barbera",
+      "Dolcetto"
+    ],
+    "correctAnswer": 0
+  },
+  {
+    "id": "q2",
+    "question": "What is the primary grape in Bordeaux red blends?",
+    "category": "Wine Regions",
+    "options": [
+      "Merlot",
+      "Cabernet Sauvignon",
+      "Pinot Noir",
+      "Syrah"
+    ],
+    "correctAnswer": 1
+  },
+  {
+    "id": "q3",
+    "question": "Which region is famous for Riesling wines?",
+    "category": "Wine Regions",
+    "options": [
+      "Tuscany",
+      "Bordeaux",
+      "Mosel",
+      "Rioja"
+    ],
+    "correctAnswer": 2
+  },
+  {
+    "id": "q4",
+    "question": "What does 'sur lie' aging mean?",
+    "category": "Winemaking",
+    "options": [
+      "Aging in oak barrels",
+      "Aging on the lees (dead yeast cells)",
+      "Aging in stainless steel",
+      "Aging in bottle"
+    ],
+    "correctAnswer": 1
+  },
+  {
+    "id": "q5",
+    "question": "Which wine region produces Chianti?",
+    "category": "Wine Regions",
+    "options": [
+      "Piedmont",
+      "Veneto",
+      "Tuscany",
+      "Sicily"
+    ],
+    "correctAnswer": 2
+  }
+]

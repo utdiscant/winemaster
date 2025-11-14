@@ -18,13 +18,44 @@ export default function QuizPage() {
   const [correctAnswerIndex, setCorrectAnswerIndex] = useState<number>(0);
   const [sessionStartCount, setSessionStartCount] = useState<number | null>(null);
   const [answeredInSession, setAnsweredInSession] = useState(0);
+  const [isAdvancing, setIsAdvancing] = useState(false);
 
-  const { data: dueQuestions, isLoading, isFetching } = useQuery<QuizQuestion[]>({
+  const { data: dueQuestions, isLoading, isFetching, refetch } = useQuery<QuizQuestion[]>({
     queryKey: ["/api/quiz/due"],
+    enabled: true,
     onSuccess: (data) => {
-      // Only set session count on first successful fetch when null
-      if (data && data.length > 0 && sessionStartCount === null) {
+      // Handle advancing to next question
+      if (isAdvancing) {
+        const wasLastQuestion = !data || data.length === 0;
+        
+        if (wasLastQuestion) {
+          // Session complete
+          const completedCount = sessionStartCount ?? answeredInSession + 1;
+          toast({
+            title: "Session Complete!",
+            description: `You've completed ${completedCount} ${completedCount === 1 ? 'question' : 'questions'}. Great work!`,
+          });
+          setSessionStartCount(null);
+          setAnsweredInSession(0);
+        } else {
+          // More questions available
+          setAnsweredInSession(prev => prev + 1);
+        }
+        
+        setIsAdvancing(false);
+      } else if (data && data.length > 0 && sessionStartCount === null) {
+        // Initialize session count on first load
         setSessionStartCount(data.length);
+      }
+    },
+    onError: (error) => {
+      if (isAdvancing) {
+        toast({
+          title: "Error",
+          description: "Failed to load next question. Please try again.",
+          variant: "destructive",
+        });
+        setIsAdvancing(false);
       }
     },
   });
@@ -88,27 +119,14 @@ export default function QuizPage() {
     });
   };
 
-  const handleNextQuestion = () => {
+  const handleNextQuestion = async () => {
     // Reset answer state immediately to prevent double-clicking
     setIsAnswered(false);
     setSelectedAnswer(null);
-    setAnsweredInSession(prev => prev + 1);
+    setIsAdvancing(true);
     
-    const isLastQuestion = (dueQuestions?.length ?? 0) === 1;
-    
-    if (isLastQuestion) {
-      // Last question - show completion message and reset session
-      const completedCount = sessionStartCount ?? answeredInSession + 1;
-      toast({
-        title: "Session Complete!",
-        description: `You've completed ${completedCount} ${completedCount === 1 ? 'question' : 'questions'}. Great work!`,
-      });
-      setSessionStartCount(null);
-      setAnsweredInSession(0);
-    }
-    
-    // Invalidate to get the next question (answered one is removed by backend)
-    queryClient.invalidateQueries({ queryKey: ["/api/quiz/due"] });
+    // Refetch to get next question (answered one is removed by backend)
+    await refetch();
   };
 
   if (isLoading) {
@@ -255,10 +273,10 @@ export default function QuizPage() {
                 <Button
                   onClick={handleNextQuestion}
                   size="lg"
-                  disabled={isFetching}
+                  disabled={isAdvancing}
                   data-testid="button-next-question"
                 >
-                  {isFetching ? "Loading..." : ((dueQuestions?.length ?? 0) > 1 ? "Next Question" : "Finish Session")}
+                  {isAdvancing ? "Loading..." : ((dueQuestions?.length ?? 0) > 1 ? "Next Question" : "Finish Session")}
                 </Button>
               )}
             </div>
