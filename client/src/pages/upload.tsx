@@ -17,7 +17,7 @@ export default function UploadPage() {
   const [pastedJson, setPastedJson] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const uploadMutation = useMutation({
+  const uploadMutation = useMutation<{ count: number }, Error, JsonUpload>({
     mutationFn: async (data: JsonUpload) => {
       return await apiRequest("POST", "/api/questions/upload", data);
     },
@@ -83,7 +83,9 @@ export default function UploadPage() {
     reader.onload = (e) => {
       try {
         const json = JSON.parse(e.target?.result as string);
-        setUploadedData(json);
+        // If JSON is an array, wrap it in { questions: array }
+        const data = Array.isArray(json) ? { questions: json } : json;
+        setUploadedData(data);
       } catch (error) {
         toast({
           title: "Invalid JSON",
@@ -108,7 +110,9 @@ export default function UploadPage() {
 
     try {
       const json = JSON.parse(pastedJson);
-      setUploadedData(json);
+      // If JSON is an array, wrap it in { questions: array }
+      const data = Array.isArray(json) ? { questions: json } : json;
+      setUploadedData(data);
       setFileName("Pasted JSON");
     } catch (error) {
       toast({
