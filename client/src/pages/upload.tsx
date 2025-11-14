@@ -17,14 +17,14 @@ export default function UploadPage() {
   const [pastedJson, setPastedJson] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const uploadMutation = useMutation<{ count: number }, Error, JsonUpload>({
+  const uploadMutation = useMutation<{ success: boolean; count: number }, Error, JsonUpload>({
     mutationFn: async (data: JsonUpload) => {
       return await apiRequest("POST", "/api/questions/upload", data);
     },
     onSuccess: (response) => {
       toast({
         title: "Success!",
-        description: `${response.count} questions imported successfully.`,
+        description: `${response.count} ${response.count === 1 ? 'question' : 'questions'} imported successfully.`,
       });
       setUploadedData(null);
       setFileName("");
