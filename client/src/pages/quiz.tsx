@@ -20,45 +20,52 @@ export default function QuizPage() {
   const [answeredInSession, setAnsweredInSession] = useState(0);
   const [isAdvancing, setIsAdvancing] = useState(false);
 
-  const { data: dueQuestions, isLoading, isFetching, refetch } = useQuery<QuizQuestion[]>({
+  const { data: dueQuestions, isLoading, isFetching, refetch, isError } = useQuery<QuizQuestion[]>({
     queryKey: ["/api/quiz/due"],
     enabled: true,
-    onSuccess: (data) => {
-      // Handle advancing to next question
-      if (isAdvancing) {
-        const wasLastQuestion = !data || data.length === 0;
-        
-        if (wasLastQuestion) {
-          // Session complete
-          const completedCount = sessionStartCount ?? answeredInSession + 1;
-          toast({
-            title: "Session Complete!",
-            description: `You've completed ${completedCount} ${completedCount === 1 ? 'question' : 'questions'}. Great work!`,
-          });
-          setSessionStartCount(null);
-          setAnsweredInSession(0);
-        } else {
-          // More questions available
-          setAnsweredInSession(prev => prev + 1);
-        }
-        
-        setIsAdvancing(false);
-      } else if (data && data.length > 0 && sessionStartCount === null) {
-        // Initialize session count on first load
-        setSessionStartCount(data.length);
-      }
-    },
-    onError: (error) => {
-      if (isAdvancing) {
-        toast({
-          title: "Error",
-          description: "Failed to load next question. Please try again.",
-          variant: "destructive",
-        });
-        setIsAdvancing(false);
-      }
-    },
   });
+
+  // Initialize session count on first load
+  useEffect(() => {
+    if (dueQuestions && dueQuestions.length > 0 && sessionStartCount === null && !isAdvancing) {
+      setSessionStartCount(dueQuestions.length);
+    }
+  }, [dueQuestions, sessionStartCount, isAdvancing]);
+
+  // Handle advancing to next question
+  useEffect(() => {
+    if (isAdvancing && !isFetching) {
+      const wasLastQuestion = !dueQuestions || dueQuestions.length === 0;
+      
+      if (wasLastQuestion) {
+        // Session complete
+        const completedCount = sessionStartCount ?? answeredInSession + 1;
+        toast({
+          title: "Session Complete!",
+          description: `You've completed ${completedCount} ${completedCount === 1 ? 'question' : 'questions'}. Great work!`,
+        });
+        setSessionStartCount(null);
+        setAnsweredInSession(0);
+      } else {
+        // More questions available
+        setAnsweredInSession(prev => prev + 1);
+      }
+      
+      setIsAdvancing(false);
+    }
+  }, [isAdvancing, isFetching, dueQuestions, sessionStartCount, answeredInSession, toast]);
+
+  // Handle fetch errors
+  useEffect(() => {
+    if (isError && isAdvancing) {
+      toast({
+        title: "Error",
+        description: "Failed to load next question. Please try again.",
+        variant: "destructive",
+      });
+      setIsAdvancing(false);
+    }
+  }, [isError, isAdvancing, toast]);
 
   const submitAnswerMutation = useMutation({
     mutationFn: async (data: { questionId: string; selectedAnswer: number }) => {
