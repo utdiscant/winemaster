@@ -3,7 +3,8 @@ import { useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileJson, CheckCircle2, AlertCircle, Wine } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Upload, FileJson, CheckCircle2, AlertCircle, Wine, Code } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { JsonUpload } from "@shared/schema";
@@ -13,6 +14,7 @@ export default function UploadPage() {
   const [dragActive, setDragActive] = useState(false);
   const [uploadedData, setUploadedData] = useState<JsonUpload | null>(null);
   const [fileName, setFileName] = useState<string>("");
+  const [pastedJson, setPastedJson] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const uploadMutation = useMutation({
@@ -94,6 +96,29 @@ export default function UploadPage() {
     reader.readAsText(file);
   };
 
+  const handlePasteJson = () => {
+    if (!pastedJson.trim()) {
+      toast({
+        title: "Empty Input",
+        description: "Please paste JSON content.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const json = JSON.parse(pastedJson);
+      setUploadedData(json);
+      setFileName("Pasted JSON");
+    } catch (error) {
+      toast({
+        title: "Invalid JSON",
+        description: "The pasted content is not valid JSON.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleImport = () => {
     if (uploadedData) {
       uploadMutation.mutate(uploadedData);
@@ -113,47 +138,85 @@ export default function UploadPage() {
           </p>
         </div>
 
-        {/* Upload Zone */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl font-serif">Upload JSON File</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-              className={`
-                relative border-2 border-dashed rounded-lg p-12 text-center transition-all
-                ${dragActive ? "border-primary bg-primary/5" : "border-border"}
-                hover-elevate cursor-pointer
-              `}
-              onClick={() => fileInputRef.current?.click()}
-              data-testid="dropzone-upload"
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".json"
-                onChange={handleChange}
-                className="hidden"
-                data-testid="input-file"
-              />
-              <div className="space-y-4">
-                <Upload className={`w-16 h-16 mx-auto ${dragActive ? "text-primary" : "text-muted-foreground"}`} />
-                <div className="space-y-2">
-                  <p className="text-lg font-medium">
-                    {dragActive ? "Drop your JSON file here" : "Drop JSON file here or click to browse"}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Upload a file containing wine quiz questions
-                  </p>
+        {/* Upload Methods */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* File Upload */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl font-serif flex items-center gap-2">
+                <Upload className="w-5 h-5" />
+                Upload File
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div
+                onDragEnter={handleDrag}
+                onDragLeave={handleDrag}
+                onDragOver={handleDrag}
+                onDrop={handleDrop}
+                className={`
+                  relative border-2 border-dashed rounded-lg p-8 text-center transition-all
+                  ${dragActive ? "border-primary bg-primary/5" : "border-border"}
+                  hover-elevate cursor-pointer
+                `}
+                onClick={() => fileInputRef.current?.click()}
+                data-testid="dropzone-upload"
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".json"
+                  onChange={handleChange}
+                  className="hidden"
+                  data-testid="input-file"
+                />
+                <div className="space-y-3">
+                  <Upload className={`w-12 h-12 mx-auto ${dragActive ? "text-primary" : "text-muted-foreground"}`} />
+                  <div className="space-y-1">
+                    <p className="font-medium">
+                      {dragActive ? "Drop here" : "Drop or click"}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Upload a JSON file
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+            </CardContent>
+          </Card>
 
-            {fileName && (
+          {/* Paste JSON */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl font-serif flex items-center gap-2">
+                <Code className="w-5 h-5" />
+                Paste JSON
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Textarea
+                placeholder='{"questions": [...]}'
+                value={pastedJson}
+                onChange={(e) => setPastedJson(e.target.value)}
+                className="font-mono text-sm min-h-[160px]"
+                data-testid="textarea-json"
+              />
+              <Button
+                onClick={handlePasteJson}
+                variant="secondary"
+                className="w-full"
+                data-testid="button-parse-json"
+              >
+                Parse JSON
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* File Status */}
+        {fileName && (
+          <Card>
+            <CardContent className="pt-6">
               <div className="flex items-center gap-3 p-4 rounded-lg bg-accent/50 border border-accent-border">
                 <FileJson className="w-5 h-5 text-accent-foreground" />
                 <span className="flex-1 font-medium text-accent-foreground" data-testid="text-filename">
@@ -161,9 +224,9 @@ export default function UploadPage() {
                 </span>
                 {uploadedData && <CheckCircle2 className="w-5 h-5 text-green-600" />}
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Preview & Import */}
         {uploadedData && (
