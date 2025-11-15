@@ -11,11 +11,12 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 
 export default function QuizPage() {
   const { toast } = useToast();
-  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null); // For single-choice
+  const [selectedAnswers, setSelectedAnswers] = useState<Set<number>>(new Set()); // For multi-select
   const [isAnswered, setIsAnswered] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
   const [shuffledOptions, setShuffledOptions] = useState<{ text: string; originalIndex: number }[]>([]);
-  const [correctAnswerIndex, setCorrectAnswerIndex] = useState<number>(0);
+  const [correctAnswerIndexes, setCorrectAnswerIndexes] = useState<Set<number>>(new Set()); // Changed to Set for multi-select
   const [sessionStartCount, setSessionStartCount] = useState<number | null>(null);
   const [answeredInSession, setAnsweredInSession] = useState(0);
   const [isAdvancing, setIsAdvancing] = useState(false);
@@ -68,15 +69,18 @@ export default function QuizPage() {
   }, [isError, isAdvancing, toast]);
 
   const submitAnswerMutation = useMutation({
-    mutationFn: async (data: { questionId: string; selectedAnswer: number }) => {
+    mutationFn: async (data: { questionId: string; selectedAnswer?: number; selectedAnswers?: number[] }) => {
       return await apiRequest("POST", "/api/quiz/answer", data);
     },
     onSuccess: (response) => {
-      // Find the shuffled index of the correct answer
-      const correctShuffledIndex = shuffledOptions.findIndex(
-        opt => opt.originalIndex === response.correctAnswer
+      // Find the shuffled indexes of the correct answer(s)
+      const correctAnswers = Array.isArray(response.correctAnswer) ? response.correctAnswer : [response.correctAnswer];
+      const correctShuffledIndexes = new Set<number>(
+        correctAnswers.map((origIndex: number) =>
+          shuffledOptions.findIndex(opt => opt.originalIndex === origIndex)
+        )
       );
-      setCorrectAnswerIndex(correctShuffledIndex);
+      setCorrectAnswerIndexes(correctShuffledIndexes);
       setIsCorrect(response.correct);
       setIsAnswered(true);
       
@@ -112,31 +116,61 @@ export default function QuizPage() {
       
       setShuffledOptions(options);
       setSelectedAnswer(null);
+      setSelectedAnswers(new Set());
       setIsAnswered(false);
     }
   }, [currentQuestion]);
 
   const handleAnswerSelect = (index: number) => {
     if (!isAnswered) {
-      setSelectedAnswer(index);
+      if (currentQuestion?.questionType === 'multi') {
+        // Multi-select: toggle selection
+        setSelectedAnswers(prev => {
+          const newSet = new Set(prev);
+          if (newSet.has(index)) {
+            newSet.delete(index);
+          } else {
+            newSet.add(index);
+          }
+          return newSet;
+        });
+      } else {
+        // Single-choice: replace selection
+        setSelectedAnswer(index);
+      }
     }
   };
 
   const handleSubmitAnswer = () => {
-    if (selectedAnswer === null || !currentQuestion) return;
+    if (!currentQuestion) return;
 
-    const originalAnswerIndex = shuffledOptions[selectedAnswer].originalIndex;
+    const isMulti = currentQuestion.questionType === 'multi';
+    
+    if (isMulti) {
+      // Multi-select: need at least zero selections (empty is allowed)
+      const originalIndexes = Array.from(selectedAnswers).map(i => shuffledOptions[i].originalIndex);
+      
+      submitAnswerMutation.mutate({
+        questionId: currentQuestion.id,
+        selectedAnswers: originalIndexes,
+      });
+    } else {
+      // Single-choice: need exactly one selection
+      if (selectedAnswer === null) return;
+      const originalAnswerIndex = shuffledOptions[selectedAnswer].originalIndex;
 
-    submitAnswerMutation.mutate({
-      questionId: currentQuestion.id,
-      selectedAnswer: originalAnswerIndex,
-    });
+      submitAnswerMutation.mutate({
+        questionId: currentQuestion.id,
+        selectedAnswer: originalAnswerIndex,
+      });
+    }
   };
 
   const handleNextQuestion = async () => {
     // Reset answer state immediately to prevent double-clicking
     setIsAnswered(false);
     setSelectedAnswer(null);
+    setSelectedAnswers(new Set());
     setIsAdvancing(true);
     
     // Refetch to get next question (answered one is removed by backend)
@@ -170,6 +204,10 @@ export default function QuizPage() {
     );
   }
 
+  if (!currentQuestion) {
+    return null; // Should never happen due to earlier checks, but keeps TypeScript happy
+  }
+
   const currentQuestionNumber = answeredInSession + 1;
   const totalQuestions = sessionStartCount ?? (dueQuestions?.length ?? 1);
   // Progress based on answered questions (not including current unanswered question)
@@ -196,10 +234,19 @@ export default function QuizPage() {
         {/* Question Card */}
         <Card className="border-card-border">
           <CardHeader className="space-y-4">
-            <div className="flex items-start justify-between gap-4">
-              <Badge variant="secondary" className="shrink-0" data-testid="badge-question-number">
-                #{currentQuestionNumber}
-              </Badge>
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="shrink-0" data-testid="badge-question-number">
+                  #{currentQuestionNumber}
+                </Badge>
+                <Badge 
+                  variant={currentQuestion.questionType === 'multi' ? 'default' : 'outline'}
+                  className="shrink-0"
+                  data-testid="badge-question-type"
+                >
+                  {currentQuestion.questionType === 'multi' ? 'Multi-Select' : 'Single Choice'}
+                </Badge>
+              </div>
               <div className="flex items-center gap-1" data-testid="indicator-difficulty">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Grape
@@ -214,6 +261,11 @@ export default function QuizPage() {
                 {currentQuestion.category}
               </Badge>
             )}
+            {currentQuestion.questionType === 'multi' && !isAnswered && (
+              <p className="text-sm text-muted-foreground">
+                Select all correct answers (there may be multiple)
+              </p>
+            )}
           </CardHeader>
           <CardContent className="space-y-6">
             <h2 className="text-2xl md:text-3xl font-medium leading-relaxed" data-testid="text-question">
@@ -223,10 +275,11 @@ export default function QuizPage() {
             {/* Answer Options */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {shuffledOptions.map((option, index) => {
-                const isSelected = selectedAnswer === index;
-                const isCorrectAnswer = index === correctAnswerIndex;
+                const isMulti = currentQuestion.questionType === 'multi';
+                const isSelected = isMulti ? selectedAnswers.has(index) : selectedAnswer === index;
+                const isCorrectAnswer = correctAnswerIndexes.has(index);
                 const showAsCorrect = isAnswered && isCorrectAnswer;
-                const showAsIncorrect = isAnswered && isSelected && !isCorrect;
+                const showAsIncorrect = isAnswered && isSelected && !isCorrectAnswer;
 
                 return (
                   <button
@@ -244,16 +297,39 @@ export default function QuizPage() {
                     `}
                   >
                     <div className="flex items-start gap-3">
-                      <span
-                        className={`
-                          flex items-center justify-center w-8 h-8 rounded-full shrink-0 font-semibold text-sm
-                          ${isSelected && !isAnswered ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}
-                          ${showAsCorrect ? "bg-green-600 text-white" : ""}
-                          ${showAsIncorrect ? "bg-destructive text-destructive-foreground" : ""}
-                        `}
-                      >
-                        {String.fromCharCode(65 + index)}
-                      </span>
+                      {isMulti ? (
+                        // Checkbox for multi-select
+                        <div
+                          className={`
+                            flex items-center justify-center w-6 h-6 rounded border-2 shrink-0
+                            ${isSelected && !isAnswered ? "bg-primary border-primary" : "border-muted-foreground"}
+                            ${showAsCorrect ? "bg-green-600 border-green-600" : ""}
+                            ${showAsIncorrect ? "bg-destructive border-destructive" : ""}
+                          `}
+                        >
+                          {isSelected && !isAnswered && (
+                            <CheckCircle2 className="w-4 h-4 text-primary-foreground" />
+                          )}
+                          {showAsCorrect && (
+                            <CheckCircle2 className="w-4 h-4 text-white" />
+                          )}
+                          {showAsIncorrect && (
+                            <XCircle className="w-4 h-4 text-destructive-foreground" />
+                          )}
+                        </div>
+                      ) : (
+                        // Radio button for single-choice
+                        <span
+                          className={`
+                            flex items-center justify-center w-8 h-8 rounded-full shrink-0 font-semibold text-sm
+                            ${isSelected && !isAnswered ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}
+                            ${showAsCorrect ? "bg-green-600 text-white" : ""}
+                            ${showAsIncorrect ? "bg-destructive text-destructive-foreground" : ""}
+                          `}
+                        >
+                          {String.fromCharCode(65 + index)}
+                        </span>
+                      )}
                       <span className={`flex-1 pt-1 ${showAsCorrect ? "font-medium" : ""}`}>
                         {option.text}
                       </span>
@@ -277,7 +353,7 @@ export default function QuizPage() {
               {!isAnswered ? (
                 <Button
                   onClick={handleSubmitAnswer}
-                  disabled={selectedAnswer === null || submitAnswerMutation.isPending}
+                  disabled={(currentQuestion.questionType === 'single' && selectedAnswer === null) || submitAnswerMutation.isPending}
                   size="lg"
                   data-testid="button-submit-answer"
                 >

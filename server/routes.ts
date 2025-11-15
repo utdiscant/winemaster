@@ -135,12 +135,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create questions (shared app-wide)
       const questions = await storage.createQuestions(
-        validatedData.questions.map((q) => ({
-          question: q.question,
-          options: q.options,
-          correctAnswer: q.correctAnswer,
-          category: q.category,
-        }))
+        validatedData.questions.map((q) => {
+          if (q.type === 'multi') {
+            return {
+              question: q.question,
+              questionType: 'multi' as const,
+              options: q.options,
+              correctAnswers: q.correctAnswers,
+              category: q.category,
+            };
+          } else {
+            return {
+              question: q.question,
+              questionType: 'single' as const,
+              options: q.options,
+              correctAnswer: q.correctAnswer,
+              category: q.category,
+            };
+          }
+        })
       );
 
       // Create review cards for all existing users (bulk insert)
@@ -178,7 +191,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/questions/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const { id } = req.params;
-      const updates = insertQuestionSchema.partial().parse(req.body);
+      // Manually validate updates since .partial() doesn't work with .refine()
+      const updates: any = {};
+      
+      if (req.body.question !== undefined) updates.question = req.body.question;
+      if (req.body.questionType !== undefined) updates.questionType = req.body.questionType;
+      if (req.body.options !== undefined) updates.options = req.body.options;
+      if (req.body.correctAnswer !== undefined) updates.correctAnswer = req.body.correctAnswer;
+      if (req.body.correctAnswers !== undefined) updates.correctAnswers = req.body.correctAnswers;
+      if (req.body.category !== undefined) updates.category = req.body.category;
       
       const question = await storage.updateQuestion(id, updates);
       if (!question) {
@@ -225,6 +246,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const quizQuestions: QuizQuestion[] = shuffled.map((row) => ({
         id: row.questionId,
         question: row.question,
+        questionType: (row.questionType || 'single') as 'single' | 'multi',
         options: row.options,
         category: row.category ?? undefined,
         reviewCardId: row.reviewCardId,
@@ -240,7 +262,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/quiz/answer", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { questionId, selectedAnswer } = answerSubmissionSchema.parse(req.body);
+      const submission = answerSubmissionSchema.parse(req.body);
+      const { questionId, selectedAnswer, selectedAnswers } = submission;
       
       // Ensure user has review cards for all questions
       await storage.ensureUserReviewCards(userId);
@@ -251,8 +274,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Question not found" });
       }
 
-      // Check if answer is correct
-      const isCorrect = selectedAnswer === question.correctAnswer;
+      // Check if answer is correct based on question type
+      let isCorrect = false;
+      let correctAnswerData: number | number[];
+      
+      if (question.questionType === 'multi') {
+        // Multi-select: check if selected set exactly matches correct set
+        const selected = new Set(selectedAnswers || []);
+        const correct = new Set(question.correctAnswers || []);
+        isCorrect = selected.size === correct.size && 
+                   Array.from(selected).every(ans => correct.has(ans));
+        correctAnswerData = question.correctAnswers || [];
+      } else {
+        // Single-choice: check if selected answer matches
+        isCorrect = selectedAnswer === question.correctAnswer;
+        correctAnswerData = question.correctAnswer || 0;
+      }
       
       // Get review card for this user
       const reviewCard = await storage.getReviewCardByQuestionId(userId, questionId);
@@ -280,7 +317,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         correct: isCorrect,
-        correctAnswer: question.correctAnswer,
+        correctAnswer: correctAnswerData,
+        questionType: question.questionType,
         nextReviewDate: sm2Result.nextReviewDate,
         interval: sm2Result.interval,
       });

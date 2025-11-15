@@ -51,7 +51,21 @@ export default function UploadPage() {
     try {
       const json = JSON.parse(pastedJson);
       // If JSON is an array, wrap it in { questions: array }
-      const data = Array.isArray(json) ? { questions: json } : json;
+      let data = Array.isArray(json) ? { questions: json } : json;
+      
+      // Normalize questionType to type for backend compatibility
+      if (data.questions) {
+        data.questions = data.questions.map((q: any) => {
+          const normalized = { ...q };
+          // Accept both 'type' and 'questionType' fields
+          if (q.questionType && !q.type) {
+            normalized.type = q.questionType;
+            delete normalized.questionType;
+          }
+          return normalized;
+        });
+      }
+      
       setUploadedData(data);
     } catch (error) {
       toast({
@@ -151,21 +165,34 @@ Example:
 
               <div className="space-y-3">
                 <p className="text-sm font-medium text-muted-foreground">Sample Questions:</p>
-                {uploadedData.questions.slice(0, 3).map((q, i) => (
-                  <div key={i} className="p-4 rounded-lg bg-card border border-card-border" data-testid={`preview-question-${i}`}>
-                    <p className="font-medium mb-2">{q.question}</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      {q.options.map((opt, j) => (
-                        <div
-                          key={j}
-                          className={`text-sm p-2 rounded border ${j === q.correctAnswer ? "border-green-500 bg-green-50 dark:bg-green-950/30" : "border-border"}`}
-                        >
-                          {String.fromCharCode(65 + j)}. {opt}
-                        </div>
-                      ))}
+                {uploadedData.questions.slice(0, 3).map((q, i) => {
+                  const isMulti = q.type === 'multi';
+                  const correctSet = new Set(isMulti ? (q as any).correctAnswers : [q.correctAnswer]);
+                  
+                  return (
+                    <div key={i} className="p-4 rounded-lg bg-card border border-card-border" data-testid={`preview-question-${i}`}>
+                      <div className="flex items-start justify-between mb-2">
+                        <p className="font-medium flex-1">{q.question}</p>
+                        <Badge variant={isMulti ? "secondary" : "default"} className="ml-2">
+                          {isMulti ? 'Multi-Select' : 'Single Choice'}
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {q.options.map((opt, j) => (
+                          <div
+                            key={j}
+                            className={`text-sm p-2 rounded border ${correctSet.has(j) ? "border-green-500 bg-green-50 dark:bg-green-950/30" : "border-border"}`}
+                          >
+                            {String.fromCharCode(65 + j)}. {opt}
+                            {correctSet.has(j) && (
+                              <span className="ml-1 text-xs text-green-600 dark:text-green-400">✓</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 {uploadedData.questions.length > 3 && (
                   <p className="text-sm text-muted-foreground text-center">
                     ...and {uploadedData.questions.length - 3} more questions
@@ -192,34 +219,50 @@ Example:
             <CardTitle className="text-xl font-serif">JSON Format Guide</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-muted-foreground">
-              Your JSON file should follow this structure:
+            <p className="text-muted-foreground mb-2">
+              Supports two question types: <strong>Single Choice</strong> (4 options) and <strong>Multi-Select</strong> (6 options)
             </p>
-            <pre className="p-4 rounded-lg bg-muted text-sm overflow-x-auto" data-testid="code-format-example">
+            
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm font-medium mb-2">Single Choice Format:</p>
+                <pre className="p-4 rounded-lg bg-muted text-sm overflow-x-auto">
 {`{
-  "questions": [
-    {
-      "question": "Which region is Barolo from?",
-      "options": [
-        "Piedmont, Italy",
-        "Tuscany, Italy",
-        "Bordeaux, France",
-        "Rioja, Spain"
-      ],
-      "correctAnswer": 0,
-      "category": "Italian Wines"
-    }
-  ]
+  "question": "Which region is Barolo from?",
+  "type": "single",
+  "options": ["Piedmont, Italy", "Tuscany, Italy", 
+              "Bordeaux, France", "Rioja, Spain"],
+  "correctAnswer": 0,
+  "category": "Italian Wines"
 }`}
-            </pre>
-            <div className="flex items-start gap-2 p-3 rounded-lg bg-accent/50 border border-accent-border">
+                </pre>
+              </div>
+
+              <div>
+                <p className="text-sm font-medium mb-2">Multi-Select Format:</p>
+                <pre className="p-4 rounded-lg bg-muted text-sm overflow-x-auto">
+{`{
+  "question": "Which are red grape varieties?",
+  "type": "multi",
+  "options": ["Cabernet Sauvignon", "Chardonnay",
+              "Merlot", "Riesling", "Pinot Noir", "Sauvignon Blanc"],
+  "correctAnswers": [0, 2, 4],
+  "category": "Grape Varieties"
+}`}
+                </pre>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-accent/50 border border-accent-border mt-4">
               <AlertCircle className="w-5 h-5 text-accent-foreground shrink-0 mt-0.5" />
               <div className="text-sm text-accent-foreground">
                 <p className="font-medium">Requirements:</p>
                 <ul className="list-disc list-inside mt-1 space-y-1">
-                  <li>Each question must have exactly 4 options</li>
-                  <li>correctAnswer is the index (0-3) of the correct option</li>
-                  <li>category is optional</li>
+                  <li><strong>Single Choice:</strong> 4 options, correctAnswer is index (0-3)</li>
+                  <li><strong>Multi-Select:</strong> 6 options, correctAnswers is array of indices (0-5)</li>
+                  <li>Type defaults to "single" if not specified</li>
+                  <li>Multi-select can have 0-6 correct answers</li>
+                  <li>Category is optional for both types</li>
                 </ul>
               </div>
             </div>

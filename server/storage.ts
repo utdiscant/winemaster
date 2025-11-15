@@ -38,6 +38,7 @@ export interface IStorage {
     reviewCardId: string;
     questionId: string;
     question: string;
+    questionType: string;
     options: string[];
     category: string | null;
   }>>;
@@ -200,6 +201,7 @@ export class DatabaseStorage implements IStorage {
     reviewCardId: string;
     questionId: string;
     question: string;
+    questionType: string;
     options: string[];
     category: string | null;
   }>> {
@@ -209,6 +211,7 @@ export class DatabaseStorage implements IStorage {
         reviewCardId: reviewCards.id,
         questionId: questions.id,
         question: questions.question,
+        questionType: questions.questionType,
         options: questions.options,
         category: questions.category,
       })

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -267,62 +268,77 @@ export default function AdminPage() {
           </Card>
         )}
 
-        {paginatedQuestions.map((question) => (
-          <Card key={question.id} data-testid={`card-question-${question.id}`}>
-            <CardHeader>
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <CardTitle className="text-lg mb-2">{question.question}</CardTitle>
-                  {question.category && (
-                    <p className="text-sm text-muted-foreground">Category: {question.category}</p>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setEditingQuestion(question)}
-                    data-testid={`button-edit-${question.id}`}
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setDeletingQuestionId(question.id)}
-                    data-testid={`button-delete-${question.id}`}
-                  >
-                    <Trash2 className="w-4 h-4 text-destructive" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {question.options.map((option, index) => (
-                  <div
-                    key={index}
-                    className={`p-3 rounded-lg border ${
-                      index === question.correctAnswer
-                        ? "bg-green-50 dark:bg-green-950/20 border-green-500"
-                        : "bg-muted/50"
-                    }`}
-                  >
-                    <span className="font-medium mr-2">
-                      {String.fromCharCode(65 + index)}.
-                    </span>
-                    {option}
-                    {index === question.correctAnswer && (
-                      <span className="ml-2 text-sm text-green-600 dark:text-green-400">
-                        (Correct)
-                      </span>
+        {paginatedQuestions.map((question) => {
+          const isMulti = question.questionType === 'multi';
+          const correctSet = new Set(isMulti ? (question.correctAnswers || []) : [question.correctAnswer]);
+          
+          return (
+            <Card key={question.id} data-testid={`card-question-${question.id}`}>
+              <CardHeader>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CardTitle className="text-lg">{question.question}</CardTitle>
+                      <Badge variant={isMulti ? "default" : "secondary"} className="shrink-0">
+                        {isMulti ? 'Multi-Select' : 'Single Choice'}
+                      </Badge>
+                    </div>
+                    {question.category && (
+                      <p className="text-sm text-muted-foreground">Category: {question.category}</p>
                     )}
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setEditingQuestion(question)}
+                      data-testid={`button-edit-${question.id}`}
+                      disabled={isMulti}
+                      title={isMulti ? "Multi-select editing not yet supported in UI" : "Edit question"}
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setDeletingQuestionId(question.id)}
+                      data-testid={`button-delete-${question.id}`}
+                    >
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {question.options.map((option, index) => {
+                    const isCorrect = correctSet.has(index);
+                    return (
+                      <div
+                        key={index}
+                        className={`p-3 rounded-lg border ${
+                          isCorrect
+                            ? "bg-green-50 dark:bg-green-950/20 border-green-500"
+                            : "bg-muted/50"
+                        }`}
+                      >
+                        <span className="font-medium mr-2">
+                          {String.fromCharCode(65 + index)}.
+                        </span>
+                        {option}
+                        {isCorrect && (
+                          <span className="ml-2 text-sm text-green-600 dark:text-green-400">
+                            ✓ Correct
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {/* Pagination Controls */}
