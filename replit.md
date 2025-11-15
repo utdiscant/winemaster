@@ -83,6 +83,25 @@ For easier testing in development mode, the application includes quick login sho
 - Ensures summary card counts always match question list counts in tab labels
 - Prevents discrepancies between different data sources on the same page
 
+**Mastery Indicators and Category Analytics (November 2025):**
+- Added mastery scoring system based on SM-2 algorithm data (repetitions, interval, ease factor)
+- Each question card displays:
+  - Mastery badge (Expert/Strong/Learning/Developing/New)
+  - Progress bar showing mastery percentage (0-100%)
+  - Ease factor display for transparency
+- Mastery calculation:
+  - 0 repetitions: 0% (New)
+  - 1 repetition: 25% (Developing)
+  - 2 repetitions: 50% (Learning)
+  - 3+ repetitions, interval <21 days: 50-69% (Advanced Learning, scaled by interval progress)
+  - 3+ repetitions, interval ≥21 days: 70-100% (Strong/Expert, with bonuses for long intervals and high ease factors)
+- Category mastery section displays:
+  - Average mastery percentage per category
+  - Total questions and mastered count per category
+  - Progress bars and badges for visual feedback
+  - Categories sorted by mastery (lowest first) to highlight areas needing practice
+- All mastery values capped at 100% for accurate progress tracking
+
 ## System Architecture
 
 ### Frontend Architecture
