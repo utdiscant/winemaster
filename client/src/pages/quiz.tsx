@@ -8,15 +8,18 @@ import { CheckCircle2, XCircle, Wine } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { QuizQuestion, User } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import MapQuestion from "@/components/MapQuestion";
 
 export default function QuizPage() {
   const { toast } = useToast();
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null); // For single-choice
   const [selectedAnswers, setSelectedAnswers] = useState<Set<number>>(new Set()); // For multi-select
+  const [textAnswer, setTextAnswer] = useState<string>(""); // For map questions
   const [isAnswered, setIsAnswered] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
   const [shuffledOptions, setShuffledOptions] = useState<{ text: string; originalIndex: number }[]>([]);
   const [correctAnswerIndexes, setCorrectAnswerIndexes] = useState<Set<number>>(new Set()); // Changed to Set for multi-select
+  const [correctAnswerText, setCorrectAnswerText] = useState<string>(""); // For map questions
   const [sessionStartCount, setSessionStartCount] = useState<number | null>(null);
   const [answeredInSession, setAnsweredInSession] = useState(0);
   const [isAdvancing, setIsAdvancing] = useState(false);
@@ -92,18 +95,23 @@ export default function QuizPage() {
   }, [isError, isAdvancing, toast]);
 
   const submitAnswerMutation = useMutation({
-    mutationFn: async (data: { questionId: string; selectedAnswer?: number; selectedAnswers?: number[] }) => {
+    mutationFn: async (data: { questionId: string; selectedAnswer?: number; selectedAnswers?: number[]; textAnswer?: string }) => {
       return await apiRequest("POST", "/api/quiz/answer", data);
     },
     onSuccess: (response) => {
-      // Find the shuffled indexes of the correct answer(s)
-      const correctAnswers = Array.isArray(response.correctAnswer) ? response.correctAnswer : [response.correctAnswer];
-      const correctShuffledIndexes = new Set<number>(
-        correctAnswers.map((origIndex: number) =>
-          shuffledOptions.findIndex(opt => opt.originalIndex === origIndex)
-        )
-      );
-      setCorrectAnswerIndexes(correctShuffledIndexes);
+      if (currentQuestion?.questionType === 'map') {
+        // Map question: store the correct text answer
+        setCorrectAnswerText(response.correctAnswer);
+      } else {
+        // Find the shuffled indexes of the correct answer(s)
+        const correctAnswers = Array.isArray(response.correctAnswer) ? response.correctAnswer : [response.correctAnswer];
+        const correctShuffledIndexes = new Set<number>(
+          correctAnswers.map((origIndex: number) =>
+            shuffledOptions.findIndex(opt => opt.originalIndex === origIndex)
+          )
+        );
+        setCorrectAnswerIndexes(correctShuffledIndexes);
+      }
       setIsCorrect(response.correct);
       setIsAnswered(true);
       
@@ -126,20 +134,28 @@ export default function QuizPage() {
   // Shuffle options when question changes
   useEffect(() => {
     if (currentQuestion) {
-      const options = currentQuestion.options.map((text, index) => ({
-        text,
-        originalIndex: index,
-      }));
-      
-      // Fisher-Yates shuffle
-      for (let i = options.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [options[i], options[j]] = [options[j], options[i]];
+      // Only shuffle if not a map question
+      if (currentQuestion.questionType !== 'map' && currentQuestion.options) {
+        const options = currentQuestion.options.map((text, index) => ({
+          text,
+          originalIndex: index,
+        }));
+        
+        // Fisher-Yates shuffle
+        for (let i = options.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [options[i], options[j]] = [options[j], options[i]];
+        }
+        
+        setShuffledOptions(options);
       }
       
-      setShuffledOptions(options);
+      // Reset all answer states
       setSelectedAnswer(null);
       setSelectedAnswers(new Set());
+      setTextAnswer("");
+      setCorrectAnswerText("");
+      setCorrectAnswerIndexes(new Set());
       setIsAnswered(false);
     }
   }, [currentQuestion]);
@@ -168,8 +184,17 @@ export default function QuizPage() {
     if (!currentQuestion) return;
 
     const isMulti = currentQuestion.questionType === 'multi';
+    const isMap = currentQuestion.questionType === 'map';
     
-    if (isMulti) {
+    if (isMap) {
+      // Map question: submit text answer
+      if (!textAnswer.trim()) return;
+      
+      submitAnswerMutation.mutate({
+        questionId: currentQuestion.id,
+        textAnswer: textAnswer.trim(),
+      });
+    } else if (isMulti) {
       // Multi-select: need at least zero selections (empty is allowed)
       const originalIndexes = Array.from(selectedAnswers).map(i => shuffledOptions[i].originalIndex);
       
@@ -194,6 +219,9 @@ export default function QuizPage() {
     setIsAnswered(false);
     setSelectedAnswer(null);
     setSelectedAnswers(new Set());
+    setTextAnswer("");
+    setCorrectAnswerText("");
+    setCorrectAnswerIndexes(new Set());
     setIsAdvancing(true);
     
     // Refetch to get next question (answered one is removed by backend)
@@ -266,7 +294,11 @@ export default function QuizPage() {
                   className="shrink-0"
                   data-testid="badge-question-type"
                 >
-                  {currentQuestion.questionType === 'multi' ? 'Multi-Select' : 'Single Choice'}
+                  {currentQuestion.questionType === 'multi' 
+                    ? 'Multi-Select' 
+                    : currentQuestion.questionType === 'map' 
+                    ? 'Map Question' 
+                    : 'Single Choice'}
                 </Badge>
               </div>
               {currentQuestion.category && (
@@ -286,8 +318,18 @@ export default function QuizPage() {
               {currentQuestion.question}
             </h2>
 
-            {/* Answer Options */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Map Question or Regular Answer Options */}
+            {currentQuestion.questionType === 'map' ? (
+              <MapQuestion
+                question={currentQuestion}
+                isAnswered={isAnswered}
+                isCorrect={isCorrect}
+                correctAnswer={correctAnswerText}
+                textAnswer={textAnswer}
+                onTextAnswerChange={setTextAnswer}
+              />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {shuffledOptions.map((option, index) => {
                 const isMulti = currentQuestion.questionType === 'multi';
                 const isSelected = isMulti ? selectedAnswers.has(index) : selectedAnswer === index;
@@ -360,14 +402,19 @@ export default function QuizPage() {
                   </button>
                 );
               })}
-            </div>
+              </div>
+            )}
 
             {/* Action Buttons */}
             <div className="flex justify-end gap-3 pt-4">
               {!isAnswered ? (
                 <Button
                   onClick={handleSubmitAnswer}
-                  disabled={(currentQuestion.questionType === 'single' && selectedAnswer === null) || submitAnswerMutation.isPending}
+                  disabled={
+                    (currentQuestion.questionType === 'single' && selectedAnswer === null) || 
+                    (currentQuestion.questionType === 'map' && !textAnswer.trim()) || 
+                    submitAnswerMutation.isPending
+                  }
                   size="lg"
                   data-testid="button-submit-answer"
                 >
@@ -405,6 +452,8 @@ export default function QuizPage() {
                     <p className="text-sm text-muted-foreground">
                       {isCorrect
                         ? "Great job! You got it right."
+                        : currentQuestion.questionType === 'map'
+                        ? "The correct answer is shown above."
                         : "The correct answer is highlighted in green above."}
                     </p>
                   </div>
