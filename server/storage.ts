@@ -44,9 +44,15 @@ export interface IStorage {
     questionId: string;
     question: string;
     questionType: string;
-    options: string[];
+    options: string[] | null;
     category: string | null;
     curriculum: string | null;
+    mapRegionName: string | null;
+    mapCountry: string | null;
+    mapLatitude: number | null;
+    mapLongitude: number | null;
+    mapZoom: number | null;
+    mapVariant: string | null;
   }>>;
   getAllReviewCards(userId: string): Promise<ReviewCard[]>;
   ensureUserReviewCards(userId: string): Promise<void>;
@@ -54,7 +60,7 @@ export interface IStorage {
     reviewCardId: string;
     questionId: string;
     question: string;
-    options: string[];
+    options: string[] | null;
     correctAnswer: number | null;
     correctAnswers: number[] | null;
     questionType: string;
@@ -271,9 +277,15 @@ export class DatabaseStorage implements IStorage {
     questionId: string;
     question: string;
     questionType: string;
-    options: string[];
+    options: string[] | null;
     category: string | null;
     curriculum: string | null;
+    mapRegionName: string | null;
+    mapCountry: string | null;
+    mapLatitude: number | null;
+    mapLongitude: number | null;
+    mapZoom: number | null;
+    mapVariant: string | null;
   }>> {
     const now = new Date();
     
@@ -298,6 +310,12 @@ export class DatabaseStorage implements IStorage {
         options: questions.options,
         category: questions.category,
         curriculum: questions.curriculum,
+        mapRegionName: questions.mapRegionName,
+        mapCountry: questions.mapCountry,
+        mapLatitude: questions.mapLatitude,
+        mapLongitude: questions.mapLongitude,
+        mapZoom: questions.mapZoom,
+        mapVariant: questions.mapVariant,
       })
       .from(reviewCards)
       .innerJoin(questions, eq(reviewCards.questionId, questions.id))
