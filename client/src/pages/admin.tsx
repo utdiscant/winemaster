@@ -1,10 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -22,7 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Settings, Edit2, Trash2, Plus } from "lucide-react";
+import { Settings, Edit2, Trash2, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Question } from "@shared/schema";
@@ -31,6 +38,9 @@ export default function AdminPage() {
   const { toast } = useToast();
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [deletingQuestionId, setDeletingQuestionId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [formData, setFormData] = useState({
     question: "",
     option1: "",
@@ -41,10 +51,60 @@ export default function AdminPage() {
     category: "",
   });
 
+  const ITEMS_PER_PAGE = 10;
+
   // Fetch all questions
   const { data: questions, isLoading } = useQuery<Question[]>({
     queryKey: ["/api/questions"],
   });
+
+  // Get unique categories for filter
+  const categories = useMemo(() => {
+    if (!questions) return [];
+    const uniqueCategories = new Set<string>();
+    questions.forEach(q => {
+      if (q.category) uniqueCategories.add(q.category);
+    });
+    return Array.from(uniqueCategories).sort();
+  }, [questions]);
+
+  // Filter and paginate questions
+  const { filteredQuestions, totalPages, paginatedQuestions } = useMemo(() => {
+    if (!questions) return { filteredQuestions: [], totalPages: 0, paginatedQuestions: [] };
+
+    // Filter by search query
+    let filtered = questions.filter(q => {
+      const matchesSearch = searchQuery === "" || 
+        q.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        q.options.some(opt => opt.toLowerCase().includes(searchQuery.toLowerCase()));
+      
+      const matchesCategory = categoryFilter === "all" || q.category === categoryFilter;
+      
+      return matchesSearch && matchesCategory;
+    });
+
+    const total = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const paginated = filtered.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+    return {
+      filteredQuestions: filtered,
+      totalPages: total,
+      paginatedQuestions: paginated,
+    };
+  }, [questions, searchQuery, categoryFilter, currentPage]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, categoryFilter]);
+
+  // Clamp currentPage when totalPages shrinks (e.g., after deletions)
+  useEffect(() => {
+    if (totalPages > 0 && currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
 
   // Update question mutation
   const updateMutation = useMutation({
@@ -151,6 +211,41 @@ export default function AdminPage() {
         </p>
       </div>
 
+      {/* Search and Filter Controls */}
+      <Card className="mb-6">
+        <CardContent className="pt-6">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search questions..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+                data-testid="input-search-questions"
+              />
+            </div>
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="sm:w-[200px]" data-testid="select-category-filter">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {categories.map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {cat}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="mt-4 text-sm text-muted-foreground">
+            Showing {paginatedQuestions.length} of {filteredQuestions.length} questions
+            {filteredQuestions.length !== questions?.length && ` (filtered from ${questions?.length} total)`}
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4">
         {questions && questions.length === 0 && (
           <Card>
@@ -162,7 +257,17 @@ export default function AdminPage() {
           </Card>
         )}
 
-        {questions?.map((question) => (
+        {filteredQuestions.length === 0 && questions && questions.length > 0 && (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <p className="text-muted-foreground">
+                No questions match your search or filter criteria.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {paginatedQuestions.map((question) => (
           <Card key={question.id} data-testid={`card-question-${question.id}`}>
             <CardHeader>
               <div className="flex items-start justify-between gap-4">
@@ -219,6 +324,46 @@ export default function AdminPage() {
           </Card>
         ))}
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="mt-6 flex items-center justify-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            data-testid="button-prev-page"
+          >
+            <ChevronLeft className="w-4 h-4 mr-1" />
+            Previous
+          </Button>
+          <div className="flex items-center gap-1">
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <Button
+                key={page}
+                variant={currentPage === page ? "default" : "outline"}
+                size="sm"
+                onClick={() => setCurrentPage(page)}
+                className="min-w-[2.5rem]"
+                data-testid={`button-page-${page}`}
+              >
+                {page}
+              </Button>
+            ))}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            data-testid="button-next-page"
+          >
+            Next
+            <ChevronRight className="w-4 h-4 ml-1" />
+          </Button>
+        </div>
+      )}
 
       {/* Edit Dialog */}
       <Dialog open={!!editingQuestion} onOpenChange={(open) => !open && setEditingQuestion(null)}>
