@@ -388,7 +388,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get statistics (user-specific)
+  // Get statistics (user-specific, respects curriculum preferences)
   app.get("/api/statistics", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -396,14 +396,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Ensure user has review cards for all questions
       await storage.ensureUserReviewCards(userId);
       
-      const stats = await storage.getStatistics(userId);
+      // Get user's curriculum preferences
+      const user = await storage.getUser(userId);
+      const curricula = user?.selectedCurricula || undefined;
+      
+      const stats = await storage.getStatistics(userId, curricula);
       res.json(stats);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  // Get review cards with questions for progress details
+  // Get review cards with questions for progress details (respects curriculum preferences)
   app.get("/api/progress/cards", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -411,8 +415,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Ensure user has review cards for all questions
       await storage.ensureUserReviewCards(userId);
       
-      const cards = await storage.getReviewCardsWithQuestions(userId);
-      res.json(cards);
+      // Get user's curriculum preferences
+      const user = await storage.getUser(userId);
+      const curricula = user?.selectedCurricula || undefined;
+      
+      const allCards = await storage.getReviewCardsWithQuestions(userId);
+      
+      // Filter by curricula if user has preferences
+      const filteredCards = curricula && curricula.length > 0
+        ? allCards.filter(card => card.curriculum && curricula.includes(card.curriculum))
+        : allCards;
+      
+      res.json(filteredCards);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

@@ -65,7 +65,7 @@ export interface IStorage {
   }>>;
   
   // Statistics (now user-specific)
-  getStatistics(userId: string): Promise<Statistics>;
+  getStatistics(userId: string, curricula?: string[]): Promise<Statistics>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -359,47 +359,56 @@ export class DatabaseStorage implements IStorage {
       .where(eq(reviewCards.userId, userId));
   }
 
-  // Statistics (now user-specific)
-  async getStatistics(userId: string): Promise<Statistics> {
-    const allCards = await this.getAllReviewCards(userId);
+  // Statistics (now user-specific with curriculum filtering)
+  async getStatistics(userId: string, curricula?: string[]): Promise<Statistics> {
+    // Get all review cards with questions to filter by curriculum
+    const allCardsWithQuestions = await this.getReviewCardsWithQuestions(userId);
+    
+    // Filter by curricula if provided
+    let filteredCards = allCardsWithQuestions;
+    if (curricula && curricula.length > 0) {
+      filteredCards = allCardsWithQuestions.filter(card => 
+        card.curriculum && curricula.includes(card.curriculum)
+      );
+    }
+    
     const now = new Date();
     const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-    const masteredQuestions = allCards.filter(
+    const masteredQuestions = filteredCards.filter(
       (card) => card.repetitions >= 3 && card.interval >= 21
     ).length;
 
-    const learningQuestions = allCards.filter(
+    const learningQuestions = filteredCards.filter(
       (card) => card.repetitions > 0 && card.repetitions < 3
     ).length;
 
-    const newQuestions = allCards.filter((card) => card.repetitions === 0).length;
+    const newQuestions = filteredCards.filter((card) => card.repetitions === 0).length;
 
-    const dueToday = allCards.filter((card) => {
+    const dueToday = filteredCards.filter((card) => {
       const cardDate = new Date(card.nextReviewDate);
-      return (
-        cardDate.getFullYear() === now.getFullYear() &&
-        cardDate.getMonth() === now.getMonth() &&
-        cardDate.getDate() === now.getDate()
-      );
+      return cardDate <= now;
     }).length;
 
-    const dueThisWeek = allCards.filter(
+    const dueThisWeek = filteredCards.filter(
       (card) => card.nextReviewDate >= now && card.nextReviewDate <= weekFromNow
     ).length;
 
     const averageEaseFactor =
-      allCards.length > 0
-        ? allCards.reduce((sum, card) => sum + card.easeFactor, 0) / allCards.length
+      filteredCards.length > 0
+        ? filteredCards.reduce((sum, card) => sum + card.easeFactor, 0) / filteredCards.length
         : 2.5;
 
-    const totalReviews = allCards.reduce((sum, card) => sum + card.repetitions, 0);
+    const totalReviews = filteredCards.reduce((sum, card) => sum + card.repetitions, 0);
 
-    // Get total questions count from database
+    // Get total questions count (filtered by curriculum if provided)
     const allQuestions = await this.getAllQuestions();
+    const totalQuestions = curricula && curricula.length > 0
+      ? allQuestions.filter(q => q.curriculum && curricula.includes(q.curriculum)).length
+      : allQuestions.length;
 
     return {
-      totalQuestions: allQuestions.length,
+      totalQuestions,
       masteredQuestions,
       learningQuestions,
       newQuestions,
