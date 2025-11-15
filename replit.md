@@ -2,290 +2,71 @@
 
 ## Overview
 
-Wine Master is a multi-user web-based educational application that uses spaced repetition algorithms to help users master wine knowledge. Users authenticate via Replit Auth (Google, GitHub, or email/password) and receive personalized quiz questions about wine regions, grape varieties, winemaking techniques, and other wine-related topics. Using the SM-2 (SuperMemo 2) algorithm, the app intelligently schedules question reviews based on individual user performance to optimize long-term retention.
-
-**Key Features:**
-- Multi-user authentication via Replit Auth with session persistence
-- Individual progress tracking with per-user review cards
-- Shared question database accessible to all users
-- Admin-only question management (upload, edit, delete)
-- Intelligent spaced repetition scheduling using SM-2 algorithm
-- Real-time progress statistics and learning analytics
+Wine Master is a multi-user web application designed to help users master wine knowledge using spaced repetition. It offers personalized quizzes, tracks individual progress, and uses the SM-2 algorithm to optimize learning. The platform supports multi-user authentication via Replit Auth, provides shared and admin-managed question databases, and delivers real-time learning analytics. The business vision is to provide an effective, engaging, and accessible tool for wine education, targeting enthusiasts, students, and professionals alike.
 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
 
-## Development Quick Login
-
-For easier testing in development mode, the application includes quick login shortcuts:
-
-**Landing Page Dev Buttons:**
-- "Login as Admin" - Creates/logs in as test admin (admin@winemaster.dev) with full privileges
-- "Login as User" - Creates/logs in as test user (user@winemaster.dev) with standard access
-
-**How to Use:**
-1. Run the app in development mode (`npm run dev`)
-2. Visit the landing page - you'll see dev login buttons below "Get Started"
-3. Click either button to instantly login without OAuth
-4. Logout and switch between users as needed for testing
-
-**Security:**
-- Dev endpoints only work when `NODE_ENV=development`
-- Production builds automatically exclude dev login UI
-- Test users: `dev-admin-user` and `dev-regular-user`
-
-## Recent Changes (November 2025)
-
-**Multi-User Migration:**
-- Implemented Replit Auth integration with Google, GitHub, and email/password providers
-- Migrated from in-memory storage to PostgreSQL database with Drizzle ORM
-- Created per-user review card system with unique(userId, questionId) constraint
-- Built admin-only question management interface
-- Implemented single router-level authentication guard (removed redundant per-page redirects)
-- Optimized backend queries using JOINs and bulk inserts
-- Added automatic review card provisioning on login and lazy provisioning in quiz endpoints
-- Added dev-mode quick login for easy testing (admin and regular user)
-
-**Multi-Select Question Support:**
-- Added support for multi-select questions (6 options, 0-6 correct answers)
-- Backend scoring requires exact set matching for full credit
-- Quiz UI shows checkboxes for multi-select, radio buttons for single-choice
-- Upload page accepts both "type" and "questionType" field names for compatibility
-- Admin page displays question type badges and disables editing for multi-select
-- Backward compatible with existing single-choice questions
-
-**Delete All Questions Feature:**
-- Added admin-only "Delete All Questions" button to admin page
-- Confirmation dialog shows total question count before deletion
-- Backend endpoint deletes all review cards and questions atomically
-- Success message displays count of deleted questions
-- Button only visible when questions exist
-
-**Curriculum Preference System (November 2025):**
-- Added optional `curriculum` field to questions table (e.g., "WSET1", "WSET2", "WSET3")
-- Added `selected_curricula` text array field to users table for storing curriculum preferences
-- Created Profile page (/profile) with multi-select curriculum picker using checkboxes
-- Users select their study curricula in Profile, which filters quiz questions globally
-- Backend endpoints: GET /api/curricula (list all), GET /api/user/curricula (fetch prefs), PATCH /api/user/curricula (save with Zod validation)
-- Quiz page automatically uses user's saved curricula preferences (no per-session dropdown)
-- Backend supports filtering by multiple curricula using OR logic via comma-separated query parameter
-- Empty curriculum selection shows all questions (default behavior for new users)
-- Admin page displays curriculum field and includes curriculum filter dropdown
-- Upload page supports curriculum field in JSON uploads with unified example showing both question types
-- Backward compatible - existing questions without curriculum continue to work
-
-**React Query Cache Management (November 2025):**
-- Fixed stale data issues across Quiz and Progress pages
-- Quiz page: Added `refetchOnMount: 'always'` and `staleTime: 0` to prevent stale cache when navigating
-- Progress page: Added same cache settings to both `/api/statistics` and `/api/progress/cards` queries
-- Progress page: Added `onValueChange` handler to Tabs component to refetch data when switching tabs
-- Ensures summary card counts always match question list counts in tab labels
-- Prevents discrepancies between different data sources on the same page
-
-**Mastery Indicators and Category Analytics (November 2025):**
-- Added mastery scoring system based on SM-2 algorithm data (repetitions, interval, ease factor)
-- Each question card displays:
-  - Mastery badge (Expert/Strong/Learning/Developing/New)
-  - Progress bar showing mastery percentage (0-100%)
-  - Ease factor display for transparency
-- Mastery calculation:
-  - 0 repetitions: 0% (New)
-  - 1 repetition: 25% (Developing)
-  - 2 repetitions: 50% (Learning)
-  - 3+ repetitions, interval <21 days: 50-69% (Advanced Learning, scaled by interval progress)
-  - 3+ repetitions, interval ≥21 days: 70-100% (Strong/Expert, with bonuses for long intervals and high ease factors)
-- Category mastery section displays:
-  - Average mastery percentage per category
-  - Total questions and mastered count per category
-  - Progress bars and badges for visual feedback
-  - Categories sorted by mastery (lowest first) to highlight areas needing practice
-- All mastery values capped at 100% for accurate progress tracking
-
 ## System Architecture
 
 ### Frontend Architecture
 
-**Technology Stack:**
-- **Framework**: React with TypeScript
-- **Build Tool**: Vite
-- **Routing**: Wouter (lightweight React router)
-- **State Management**: TanStack Query (React Query) for server state
-- **UI Components**: Radix UI primitives with shadcn/ui component library
-- **Styling**: Tailwind CSS with custom design system
+**Technology Stack:** React with TypeScript, Vite, Wouter for routing, TanStack Query for server state, Radix UI primitives with shadcn/ui for UI components, and Tailwind CSS for styling.
 
-**Design System:**
-- Material Design principles adapted for wine industry aesthetic
-- Typography: Playfair Display (serif) for headings, Inter (sans-serif) for body text
-- Color scheme: Wine-themed palette with primary colors in burgundy/wine red tones
-- Custom Tailwind configuration with extended color variables using HSL values
-- Responsive design with mobile-first approach
+**Design System:** Adheres to Material Design principles with a wine-themed aesthetic. Uses Playfair Display for headings and Inter for body text. Features a custom Tailwind configuration with HSL-based color variables and a mobile-first responsive design.
 
-**Component Structure:**
-- Page-based routing: Landing, Quiz, Progress, Profile, Upload (admin), Admin (admin)
-- Single router-level authentication guard in App.tsx
-- Conditional routing and navigation based on user role (admin/non-admin)
-- Shared UI components from shadcn/ui in `client/src/components/ui/`
-- Custom hooks: useAuth for authentication state
-- Global navigation component with role-based menu items (Profile accessible to all users)
+**Component Structure:** Implements page-based routing with a single router-level authentication guard in `App.tsx`. Conditional routing and navigation are based on user roles. Utilizes shared `shadcn/ui` components and custom hooks like `useAuth`.
 
-**State Management Strategy:**
-- TanStack Query for API data fetching and caching with credentials: "include"
-- Public `/api/auth/user` endpoint returns user object or null (no 401 loops)
-- Query invalidation on data mutations (e.g., after uploading questions)
-- Local component state for UI interactions (e.g., quiz answer selection)
-- No redundant per-page auth redirects (centralized in router)
+**State Management Strategy:** TanStack Query handles API data fetching and caching, including authentication credentials. Query invalidation is used for data mutations. Local component state manages UI interactions.
 
 ### Backend Architecture
 
-**Technology Stack:**
-- **Runtime**: Node.js with TypeScript
-- **Framework**: Express.js
-- **ORM**: Drizzle ORM with snake_case schema
-- **Database**: PostgreSQL (via Neon serverless)
-- **Authentication**: Replit Auth (passport.js with OIDC strategy)
-- **Session Storage**: PostgreSQL via connect-pg-simple
+**Technology Stack:** Node.js with TypeScript, Express.js, Drizzle ORM, PostgreSQL (via Neon serverless), Replit Auth (using passport.js with OIDC), and `connect-pg-simple` for session storage.
 
-**API Design:**
-- RESTful API endpoints under `/api` prefix
-- Authentication middleware: isAuthenticated for protected routes
-- Admin middleware: isAdmin for question management
-- Request/response logging middleware
-- Error handling with appropriate HTTP status codes
+**API Design:** RESTful API endpoints under `/api`, protected by `isAuthenticated` middleware and `isAdmin` middleware for administrative functions. Includes request/response logging and robust error handling.
 
-**Public Endpoints:**
-- `GET /api/auth/user` - Returns user object or null (no auth required)
-- `GET /api/login` - Initiates Replit Auth OAuth flow
-- `GET /api/callback` - OAuth callback handler
-- `GET /api/logout` - Destroys session and redirects
+**Key Endpoints:**
+- **Public:** `/api/auth/user`, `/api/login`, `/api/callback`, `/api/logout`
+- **Protected:** `/api/quiz/due`, `/api/quiz/answer`, `/api/statistics`, `/api/curricula`, `/api/user/curricula` (GET and PATCH)
+- **Admin-Only:** `/api/questions/upload` (supports upsert by ID), `/api/questions/:id` (PATCH and DELETE), `/api/questions` (GET all)
 
-**Protected Endpoints:**
-- `GET /api/quiz/due` - Retrieve questions due for current user (accepts optional `curricula` query param)
-- `POST /api/quiz/answer` - Submit answer and update user's review schedule
-- `GET /api/statistics` - Retrieve current user's progress statistics
-- `GET /api/curricula` - List all unique curricula in database
-- `GET /api/user/curricula` - Fetch current user's curriculum preferences
-- `PATCH /api/user/curricula` - Update user's curriculum preferences (validated with Zod)
-
-**Admin-Only Endpoints:**
-- `POST /api/questions/upload` - Bulk upload questions from JSON
-- `PATCH /api/questions/:id` - Edit existing question
-- `DELETE /api/questions/:id` - Delete question and related review cards
-- `GET /api/questions` - List all questions (admin page)
-
-**Storage Layer:**
-- PostgreSQL-based DatabaseStorage implementation
-- Optimized JOIN queries for performance (getDueCardsWithQuestions)
-- Bulk insert operations with conflict handling
-- Automatic review card provisioning: on login + lazy in quiz endpoints
-- Transactions for data consistency
+**Storage Layer:** PostgreSQL-based `DatabaseStorage` with Drizzle ORM. Optimizes queries with JOINs, uses bulk inserts, and ensures data consistency with transactions. Features automatic and lazy review card provisioning.
 
 ### Spaced Repetition Algorithm
 
-**SM-2 Implementation:**
-- Quality ratings from 0-5 based on user performance
-- Ease factor calculation with minimum threshold of 1.3
-- Interval progression: 1 day → 6 days → (previous interval × ease factor)
-- Failed reviews (quality < 3) reset interval and repetition count
-- Mapping from binary correctness to SM-2 quality scale
+**SM-2 Implementation:** Incorporates SM-2 algorithm to calculate ease factor, interval, and repetitions based on user-submitted quality ratings (0-5). Failed reviews reset scheduling parameters.
 
-**Review Scheduling:**
-- Questions shuffle randomly when multiple cards are due
-- Next review date calculation based on current performance
-- Progressive difficulty through increasing intervals
-- Tracking of repetition streaks for mastered content
+**Review Scheduling:** Questions are shuffled when multiple are due. Next review dates are calculated progressively to increase difficulty.
 
 ### Database Schema
 
-**Users Table (snake_case):**
-- `id` VARCHAR PRIMARY KEY - from OIDC sub claim
-- `email` TEXT NOT NULL
-- `name` TEXT - concatenated firstName + lastName
-- `is_admin` BOOLEAN DEFAULT false - admin role flag
-- `selected_curricula` TEXT[] - user's curriculum preferences for quiz filtering
+**Key Tables:**
+- **Users:** `id`, `email`, `name`, `is_admin`, `selected_curricula` (TEXT[] for filtering questions).
+- **Questions:** `id`, `question`, `options` (TEXT[]), `correct_answer` (INTEGER), `correct_answers` (INTEGER[]), `question_type` ('single' or 'multi-select'), `category`, `curriculum` (optional for filtering). Supports upserting via `id` field.
+- **Review Cards:** `id`, `user_id`, `question_id`, `ease_factor`, `interval`, `repetitions`, `next_review_date`, `last_review_date`. Enforces a unique constraint on `(user_id, question_id)`.
+- **Sessions:** Managed by `connect-pg-simple`.
 
-**Questions Table (snake_case):**
-- `id` VARCHAR PRIMARY KEY
-- `question` TEXT NOT NULL
-- `options` TEXT[] NOT NULL - 4 options for single-choice, 6 for multi-select
-- `correct_answer` INTEGER NOT NULL - index 0-3 for single-choice
-- `correct_answers` INTEGER[] - indices for multi-select questions
-- `question_type` TEXT DEFAULT 'single' - 'single' or 'multi-select'
-- `category` TEXT - e.g., "Grapes", "Regions", "Techniques"
-- `curriculum` TEXT - optional curriculum code (e.g., "WSET1", "WSET2")
-
-**Review Cards Table (snake_case):**
-- `id` VARCHAR PRIMARY KEY
-- `user_id` VARCHAR REFERENCES users(id) - per-user progress
-- `question_id` VARCHAR REFERENCES questions(id)
-- `ease_factor` REAL DEFAULT 2.5 - SM-2 algorithm parameter
-- `interval` INTEGER DEFAULT 0 - days until next review
-- `repetitions` INTEGER DEFAULT 0 - consecutive correct answers
-- `next_review_date` TIMESTAMP - when card becomes due
-- `last_review_date` TIMESTAMP - last answered time
-- **UNIQUE CONSTRAINT**: (user_id, question_id) - prevents duplicate cards
-
-**Sessions Table:**
-- Managed by connect-pg-simple for session persistence
-- Stores serialized session data and expiration
-
-**Design Rationale:**
-- Separation of users, questions, and individual progress tracking
-- Questions are shared app-wide; review cards are per-user
-- Unique constraint ensures each user has exactly one card per question
-- Snake_case column names for PostgreSQL convention
-- Optimized for multi-user concurrent access
+**Design Rationale:** Clear separation of users, questions, and per-user progress. Questions are shared globally, while review cards track individual learning. Uses snake_case for PostgreSQL convention and is optimized for multi-user access.
 
 ### Data Flow
 
-**Quiz Session:**
-1. Frontend requests due questions via React Query
-2. Backend queries review cards with `nextReviewDate <= now`
-3. Questions shuffled and returned to frontend
-4. User submits answer with correctness boolean
-5. Backend converts correctness to SM-2 quality score
-6. SM-2 algorithm calculates new review parameters
-7. Review card updated with new schedule
-8. Frontend invalidates queries to refresh data
+**Quiz Session:** Frontend requests due questions, backend queries based on `nextReviewDate`, questions are returned, user answers, backend updates review card via SM-2 algorithm, and frontend queries are invalidated.
 
-**Question Upload:**
-1. User uploads JSON or pastes content in Upload page
-2. Frontend validates against Zod schema
-3. Bulk question creation in backend storage
-4. Review cards automatically created for each question
-5. Statistics queries invalidated to reflect new content
+**Question Upload:** Admin uploads JSON. Frontend validates via Zod. Backend handles bulk creation or updating of questions (upsert by ID) and clears associated review cards if questions are updated. Statistics queries are invalidated.
 
 ## External Dependencies
 
-**UI Component Libraries:**
-- Radix UI: Headless accessible component primitives (dialogs, popovers, tooltips, etc.)
-- shadcn/ui: Pre-styled component implementations of Radix primitives
-- Lucide React: Icon library for consistent iconography
+**UI Component Libraries:** Radix UI, shadcn/ui, Lucide React (icons).
 
-**Database & ORM:**
-- Drizzle ORM: TypeScript-first ORM for type-safe database queries
-- Drizzle Kit: Database migration and schema management tool
-- @neondatabase/serverless: PostgreSQL driver for Neon serverless database
+**Database & ORM:** Drizzle ORM, Drizzle Kit, @neondatabase/serverless.
 
-**Validation & Type Safety:**
-- Zod: Runtime type validation and schema definition
-- drizzle-zod: Integration between Drizzle schemas and Zod validators
-- TypeScript: Compile-time type checking across full stack
+**Validation & Type Safety:** Zod, drizzle-zod, TypeScript.
 
-**Utilities:**
-- date-fns: Date manipulation and formatting
-- class-variance-authority: Type-safe CSS class variants
-- clsx & tailwind-merge: Conditional className composition
+**Utilities:** date-fns, class-variance-authority, clsx, tailwind-merge.
 
-**Development Tools:**
-- Vite: Fast development server and build tool
-- tsx: TypeScript execution for Node.js
-- esbuild: Fast JavaScript bundler for production builds
-- Replit-specific plugins for runtime error handling and development features
+**Development Tools:** Vite, tsx, esbuild.
 
-**Data Fetching:**
-- TanStack Query (React Query): Declarative data fetching and caching
-- Native Fetch API for HTTP requests
+**Data Fetching:** TanStack Query, Native Fetch API.
 
-**Fonts:**
-- Google Fonts: Playfair Display and Inter font families loaded via CDN
+**Fonts:** Google Fonts (Playfair Display, Inter).
