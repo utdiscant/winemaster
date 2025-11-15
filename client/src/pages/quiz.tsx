@@ -4,13 +4,15 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle2, XCircle, Wine, Grape } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CheckCircle2, XCircle, Wine, Grape, Filter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { QuizQuestion } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 
 export default function QuizPage() {
   const { toast } = useToast();
+  const [selectedCurriculum, setSelectedCurriculum] = useState<string>("all");
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null); // For single-choice
   const [selectedAnswers, setSelectedAnswers] = useState<Set<number>>(new Set()); // For multi-select
   const [isAnswered, setIsAnswered] = useState(false);
@@ -21,10 +23,37 @@ export default function QuizPage() {
   const [answeredInSession, setAnsweredInSession] = useState(0);
   const [isAdvancing, setIsAdvancing] = useState(false);
 
-  const { data: dueQuestions, isLoading, isFetching, refetch, isError } = useQuery<QuizQuestion[]>({
+  // Fetch all due questions to get available curriculums
+  const { data: allDueQuestions } = useQuery<QuizQuestion[]>({
     queryKey: ["/api/quiz/due"],
     enabled: true,
   });
+
+  const queryKey = selectedCurriculum === "all" 
+    ? ["/api/quiz/due"] 
+    : ["/api/quiz/due", selectedCurriculum];
+
+  const { data: dueQuestions, isLoading, isFetching, refetch, isError } = useQuery<QuizQuestion[]>({
+    queryKey,
+    queryFn: async () => {
+      const url = selectedCurriculum === "all" 
+        ? "/api/quiz/due" 
+        : `/api/quiz/due?curriculum=${encodeURIComponent(selectedCurriculum)}`;
+      const response = await fetch(url, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch quiz questions");
+      return response.json();
+    },
+    enabled: true,
+  });
+
+  // Reset session when curriculum changes
+  useEffect(() => {
+    setSessionStartCount(null);
+    setAnsweredInSession(0);
+    setIsAnswered(false);
+    setSelectedAnswer(null);
+    setSelectedAnswers(new Set());
+  }, [selectedCurriculum]);
 
   // Initialize session count on first load
   useEffect(() => {
@@ -215,9 +244,45 @@ export default function QuizPage() {
   const progressPercentage = totalQuestions > 0 ? (answeredQuestions / totalQuestions) * 100 : 0;
   const difficultyLevel = Math.min(5, Math.max(1, Math.floor(Math.random() * 3) + 2)); // Mock difficulty for now
 
+  // Get unique curriculums from all due questions (unfiltered)
+  const availableCurriculums = allDueQuestions
+    ? Array.from(new Set(allDueQuestions.map(q => q.curriculum).filter((c): c is string => !!c)))
+    : [];
+
   return (
     <div className="min-h-screen bg-background py-8 px-4">
       <div className="max-w-3xl mx-auto space-y-6">
+        {/* Curriculum Filter */}
+        {availableCurriculums.length > 0 && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <Filter className="w-5 h-5 text-muted-foreground" />
+                <div className="flex-1">
+                  <label className="text-sm font-medium mb-2 block">Study Curriculum</label>
+                  <Select value={selectedCurriculum} onValueChange={setSelectedCurriculum}>
+                    <SelectTrigger className="w-full" data-testid="select-curriculum">
+                      <SelectValue placeholder="Select curriculum" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all" data-testid="option-curriculum-all">All Curriculums</SelectItem>
+                      {availableCurriculums.map((curriculum) => (
+                        <SelectItem 
+                          key={curriculum} 
+                          value={curriculum}
+                          data-testid={`option-curriculum-${curriculum.toLowerCase()}`}
+                        >
+                          {curriculum}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Progress Bar */}
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
