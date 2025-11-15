@@ -19,6 +19,7 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   getAllUsers(): Promise<User[]>;
   updateUserCurricula(userId: string, curricula: string[]): Promise<User | undefined>;
+  deleteUser(userId: string): Promise<boolean>;
   
   // Question methods
   createQuestion(question: InsertQuestion): Promise<Question>;
@@ -102,6 +103,15 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId))
       .returning();
     return user;
+  }
+
+  async deleteUser(userId: string): Promise<boolean> {
+    // First delete all review cards for this user
+    await db.delete(reviewCards).where(eq(reviewCards.userId, userId));
+    
+    // Then delete the user and check if a row was actually deleted
+    const result = await db.delete(users).where(eq(users.id, userId)).returning();
+    return result.length > 0;
   }
 
   // Question methods

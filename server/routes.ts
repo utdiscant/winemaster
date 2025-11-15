@@ -169,6 +169,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete user (admin only)
+  app.delete('/api/users/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const userIdToDelete = req.params.id;
+      const currentUserId = req.user.claims.sub;
+      
+      // Prevent deleting the currently logged-in user
+      if (userIdToDelete === currentUserId) {
+        return res.status(400).json({ error: "You cannot delete your own account" });
+      }
+      
+      const success = await storage.deleteUser(userIdToDelete);
+      if (success) {
+        res.json({ success: true, message: "User deleted successfully" });
+      } else {
+        res.status(404).json({ error: "User not found" });
+      }
+    } catch (error: any) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Upload questions from JSON (admin only)
   // Supports upsert: if question has ID and exists, updates it and clears all user progress
   // If question has no ID or doesn't exist, creates new question
