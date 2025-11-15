@@ -158,6 +158,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all users (admin only)
+  app.get('/api/users', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error: any) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Upload questions from JSON (admin only)
   // Supports upsert: if question has ID and exists, updates it and clears all user progress
   // If question has no ID or doesn't exist, creates new question

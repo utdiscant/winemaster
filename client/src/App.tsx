@@ -4,7 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
-import { Wine, BarChart3, Upload, Settings, LogOut, User } from "lucide-react";
+import { Wine, BarChart3, Upload, Settings, LogOut, User, Users } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/landing";
 import QuizPage from "@/pages/quiz";
@@ -12,6 +12,7 @@ import ProgressPage from "@/pages/progress";
 import ProfilePage from "@/pages/profile";
 import UploadPage from "@/pages/upload";
 import AdminPage from "@/pages/admin";
+import UsersPage from "@/pages/users";
 import NotFound from "@/pages/not-found";
 
 function Navigation() {
@@ -24,6 +25,7 @@ function Navigation() {
     { path: "/profile", icon: User, label: "Profile" },
     ...(isAdmin ? [{ path: "/upload", icon: Upload, label: "Upload" }] : []),
     ...(isAdmin ? [{ path: "/admin", icon: Settings, label: "Admin" }] : []),
+    ...(isAdmin ? [{ path: "/users", icon: Users, label: "Users" }] : []),
   ];
 
   return (
@@ -97,6 +99,7 @@ function Router() {
         <Route path="/profile" component={ProfilePage} />
         {isAdmin && <Route path="/upload" component={UploadPage} />}
         {isAdmin && <Route path="/admin" component={AdminPage} />}
+        {isAdmin && <Route path="/users" component={UsersPage} />}
         <Route component={NotFound} />
       </Switch>
     </>
