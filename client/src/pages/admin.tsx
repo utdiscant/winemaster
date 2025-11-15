@@ -30,7 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Settings, Edit2, Trash2, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Settings, Edit2, Trash2, Search, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Question } from "@shared/schema";
@@ -276,6 +276,67 @@ export default function AdminPage() {
     deleteMutation.mutate(id);
   };
 
+  const handleDownloadQuestions = () => {
+    if (!questions || questions.length === 0) {
+      toast({
+        title: "No Questions",
+        description: "There are no questions to download.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Convert questions to upload format
+    const exportData = {
+      questions: questions.map((q) => {
+        const base = {
+          id: q.id,
+          question: q.question,
+          type: q.questionType,
+          ...(q.category && { category: q.category }),
+          ...(q.curriculum && { curriculum: q.curriculum }),
+        };
+
+        if (q.questionType === 'text-input') {
+          return {
+            ...base,
+            acceptedAnswers: q.options,
+          };
+        } else if (q.questionType === 'multi') {
+          return {
+            ...base,
+            options: q.options,
+            correctAnswers: q.correctAnswers || [],
+          };
+        } else {
+          // single choice
+          return {
+            ...base,
+            options: q.options,
+            correctAnswer: q.correctAnswer ?? 0,
+          };
+        }
+      }),
+    };
+
+    // Create and download JSON file
+    const jsonStr = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `wine-master-questions-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "Download Started",
+      description: `Downloading ${questions.length} questions as JSON`,
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
@@ -295,14 +356,24 @@ export default function AdminPage() {
             <h1 className="text-4xl font-serif font-semibold">Question Management</h1>
           </div>
           {questions && questions.length > 0 && (
-            <Button
-              variant="destructive"
-              onClick={() => setShowDeleteAllDialog(true)}
-              data-testid="button-delete-all-questions"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Delete All Questions
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={handleDownloadQuestions}
+                data-testid="button-download-questions"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Download JSON
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => setShowDeleteAllDialog(true)}
+                data-testid="button-delete-all-questions"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete All Questions
+              </Button>
+            </div>
           )}
         </div>
         <p className="text-muted-foreground">
