@@ -62,6 +62,16 @@ For easier testing in development mode, the application includes quick login sho
 - Success message displays count of deleted questions
 - Button only visible when questions exist
 
+**Curriculum Field (November 2025):**
+- Added optional `curriculum` field to questions table (e.g., "WSET1", "WSET2", "WSET3")
+- Backend supports curriculum filtering via query parameter on `/api/quiz/due?curriculum=WSET1`
+- Quiz page displays curriculum selector dropdown when curriculums are available
+- Selecting a curriculum filters quiz questions to only show that curriculum
+- Admin page displays curriculum field for each question
+- Admin page includes curriculum filter dropdown alongside category filter
+- Upload page supports curriculum field in JSON uploads
+- Backward compatible - existing questions without curriculum continue to work
+
 ## System Architecture
 
 ### Frontend Architecture
