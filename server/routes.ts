@@ -143,6 +143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               options: q.options,
               correctAnswers: q.correctAnswers,
               category: q.category,
+              curriculum: q.curriculum,
             };
           } else {
             return {
@@ -151,6 +152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               options: q.options,
               correctAnswer: q.correctAnswer,
               category: q.category,
+              curriculum: q.curriculum,
             };
           }
         })
