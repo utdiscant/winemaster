@@ -4,7 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Wine, Calendar, Target, TrendingUp, ChevronRight } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Wine, Calendar, Target, TrendingUp, ChevronRight, Star } from "lucide-react";
 import { useLocation } from "wouter";
 import type { Statistics } from "@shared/schema";
 
@@ -66,10 +67,107 @@ export default function ProgressPage() {
     ? Math.round((stats.masteredQuestions / stats.totalQuestions) * 100)
     : 0;
 
-  const QuestionListItem = ({ card }: { card: QuestionCard }) => (
+  // Calculate mastery level for a question (0-100)
+  const calculateMastery = (card: QuestionCard): number => {
+    const { repetitions, interval, easeFactor } = card;
+    
+    // New questions have 0% mastery
+    if (repetitions === 0) return 0;
+    
+    // Learning questions (1-2 reps) have medium mastery
+    if (repetitions === 1) return 25;
+    if (repetitions === 2) return 50;
+    
+    // Mastered questions (3+ reps, 21+ day interval) have high mastery
+    if (repetitions >= 3 && interval >= 21) {
+      // Scale based on interval and ease factor
+      const intervalScore = Math.min(interval / 180, 1) * 20; // Up to 20 points for long intervals (capped at 180 days)
+      const easeScore = Math.min((easeFactor - 1.3) / (3.0 - 1.3), 1) * 10; // Up to 10 points for ease factor
+      const mastery = 70 + intervalScore + easeScore; // Base 70 + bonuses (max 100)
+      return Math.min(100, Math.round(mastery)); // Cap at 100%
+    }
+    
+    // Advanced learning (3+ reps but interval < 21) - between learning and mastered
+    if (repetitions >= 3) {
+      // Scale from 50-69% based on interval progress toward 21 days
+      const intervalProgress = Math.min(interval / 21, 1);
+      const mastery = 50 + (intervalProgress * 19); // 50% to 69%
+      return Math.round(mastery);
+    }
+    
+    return 0;
+  };
+
+  // Get mastery level badge
+  const getMasteryBadge = (mastery: number) => {
+    if (mastery >= 80) return { label: "Expert", variant: "default" as const, color: "text-primary" };
+    if (mastery >= 60) return { label: "Strong", variant: "secondary" as const, color: "text-green-600 dark:text-green-400" };
+    if (mastery >= 40) return { label: "Learning", variant: "secondary" as const, color: "text-yellow-600 dark:text-yellow-400" };
+    if (mastery >= 20) return { label: "Developing", variant: "outline" as const, color: "text-orange-600 dark:text-orange-400" };
+    return { label: "New", variant: "outline" as const, color: "text-muted-foreground" };
+  };
+
+  // Calculate category mastery scores
+  interface CategoryMastery {
+    category: string;
+    totalQuestions: number;
+    averageMastery: number;
+    masteredCount: number;
+  }
+
+  const calculateCategoryMastery = (): CategoryMastery[] => {
+    if (!questionCards) return [];
+    
+    const categoryMap = new Map<string, QuestionCard[]>();
+    
+    // Group questions by category
+    questionCards.forEach(card => {
+      const category = card.category || "Uncategorized";
+      if (!categoryMap.has(category)) {
+        categoryMap.set(category, []);
+      }
+      categoryMap.get(category)!.push(card);
+    });
+    
+    // Calculate mastery for each category
+    const categoryStats: CategoryMastery[] = Array.from(categoryMap.entries()).map(([category, cards]) => {
+      const totalMastery = cards.reduce((sum, card) => sum + calculateMastery(card), 0);
+      const averageMastery = Math.round(totalMastery / cards.length);
+      const masteredCount = cards.filter(card => card.repetitions >= 3 && card.interval >= 21).length;
+      
+      return {
+        category,
+        totalQuestions: cards.length,
+        averageMastery,
+        masteredCount,
+      };
+    });
+    
+    // Sort by mastery (lowest first so users can focus on weak areas)
+    return categoryStats.sort((a, b) => a.averageMastery - b.averageMastery);
+  };
+
+  const categoryMasteryData = calculateCategoryMastery();
+
+  const QuestionListItem = ({ card }: { card: QuestionCard }) => {
+    const mastery = calculateMastery(card);
+    const masteryBadge = getMasteryBadge(mastery);
+    
+    return (
     <div className="flex items-start justify-between p-4 rounded-lg border border-border gap-4 hover-elevate" data-testid={`question-item-${card.questionId}`}>
       <div className="flex-1 min-w-0">
-        <p className="font-medium mb-2 line-clamp-2">{card.question}</p>
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <p className="font-medium line-clamp-2 flex-1">{card.question}</p>
+          <Badge variant={masteryBadge.variant} className={`text-xs shrink-0 ${masteryBadge.color}`}>
+            {masteryBadge.label}
+          </Badge>
+        </div>
+        <div className="space-y-2 mb-2">
+          <div className="flex items-center gap-2">
+            <Progress value={mastery} className="h-1.5 flex-1" />
+            <span className="text-xs text-muted-foreground shrink-0 w-10 text-right">{mastery}%</span>
+          </div>
+        </div>
         <div className="flex items-center gap-2 flex-wrap">
           {card.category && (
             <Badge variant="outline" className="text-xs">
@@ -95,9 +193,15 @@ export default function ProgressPage() {
             {card.interval} day interval
           </div>
         )}
+        {card.easeFactor && (
+          <div className="text-xs text-muted-foreground">
+            {card.easeFactor.toFixed(1)} ease
+          </div>
+        )}
       </div>
     </div>
   );
+  };
 
   const EmptyState = ({ message }: { message: string }) => (
     <div className="text-center py-12 text-muted-foreground">
@@ -211,6 +315,50 @@ export default function ProgressPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Category Mastery */}
+        {categoryMasteryData.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl font-serif">Category Mastery</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Track your performance across different wine topics
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {categoryMasteryData.map((cat) => (
+                  <div 
+                    key={cat.category} 
+                    className="p-4 rounded-lg border border-border hover-elevate"
+                    data-testid={`category-${cat.category}`}
+                  >
+                    <div className="flex items-start justify-between gap-4 mb-3">
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-lg">{cat.category}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {cat.totalQuestions} question{cat.totalQuestions !== 1 ? 's' : ''} · {cat.masteredCount} mastered
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="text-2xl font-bold">{cat.averageMastery}%</div>
+                        <p className="text-xs text-muted-foreground">average</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Progress value={cat.averageMastery} className="h-2 flex-1" />
+                      {cat.averageMastery >= 80 && <Badge variant="default">Expert</Badge>}
+                      {cat.averageMastery >= 60 && cat.averageMastery < 80 && <Badge variant="secondary" className="text-green-600 dark:text-green-400">Strong</Badge>}
+                      {cat.averageMastery >= 40 && cat.averageMastery < 60 && <Badge variant="secondary" className="text-yellow-600 dark:text-yellow-400">Learning</Badge>}
+                      {cat.averageMastery >= 20 && cat.averageMastery < 40 && <Badge variant="outline" className="text-orange-600 dark:text-orange-400">Developing</Badge>}
+                      {cat.averageMastery < 20 && <Badge variant="outline">Needs Practice</Badge>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Question Lists */}
         <Card>
