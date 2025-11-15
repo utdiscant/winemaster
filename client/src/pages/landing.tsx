@@ -28,14 +28,25 @@ export default function Landing() {
 
             {/* CTA */}
             <div className="flex flex-col items-center gap-4">
-              <Button
-                size="lg"
-                onClick={() => window.location.href = "/api/login"}
-                className="text-lg px-8"
-                data-testid="button-login"
-              >
-                Get Started
-              </Button>
+              <div className="flex gap-3">
+                <Button
+                  size="lg"
+                  onClick={() => window.location.href = "/api/login"}
+                  className="text-lg px-8"
+                  data-testid="button-get-started"
+                >
+                  Get Started
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={() => window.location.href = "/api/login"}
+                  className="text-lg px-8"
+                  data-testid="button-login"
+                >
+                  Login
+                </Button>
+              </div>
 
               {/* Dev-only quick login buttons */}
               {import.meta.env.DEV && (
