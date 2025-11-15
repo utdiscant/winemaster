@@ -133,6 +133,7 @@ const singleChoiceQuestionSchema = z.object({
   options: z.array(z.string()).length(4, "Single-choice questions must have exactly 4 options"),
   correctAnswer: z.number().min(0).max(3, "Correct answer must be between 0 and 3"),
   category: z.string().optional(),
+  curriculum: z.string().optional(),
 });
 
 const multiSelectQuestionSchema = z.object({
@@ -141,6 +142,7 @@ const multiSelectQuestionSchema = z.object({
   options: z.array(z.string()).length(6, "Multi-select questions must have exactly 6 options"),
   correctAnswers: z.array(z.number().min(0).max(5)).min(0).max(6, "Multi-select can have 0-6 correct answers"),
   category: z.string().optional(),
+  curriculum: z.string().optional(),
 });
 
 export const jsonUploadSchema = z.object({
@@ -181,6 +183,7 @@ export const quizQuestionSchema = z.object({
   questionType: z.enum(['single', 'multi']),
   options: z.array(z.string()),
   category: z.string().optional(),
+  curriculum: z.string().optional(),
   reviewCardId: z.string(),
 });
 

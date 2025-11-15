@@ -35,13 +35,14 @@ export interface IStorage {
   getReviewCardByQuestionId(userId: string, questionId: string): Promise<ReviewCard | undefined>;
   updateReviewCard(id: string, updates: Partial<ReviewCard>): Promise<ReviewCard | undefined>;
   getDueReviewCards(userId: string): Promise<ReviewCard[]>;
-  getDueCardsWithQuestions(userId: string): Promise<Array<{
+  getDueCardsWithQuestions(userId: string, curriculum?: string): Promise<Array<{
     reviewCardId: string;
     questionId: string;
     question: string;
     questionType: string;
     options: string[];
     category: string | null;
+    curriculum: string | null;
   }>>;
   getAllReviewCards(userId: string): Promise<ReviewCard[]>;
   ensureUserReviewCards(userId: string): Promise<void>;
@@ -212,15 +213,28 @@ export class DatabaseStorage implements IStorage {
       );
   }
 
-  async getDueCardsWithQuestions(userId: string): Promise<Array<{
+  async getDueCardsWithQuestions(userId: string, curriculum?: string): Promise<Array<{
     reviewCardId: string;
     questionId: string;
     question: string;
     questionType: string;
     options: string[];
     category: string | null;
+    curriculum: string | null;
   }>> {
     const now = new Date();
+    
+    // Build where conditions
+    const conditions = [
+      eq(reviewCards.userId, userId),
+      lte(reviewCards.nextReviewDate, now)
+    ];
+    
+    // Add curriculum filter if provided
+    if (curriculum) {
+      conditions.push(eq(questions.curriculum, curriculum));
+    }
+    
     return await db
       .select({
         reviewCardId: reviewCards.id,
@@ -229,15 +243,11 @@ export class DatabaseStorage implements IStorage {
         questionType: questions.questionType,
         options: questions.options,
         category: questions.category,
+        curriculum: questions.curriculum,
       })
       .from(reviewCards)
       .innerJoin(questions, eq(reviewCards.questionId, questions.id))
-      .where(
-        and(
-          eq(reviewCards.userId, userId),
-          lte(reviewCards.nextReviewDate, now)
-        )
-      );
+      .where(and(...conditions));
   }
 
   async getAllReviewCards(userId: string): Promise<ReviewCard[]> {

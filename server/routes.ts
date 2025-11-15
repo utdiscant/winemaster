@@ -200,6 +200,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.body.correctAnswer !== undefined) updates.correctAnswer = req.body.correctAnswer;
       if (req.body.correctAnswers !== undefined) updates.correctAnswers = req.body.correctAnswers;
       if (req.body.category !== undefined) updates.category = req.body.category;
+      if (req.body.curriculum !== undefined) updates.curriculum = req.body.curriculum;
       
       const question = await storage.updateQuestion(id, updates);
       if (!question) {
@@ -242,12 +243,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/quiz/due", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const curriculum = req.query.curriculum as string | undefined;
       
       // Ensure user has review cards for all questions
       await storage.ensureUserReviewCards(userId);
       
       // Get due cards with questions in single optimized query
-      const dueCardsWithQuestions = await storage.getDueCardsWithQuestions(userId);
+      const dueCardsWithQuestions = await storage.getDueCardsWithQuestions(userId, curriculum);
       
       // Shuffle for variety
       const shuffled = dueCardsWithQuestions.sort(() => Math.random() - 0.5);
@@ -259,6 +261,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         questionType: (row.questionType || 'single') as 'single' | 'multi',
         options: row.options,
         category: row.category ?? undefined,
+        curriculum: row.curriculum ?? undefined,
         reviewCardId: row.reviewCardId,
       }));
 
