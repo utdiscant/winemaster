@@ -50,8 +50,18 @@ export default function AdminPage() {
     option2: "",
     option3: "",
     option4: "",
+    option5: "",
+    option6: "",
     correctAnswer: 0,
+    correctAnswers: [] as number[],
     category: "",
+    curriculum: "",
+    mapRegionName: "",
+    mapCountry: "",
+    mapLatitude: 0,
+    mapLongitude: 0,
+    mapZoom: 6,
+    mapVariant: "location-to-name" as "location-to-name" | "name-to-location",
   });
 
   const ITEMS_PER_PAGE = 10;
@@ -89,7 +99,7 @@ export default function AdminPage() {
     let filtered = questions.filter(q => {
       const matchesSearch = searchQuery === "" || 
         q.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        q.options.some(opt => opt.toLowerCase().includes(searchQuery.toLowerCase()));
+        (q.options && q.options.some(opt => opt.toLowerCase().includes(searchQuery.toLowerCase())));
       
       const matchesCategory = categoryFilter === "all" || q.category === categoryFilter;
       const matchesCurriculum = curriculumFilter === "all" || q.curriculum === curriculumFilter;
@@ -195,14 +205,27 @@ export default function AdminPage() {
   // Populate form when editing
   useEffect(() => {
     if (editingQuestion) {
+      const isMap = editingQuestion.questionType === 'map';
+      const isMulti = editingQuestion.questionType === 'multi';
+      
       setFormData({
         question: editingQuestion.question,
-        option1: editingQuestion.options[0] || "",
-        option2: editingQuestion.options[1] || "",
-        option3: editingQuestion.options[2] || "",
-        option4: editingQuestion.options[3] || "",
+        option1: editingQuestion.options?.[0] || "",
+        option2: editingQuestion.options?.[1] || "",
+        option3: editingQuestion.options?.[2] || "",
+        option4: editingQuestion.options?.[3] || "",
+        option5: editingQuestion.options?.[4] || "",
+        option6: editingQuestion.options?.[5] || "",
         correctAnswer: editingQuestion.correctAnswer ?? 0,
+        correctAnswers: editingQuestion.correctAnswers || [],
         category: editingQuestion.category || "",
+        curriculum: editingQuestion.curriculum || "",
+        mapRegionName: editingQuestion.mapRegionName || "",
+        mapCountry: editingQuestion.mapCountry || "",
+        mapLatitude: editingQuestion.mapLatitude || 0,
+        mapLongitude: editingQuestion.mapLongitude || 0,
+        mapZoom: editingQuestion.mapZoom || 6,
+        mapVariant: (editingQuestion.mapVariant as "location-to-name" | "name-to-location") || "location-to-name",
       });
     }
   }, [editingQuestion]);
@@ -210,17 +233,50 @@ export default function AdminPage() {
   const handleSave = () => {
     if (!editingQuestion) return;
 
-    const updates = {
+    const isMap = editingQuestion.questionType === 'map';
+    const isMulti = editingQuestion.questionType === 'multi';
+
+    let updates: any = {
       question: formData.question,
-      options: [
-        formData.option1,
-        formData.option2,
-        formData.option3,
-        formData.option4,
-      ],
-      correctAnswer: formData.correctAnswer,
       category: formData.category || undefined,
+      curriculum: formData.curriculum || undefined,
     };
+
+    if (isMap) {
+      updates = {
+        ...updates,
+        mapRegionName: formData.mapRegionName,
+        mapCountry: formData.mapCountry || undefined,
+        mapLatitude: formData.mapLatitude,
+        mapLongitude: formData.mapLongitude,
+        mapZoom: formData.mapZoom,
+        mapVariant: formData.mapVariant,
+      };
+    } else if (isMulti) {
+      updates = {
+        ...updates,
+        options: [
+          formData.option1,
+          formData.option2,
+          formData.option3,
+          formData.option4,
+          formData.option5,
+          formData.option6,
+        ],
+        correctAnswers: formData.correctAnswers,
+      };
+    } else {
+      updates = {
+        ...updates,
+        options: [
+          formData.option1,
+          formData.option2,
+          formData.option3,
+          formData.option4,
+        ],
+        correctAnswer: formData.correctAnswer,
+      };
+    }
 
     updateMutation.mutate({ id: editingQuestion.id, updates });
   };
@@ -334,6 +390,7 @@ export default function AdminPage() {
 
         {paginatedQuestions.map((question) => {
           const isMulti = question.questionType === 'multi';
+          const isMap = question.questionType === 'map';
           const correctSet = new Set(isMulti ? (question.correctAnswers || []) : [question.correctAnswer]);
           
           return (
@@ -343,8 +400,8 @@ export default function AdminPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <CardTitle className="text-lg">{question.question}</CardTitle>
-                      <Badge variant={isMulti ? "default" : "secondary"} className="shrink-0">
-                        {isMulti ? 'Multi-Select' : 'Single Choice'}
+                      <Badge variant={isMap ? "outline" : isMulti ? "default" : "secondary"} className="shrink-0">
+                        {isMap ? 'Map' : isMulti ? 'Multi-Select' : 'Single Choice'}
                       </Badge>
                     </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -364,8 +421,7 @@ export default function AdminPage() {
                       size="icon"
                       onClick={() => setEditingQuestion(question)}
                       data-testid={`button-edit-${question.id}`}
-                      disabled={isMulti}
-                      title={isMulti ? "Multi-select editing not yet supported in UI" : "Edit question"}
+                      title="Edit question"
                     >
                       <Edit2 className="w-4 h-4" />
                     </Button>
@@ -381,31 +437,48 @@ export default function AdminPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  {question.options.map((option, index) => {
-                    const isCorrect = correctSet.has(index);
-                    return (
-                      <div
-                        key={index}
-                        className={`p-3 rounded-lg border ${
-                          isCorrect
-                            ? "bg-green-50 dark:bg-green-950/20 border-green-500"
-                            : "bg-muted/50"
-                        }`}
-                      >
-                        <span className="font-medium mr-2">
-                          {String.fromCharCode(65 + index)}.
-                        </span>
-                        {option}
-                        {isCorrect && (
-                          <span className="ml-2 text-sm text-green-600 dark:text-green-400">
-                            ✓ Correct
+                {isMap ? (
+                  <div className="space-y-2">
+                    <div className="p-3 rounded-lg bg-muted/50 border">
+                      <p className="text-sm text-muted-foreground">
+                        <strong>Region:</strong> {question.mapRegionName}
+                        {question.mapCountry && ` (${question.mapCountry})`}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        <strong>Coordinates:</strong> {question.mapLatitude?.toFixed(4)}, {question.mapLongitude?.toFixed(4)}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        <strong>Zoom:</strong> {question.mapZoom} | <strong>Variant:</strong> {question.mapVariant}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {question.options?.map((option, index) => {
+                      const isCorrect = correctSet.has(index);
+                      return (
+                        <div
+                          key={index}
+                          className={`p-3 rounded-lg border ${
+                            isCorrect
+                              ? "bg-green-50 dark:bg-green-950/20 border-green-500"
+                              : "bg-muted/50"
+                          }`}
+                        >
+                          <span className="font-medium mr-2">
+                            {String.fromCharCode(65 + index)}.
                           </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                          {option}
+                          {isCorrect && (
+                            <span className="ml-2 text-sm text-green-600 dark:text-green-400">
+                              ✓ Correct
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
           );
@@ -456,7 +529,9 @@ export default function AdminPage() {
       <Dialog open={!!editingQuestion} onOpenChange={(open) => !open && setEditingQuestion(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Question</DialogTitle>
+            <DialogTitle>
+              Edit {editingQuestion?.questionType === 'map' ? 'Map' : editingQuestion?.questionType === 'multi' ? 'Multi-Select' : 'Single Choice'} Question
+            </DialogTitle>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
@@ -471,61 +546,177 @@ export default function AdminPage() {
               />
             </div>
 
-            <div>
-              <Label htmlFor="option1">Option A</Label>
-              <Input
-                id="option1"
-                value={formData.option1}
-                onChange={(e) => setFormData({ ...formData, option1: e.target.value })}
-                data-testid="input-edit-option1"
-              />
-            </div>
+            {editingQuestion?.questionType === 'map' ? (
+              <>
+                <div>
+                  <Label htmlFor="mapRegionName">Region Name (Correct Answer)</Label>
+                  <Input
+                    id="mapRegionName"
+                    value={formData.mapRegionName}
+                    onChange={(e) => setFormData({ ...formData, mapRegionName: e.target.value })}
+                    placeholder="e.g., Mosel"
+                    data-testid="input-edit-map-region"
+                  />
+                </div>
 
-            <div>
-              <Label htmlFor="option2">Option B</Label>
-              <Input
-                id="option2"
-                value={formData.option2}
-                onChange={(e) => setFormData({ ...formData, option2: e.target.value })}
-                data-testid="input-edit-option2"
-              />
-            </div>
+                <div>
+                  <Label htmlFor="mapCountry">Country (Optional)</Label>
+                  <Input
+                    id="mapCountry"
+                    value={formData.mapCountry}
+                    onChange={(e) => setFormData({ ...formData, mapCountry: e.target.value })}
+                    placeholder="e.g., Germany"
+                    data-testid="input-edit-map-country"
+                  />
+                </div>
 
-            <div>
-              <Label htmlFor="option3">Option C</Label>
-              <Input
-                id="option3"
-                value={formData.option3}
-                onChange={(e) => setFormData({ ...formData, option3: e.target.value })}
-                data-testid="input-edit-option3"
-              />
-            </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="mapLatitude">Latitude</Label>
+                    <Input
+                      id="mapLatitude"
+                      type="number"
+                      step="0.0001"
+                      value={formData.mapLatitude}
+                      onChange={(e) => setFormData({ ...formData, mapLatitude: parseFloat(e.target.value) })}
+                      data-testid="input-edit-map-latitude"
+                    />
+                  </div>
 
-            <div>
-              <Label htmlFor="option4">Option D</Label>
-              <Input
-                id="option4"
-                value={formData.option4}
-                onChange={(e) => setFormData({ ...formData, option4: e.target.value })}
-                data-testid="input-edit-option4"
-              />
-            </div>
+                  <div>
+                    <Label htmlFor="mapLongitude">Longitude</Label>
+                    <Input
+                      id="mapLongitude"
+                      type="number"
+                      step="0.0001"
+                      value={formData.mapLongitude}
+                      onChange={(e) => setFormData({ ...formData, mapLongitude: parseFloat(e.target.value) })}
+                      data-testid="input-edit-map-longitude"
+                    />
+                  </div>
+                </div>
 
-            <div>
-              <Label htmlFor="correctAnswer">Correct Answer</Label>
-              <select
-                id="correctAnswer"
-                value={formData.correctAnswer}
-                onChange={(e) => setFormData({ ...formData, correctAnswer: parseInt(e.target.value) })}
-                className="w-full p-2 border rounded-md"
-                data-testid="select-edit-correct-answer"
-              >
-                <option value={0}>A</option>
-                <option value={1}>B</option>
-                <option value={2}>C</option>
-                <option value={3}>D</option>
-              </select>
-            </div>
+                <div>
+                  <Label htmlFor="mapZoom">Zoom Level</Label>
+                  <Input
+                    id="mapZoom"
+                    type="number"
+                    step="0.1"
+                    min="1"
+                    max="20"
+                    value={formData.mapZoom}
+                    onChange={(e) => setFormData({ ...formData, mapZoom: parseFloat(e.target.value) })}
+                    data-testid="input-edit-map-zoom"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="mapVariant">Question Variant</Label>
+                  <Select
+                    value={formData.mapVariant}
+                    onValueChange={(value: "location-to-name" | "name-to-location") => 
+                      setFormData({ ...formData, mapVariant: value })
+                    }
+                  >
+                    <SelectTrigger id="mapVariant" data-testid="select-edit-map-variant">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="location-to-name">Location to Name (Show map, type name)</SelectItem>
+                      <SelectItem value="name-to-location">Name to Location (Show name, view map)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            ) : editingQuestion?.questionType === 'multi' ? (
+              <>
+                {['option1', 'option2', 'option3', 'option4', 'option5', 'option6'].map((key, index) => (
+                  <div key={key}>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={formData.correctAnswers.includes(index)}
+                        onChange={(e) => {
+                          const newCorrectAnswers = e.target.checked
+                            ? [...formData.correctAnswers, index]
+                            : formData.correctAnswers.filter(i => i !== index);
+                          setFormData({ ...formData, correctAnswers: newCorrectAnswers.sort() });
+                        }}
+                        className="w-4 h-4"
+                        data-testid={`checkbox-edit-correct-${index}`}
+                      />
+                      <Label htmlFor={key}>Option {String.fromCharCode(65 + index)} {formData.correctAnswers.includes(index) ? '(Correct)' : ''}</Label>
+                    </div>
+                    <Input
+                      id={key}
+                      value={formData[key as keyof typeof formData] as string}
+                      onChange={(e) => setFormData({ ...formData, [key]: e.target.value })}
+                      data-testid={`input-edit-${key}`}
+                    />
+                  </div>
+                ))}
+              </>
+            ) : (
+              <>
+                <div>
+                  <Label htmlFor="option1">Option A</Label>
+                  <Input
+                    id="option1"
+                    value={formData.option1}
+                    onChange={(e) => setFormData({ ...formData, option1: e.target.value })}
+                    data-testid="input-edit-option1"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="option2">Option B</Label>
+                  <Input
+                    id="option2"
+                    value={formData.option2}
+                    onChange={(e) => setFormData({ ...formData, option2: e.target.value })}
+                    data-testid="input-edit-option2"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="option3">Option C</Label>
+                  <Input
+                    id="option3"
+                    value={formData.option3}
+                    onChange={(e) => setFormData({ ...formData, option3: e.target.value })}
+                    data-testid="input-edit-option3"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="option4">Option D</Label>
+                  <Input
+                    id="option4"
+                    value={formData.option4}
+                    onChange={(e) => setFormData({ ...formData, option4: e.target.value })}
+                    data-testid="input-edit-option4"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="correctAnswer">Correct Answer</Label>
+                  <Select
+                    value={formData.correctAnswer.toString()}
+                    onValueChange={(value) => setFormData({ ...formData, correctAnswer: parseInt(value) })}
+                  >
+                    <SelectTrigger id="correctAnswer" data-testid="select-edit-correct-answer">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">A</SelectItem>
+                      <SelectItem value="1">B</SelectItem>
+                      <SelectItem value="2">C</SelectItem>
+                      <SelectItem value="3">D</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
 
             <div>
               <Label htmlFor="category">Category (Optional)</Label>
@@ -535,6 +726,17 @@ export default function AdminPage() {
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 placeholder="e.g., Bordeaux, Italian Wines"
                 data-testid="input-edit-category"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="curriculum">Curriculum (Optional)</Label>
+              <Input
+                id="curriculum"
+                value={formData.curriculum}
+                onChange={(e) => setFormData({ ...formData, curriculum: e.target.value })}
+                placeholder="e.g., WSET2, WSET3"
+                data-testid="input-edit-curriculum"
               />
             </div>
           </div>

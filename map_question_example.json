@@ -1,0 +1,69 @@
+{
+  "questions": [
+    {
+      "id": "bordeaux-map-001",
+      "question": "Identify this wine region on the map",
+      "type": "map",
+      "regionName": "Bordeaux",
+      "country": "France",
+      "latitude": 44.8378,
+      "longitude": -0.5792,
+      "zoom": 9,
+      "variant": "location-to-name",
+      "category": "French Wine Regions",
+      "curriculum": "WSET2"
+    },
+    {
+      "id": "rioja-map-001",
+      "question": "Where is the Rioja wine region located?",
+      "type": "map",
+      "regionName": "Rioja",
+      "country": "Spain",
+      "latitude": 42.4650,
+      "longitude": -2.4456,
+      "zoom": 9.5,
+      "variant": "name-to-location",
+      "category": "Spanish Wine Regions",
+      "curriculum": "WSET2"
+    },
+    {
+      "id": "mosel-map-001",
+      "question": "Identify this German wine region",
+      "type": "map",
+      "regionName": "Mosel",
+      "country": "Germany",
+      "latitude": 49.9787,
+      "longitude": 6.9511,
+      "zoom": 9.5,
+      "variant": "location-to-name",
+      "category": "German Wine Regions",
+      "curriculum": "WSET2"
+    },
+    {
+      "id": "napa-map-001",
+      "question": "Locate Napa Valley on the map",
+      "type": "map",
+      "regionName": "Napa Valley",
+      "country": "USA",
+      "latitude": 38.5025,
+      "longitude": -122.4167,
+      "zoom": 10,
+      "variant": "name-to-location",
+      "category": "American Wine Regions",
+      "curriculum": "WSET3"
+    },
+    {
+      "id": "tuscany-map-001",
+      "question": "Identify this Italian wine region",
+      "type": "map",
+      "regionName": "Tuscany",
+      "country": "Italy",
+      "latitude": 43.7711,
+      "longitude": 11.2486,
+      "zoom": 8.5,
+      "variant": "location-to-name",
+      "category": "Italian Wine Regions",
+      "curriculum": "WSET2"
+    }
+  ]
+}

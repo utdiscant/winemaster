@@ -97,6 +97,8 @@ Preferred communication style: Simple, everyday language.
 - Two variants: 'location-to-name' (show map, type region name) and 'name-to-location' (show name, view location)
 - Schema fields: `map_region_name`, `map_country`, `map_latitude`, `map_longitude`, `map_zoom`, `map_variant`
 - Case-insensitive text answer validation with trimming
-- MapQuestion component displays iframe with interactive wine region map
+- MapQuestion component displays iframe with interactive wine region map, with custom overlays to hide search box, region labels, info button, and Mapbox footer
 - Example Mosel (Germany) map question created for testing
 - Upload endpoint supports map questions via JSON with regionName, country, latitude, longitude, zoom, and variant fields
+- Admin page now supports editing all three question types (single, multi, map) with type-appropriate form fields
+- Example JSON file available at `map_question_example.json`
