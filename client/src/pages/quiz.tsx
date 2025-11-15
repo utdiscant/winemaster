@@ -43,6 +43,8 @@ export default function QuizPage() {
       return response.json();
     },
     enabled: !isLoadingUser, // Enable once we know auth status, even if user is null
+    refetchOnMount: 'always', // Always refetch when component mounts to avoid stale cache
+    staleTime: 0, // Consider data stale immediately to ensure fresh data
   });
 
   const isLoading = isLoadingUser || isLoadingQuestions;
