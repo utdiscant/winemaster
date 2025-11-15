@@ -111,9 +111,7 @@ export default function Landing() {
               </div>
               <div>
                 <h4 className="text-lg font-semibold mb-2">Sign In</h4>
-                <p className="text-muted-foreground">
-                  Log in with Google, GitHub, or email to start your wine education journey
-                </p>
+                <p className="text-muted-foreground">Log in with Google or email to start your wine education journey</p>
               </div>
             </div>
 
