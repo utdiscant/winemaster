@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle2, XCircle, Wine, Grape } from "lucide-react";
+import { CheckCircle2, XCircle, Wine } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { QuizQuestion, User } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -234,7 +234,6 @@ export default function QuizPage() {
   // Progress based on answered questions (not including current unanswered question)
   const answeredQuestions = isAnswered ? answeredInSession + 1 : answeredInSession;
   const progressPercentage = totalQuestions > 0 ? (answeredQuestions / totalQuestions) * 100 : 0;
-  const difficultyLevel = Math.min(5, Math.max(1, Math.floor(Math.random() * 3) + 2)); // Mock difficulty for now
 
   return (
     <div className="min-h-screen bg-background py-8 px-4">
@@ -267,14 +266,6 @@ export default function QuizPage() {
                 >
                   {currentQuestion.questionType === 'multi' ? 'Multi-Select' : 'Single Choice'}
                 </Badge>
-              </div>
-              <div className="flex items-center gap-1" data-testid="indicator-difficulty">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Grape
-                    key={i}
-                    className={`w-4 h-4 ${i < difficultyLevel ? "text-primary fill-primary" : "text-muted-foreground/30"}`}
-                  />
-                ))}
               </div>
             </div>
             {currentQuestion.category && (
