@@ -204,44 +204,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Process each question: upsert if ID provided, create if not
       for (const q of validatedData.questions) {
-        let questionData;
-        
-        if (q.type === 'multi') {
-          questionData = {
-            id: q.id,
-            question: q.question,
-            questionType: 'multi' as const,
-            options: q.options,
-            correctAnswers: q.correctAnswers,
-            category: q.category,
-            curriculum: q.curriculum,
-          };
-        } else if (q.type === 'map') {
-          questionData = {
-            id: q.id,
-            question: q.question,
-            questionType: 'map' as const,
-            options: [],
-            mapRegionName: q.regionName,
-            mapCountry: q.country,
-            mapLatitude: q.latitude,
-            mapLongitude: q.longitude,
-            mapZoom: q.zoom,
-            mapVariant: q.variant,
-            category: q.category,
-            curriculum: q.curriculum,
-          };
-        } else {
-          questionData = {
-            id: q.id,
-            question: q.question,
-            questionType: 'single' as const,
-            options: q.options,
-            correctAnswer: q.correctAnswer,
-            category: q.category,
-            curriculum: q.curriculum,
-          };
-        }
+        const questionData = q.type === 'multi' 
+          ? {
+              id: q.id,
+              question: q.question,
+              questionType: 'multi' as const,
+              options: q.options,
+              correctAnswers: q.correctAnswers,
+              category: q.category,
+              curriculum: q.curriculum,
+            }
+          : {
+              id: q.id,
+              question: q.question,
+              questionType: 'single' as const,
+              options: q.options,
+              correctAnswer: q.correctAnswer,
+              category: q.category,
+              curriculum: q.curriculum,
+            };
         
         if (q.id) {
           // Check if question exists
@@ -403,17 +384,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const quizQuestions: QuizQuestion[] = shuffled.map((row) => ({
         id: row.questionId,
         question: row.question,
-        questionType: (row.questionType || 'single') as 'single' | 'multi' | 'map',
-        options: row.options ?? undefined,
+        questionType: (row.questionType || 'single') as 'single' | 'multi',
+        options: row.options,
         category: row.category ?? undefined,
         curriculum: row.curriculum ?? undefined,
         reviewCardId: row.reviewCardId,
-        mapRegionName: row.mapRegionName ?? undefined,
-        mapCountry: row.mapCountry ?? undefined,
-        mapLatitude: row.mapLatitude ?? undefined,
-        mapLongitude: row.mapLongitude ?? undefined,
-        mapZoom: row.mapZoom ?? undefined,
-        mapVariant: row.mapVariant ?? undefined,
       }));
 
       res.json(quizQuestions);
@@ -427,7 +402,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const submission = answerSubmissionSchema.parse(req.body);
-      const { questionId, selectedAnswer, selectedAnswers, textAnswer } = submission;
+      const { questionId, selectedAnswer, selectedAnswers } = submission;
       
       // Ensure user has review cards for all questions
       await storage.ensureUserReviewCards(userId);
@@ -440,7 +415,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if answer is correct based on question type
       let isCorrect = false;
-      let correctAnswerData: number | number[] | string;
+      let correctAnswerData: number | number[];
       
       if (question.questionType === 'multi') {
         // Multi-select: check if selected set exactly matches correct set
@@ -449,12 +424,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isCorrect = selected.size === correct.size && 
                    Array.from(selected).every(ans => correct.has(ans));
         correctAnswerData = question.correctAnswers || [];
-      } else if (question.questionType === 'map') {
-        // Map: check if text answer matches region name (case-insensitive, trimmed)
-        const userAnswer = (textAnswer || '').trim().toLowerCase();
-        const correctAnswer = (question.mapRegionName || '').trim().toLowerCase();
-        isCorrect = userAnswer === correctAnswer;
-        correctAnswerData = question.mapRegionName || '';
       } else {
         // Single-choice: check if selected answer matches
         isCorrect = selectedAnswer === question.correctAnswer;

@@ -16,7 +16,7 @@ Preferred communication style: Simple, everyday language.
 
 **Design System:** Adheres to Material Design principles with a wine-themed aesthetic. Uses Playfair Display for headings and Inter for body text. Features a custom Tailwind configuration with HSL-based color variables and a mobile-first responsive design.
 
-**Component Structure:** Implements page-based routing with a single router-level authentication guard in `App.tsx`. Conditional routing and navigation are based on user roles. Utilizes shared `shadcn/ui` components and custom hooks like `useAuth`. Includes specialized components like `MapQuestion` for map-based quiz questions.
+**Component Structure:** Implements page-based routing with a single router-level authentication guard in `App.tsx`. Conditional routing and navigation are based on user roles. Utilizes shared `shadcn/ui` components and custom hooks like `useAuth`.
 
 **State Management Strategy:** TanStack Query handles API data fetching and caching, including authentication credentials. Query invalidation is used for data mutations. Local component state manages UI interactions.
 
@@ -43,7 +43,7 @@ Preferred communication style: Simple, everyday language.
 
 **Key Tables:**
 - **Users:** `id`, `email`, `name`, `is_admin`, `selected_curricula` (TEXT[] for filtering questions).
-- **Questions:** `id`, `question`, `options` (TEXT[]), `correct_answer` (INTEGER), `correct_answers` (INTEGER[]), `question_type` ('single', 'multi', or 'map'), `category`, `curriculum`, `map_region_name`, `map_country`, `map_latitude`, `map_longitude`, `map_zoom`, `map_variant` (optional map-specific fields). Supports upserting via `id` field.
+- **Questions:** `id`, `question`, `options` (TEXT[]), `correct_answer` (INTEGER), `correct_answers` (INTEGER[]), `question_type` ('single' or 'multi-select'), `category`, `curriculum` (optional for filtering). Supports upserting via `id` field.
 - **Review Cards:** `id`, `user_id`, `question_id`, `ease_factor`, `interval`, `repetitions`, `next_review_date`, `last_review_date`. Enforces a unique constraint on `(user_id, question_id)`.
 - **Sessions:** Managed by `connect-pg-simple`.
 
@@ -90,15 +90,3 @@ Preferred communication style: Simple, everyday language.
 - Deletes all user's review cards before deleting the user
 - Proper error handling for nonexistent users (returns 404)
 - Backend prevents self-deletion attempts (returns 400 error)
-
-**Map Question Type (November 2025):**
-- Added 'map' question type alongside 'single' and 'multi' questions
-- Embeds worldwineregions.com public domain map with specified coordinates
-- Two variants: 'location-to-name' (show map, type region name) and 'name-to-location' (show name, view location)
-- Schema fields: `map_region_name`, `map_country`, `map_latitude`, `map_longitude`, `map_zoom`, `map_variant`
-- Case-insensitive text answer validation with trimming
-- MapQuestion component displays iframe with interactive wine region map, with custom overlays to hide search box, region labels, info button, and Mapbox footer
-- Example Mosel (Germany) map question created for testing
-- Upload endpoint supports map questions via JSON with regionName, country, latitude, longitude, zoom, and variant fields
-- Admin page now supports editing all three question types (single, multi, map) with type-appropriate form fields
-- Example JSON file available at `map_question_example.json`
