@@ -43,6 +43,7 @@ export default function AdminPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [curriculumFilter, setCurriculumFilter] = useState<string>("all");
   const [formData, setFormData] = useState({
     question: "",
     option1: "",
@@ -70,6 +71,16 @@ export default function AdminPage() {
     return Array.from(uniqueCategories).sort();
   }, [questions]);
 
+  // Get unique curriculums for filter
+  const curriculums = useMemo(() => {
+    if (!questions) return [];
+    const uniqueCurriculums = new Set<string>();
+    questions.forEach(q => {
+      if (q.curriculum) uniqueCurriculums.add(q.curriculum);
+    });
+    return Array.from(uniqueCurriculums).sort();
+  }, [questions]);
+
   // Filter and paginate questions
   const { filteredQuestions, totalPages, paginatedQuestions } = useMemo(() => {
     if (!questions) return { filteredQuestions: [], totalPages: 0, paginatedQuestions: [] };
@@ -81,8 +92,9 @@ export default function AdminPage() {
         q.options.some(opt => opt.toLowerCase().includes(searchQuery.toLowerCase()));
       
       const matchesCategory = categoryFilter === "all" || q.category === categoryFilter;
+      const matchesCurriculum = curriculumFilter === "all" || q.curriculum === curriculumFilter;
       
-      return matchesSearch && matchesCategory;
+      return matchesSearch && matchesCategory && matchesCurriculum;
     });
 
     const total = Math.ceil(filtered.length / ITEMS_PER_PAGE);
@@ -94,12 +106,12 @@ export default function AdminPage() {
       totalPages: total,
       paginatedQuestions: paginated,
     };
-  }, [questions, searchQuery, categoryFilter, currentPage]);
+  }, [questions, searchQuery, categoryFilter, curriculumFilter, currentPage]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, categoryFilter]);
+  }, [searchQuery, categoryFilter, curriculumFilter]);
 
   // Clamp currentPage when totalPages shrinks (e.g., after deletions)
   useEffect(() => {
@@ -276,6 +288,19 @@ export default function AdminPage() {
                 ))}
               </SelectContent>
             </Select>
+            <Select value={curriculumFilter} onValueChange={setCurriculumFilter}>
+              <SelectTrigger className="sm:w-[200px]" data-testid="select-curriculum-filter">
+                <SelectValue placeholder="All Curriculums" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Curriculums</SelectItem>
+                {curriculums.map((curr) => (
+                  <SelectItem key={curr} value={curr}>
+                    {curr}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="mt-4 text-sm text-muted-foreground">
             Showing {paginatedQuestions.length} of {filteredQuestions.length} questions
@@ -320,9 +345,16 @@ export default function AdminPage() {
                         {isMulti ? 'Multi-Select' : 'Single Choice'}
                       </Badge>
                     </div>
-                    {question.category && (
-                      <p className="text-sm text-muted-foreground">Category: {question.category}</p>
-                    )}
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      {question.category && (
+                        <span>Category: {question.category}</span>
+                      )}
+                      {question.curriculum && (
+                        <span data-testid={`text-curriculum-${question.id}`}>
+                          Curriculum: {question.curriculum}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <Button
