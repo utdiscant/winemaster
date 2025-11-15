@@ -75,6 +75,14 @@ For easier testing in development mode, the application includes quick login sho
 - Upload page supports curriculum field in JSON uploads with unified example showing both question types
 - Backward compatible - existing questions without curriculum continue to work
 
+**React Query Cache Management (November 2025):**
+- Fixed stale data issues across Quiz and Progress pages
+- Quiz page: Added `refetchOnMount: 'always'` and `staleTime: 0` to prevent stale cache when navigating
+- Progress page: Added same cache settings to both `/api/statistics` and `/api/progress/cards` queries
+- Progress page: Added `onValueChange` handler to Tabs component to refetch data when switching tabs
+- Ensures summary card counts always match question list counts in tab labels
+- Prevents discrepancies between different data sources on the same page
+
 ## System Architecture
 
 ### Frontend Architecture

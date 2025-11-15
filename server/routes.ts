@@ -293,15 +293,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         curricula = curriculaParam.split(',').map(c => c.trim()).filter(Boolean);
       }
       
-      console.log("[Quiz Due] userId:", userId, "query curricula:", req.query.curricula, "parsed curricula:", curricula);
-      
       // Ensure user has review cards for all questions
       await storage.ensureUserReviewCards(userId);
       
       // Get due cards with questions in single optimized query
       const dueCardsWithQuestions = await storage.getDueCardsWithQuestions(userId, curricula);
-      
-      console.log("[Quiz Due] Found", dueCardsWithQuestions.length, "due questions");
       
       // Shuffle for variety
       const shuffled = dueCardsWithQuestions.sort(() => Math.random() - 0.5);
@@ -404,12 +400,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(userId);
       const curricula = user?.selectedCurricula || undefined;
       
-      console.log("[Statistics] userId:", userId, "curricula:", curricula);
-      
       const stats = await storage.getStatistics(userId, curricula);
-      
-      console.log("[Statistics] stats:", JSON.stringify(stats));
-      
       res.json(stats);
     } catch (error: any) {
       res.status(500).json({ error: error.message });

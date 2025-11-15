@@ -27,12 +27,16 @@ interface QuestionCard {
 export default function ProgressPage() {
   const [, setLocation] = useLocation();
 
-  const { data: stats, isLoading: loadingStats } = useQuery<Statistics>({
+  const { data: stats, isLoading: loadingStats, refetch: refetchStats } = useQuery<Statistics>({
     queryKey: ["/api/statistics"],
+    refetchOnMount: 'always', // Always refetch when component mounts
+    staleTime: 0, // Consider data stale immediately
   });
 
-  const { data: questionCards, isLoading: loadingCards } = useQuery<QuestionCard[]>({
+  const { data: questionCards, isLoading: loadingCards, refetch: refetchCards } = useQuery<QuestionCard[]>({
     queryKey: ["/api/progress/cards"],
+    refetchOnMount: 'always', // Always refetch when component mounts
+    staleTime: 0, // Consider data stale immediately
   });
 
   const isLoading = loadingStats || loadingCards;
@@ -214,7 +218,15 @@ export default function ProgressPage() {
             <CardTitle className="text-xl font-serif">Question Details</CardTitle>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="due" className="space-y-6">
+            <Tabs 
+              defaultValue="due" 
+              className="space-y-6"
+              onValueChange={() => {
+                // Refetch both queries when switching tabs to ensure fresh data
+                refetchStats();
+                refetchCards();
+              }}
+            >
               <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="due" data-testid="tab-due">
                   Due ({dueQuestions.length})
