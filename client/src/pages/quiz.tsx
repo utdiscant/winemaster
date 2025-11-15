@@ -256,7 +256,7 @@ export default function QuizPage() {
         {/* Question Card */}
         <Card className="border-card-border">
           <CardHeader className="space-y-4">
-            <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
               <div className="flex items-center gap-2">
                 <Badge variant="secondary" className="shrink-0" data-testid="badge-question-number">
                   #{currentQuestionNumber}
@@ -269,12 +269,12 @@ export default function QuizPage() {
                   {currentQuestion.questionType === 'multi' ? 'Multi-Select' : 'Single Choice'}
                 </Badge>
               </div>
+              {currentQuestion.category && (
+                <Badge variant="outline" className="shrink-0" data-testid="badge-category">
+                  {currentQuestion.category}
+                </Badge>
+              )}
             </div>
-            {currentQuestion.category && (
-              <Badge variant="outline" className="w-fit" data-testid="badge-category">
-                {currentQuestion.category}
-              </Badge>
-            )}
             {currentQuestion.questionType === 'multi' && !isAnswered && (
               <p className="text-sm text-muted-foreground">
                 Select all correct answers (there may be multiple)

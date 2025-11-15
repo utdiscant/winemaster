@@ -159,24 +159,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Upload questions from JSON (admin only)
+  // Supports upsert: if question has ID and exists, updates it and clears all user progress
+  // If question has no ID or doesn't exist, creates new question
   app.post("/api/questions/upload", isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const validatedData = jsonUploadSchema.parse(req.body);
       
-      // Create questions (shared app-wide)
-      const questions = await storage.createQuestions(
-        validatedData.questions.map((q) => {
-          if (q.type === 'multi') {
-            return {
+      let newQuestions = [];
+      let updatedQuestions = [];
+      
+      // Process each question: upsert if ID provided, create if not
+      for (const q of validatedData.questions) {
+        const questionData = q.type === 'multi' 
+          ? {
+              id: q.id,
               question: q.question,
               questionType: 'multi' as const,
               options: q.options,
               correctAnswers: q.correctAnswers,
               category: q.category,
               curriculum: q.curriculum,
-            };
-          } else {
-            return {
+            }
+          : {
+              id: q.id,
               question: q.question,
               questionType: 'single' as const,
               options: q.options,
@@ -184,16 +189,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
               category: q.category,
               curriculum: q.curriculum,
             };
+        
+        if (q.id) {
+          // Check if question exists
+          const existingQuestion = await storage.getQuestion(q.id);
+          
+          if (existingQuestion) {
+            // Update existing question and clear all user progress
+            await storage.deleteReviewCardsByQuestionId(q.id);
+            const updated = await storage.updateQuestion(q.id, questionData);
+            if (updated) {
+              updatedQuestions.push(updated);
+            }
+          } else {
+            // Create new question with provided ID
+            const created = await storage.createQuestion(questionData);
+            newQuestions.push(created);
           }
-        })
-      );
+        } else {
+          // Create new question (ID auto-generated)
+          const created = await storage.createQuestion(questionData);
+          newQuestions.push(created);
+        }
+      }
 
-      // Create review cards for all existing users (bulk insert)
+      // Create review cards for new questions only
       const allUsers = await storage.getAllUsers();
-      if (allUsers.length > 0 && questions.length > 0) {
+      if (allUsers.length > 0 && newQuestions.length > 0) {
         const newCards = [];
         for (const user of allUsers) {
-          for (const question of questions) {
+          for (const question of newQuestions) {
             newCards.push({
               userId: user.id,
               questionId: question.id,
@@ -202,8 +227,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         await storage.bulkCreateReviewCards(newCards);
       }
+      
+      // For updated questions, recreate review cards for all users (fresh start)
+      if (allUsers.length > 0 && updatedQuestions.length > 0) {
+        const updatedCards = [];
+        for (const user of allUsers) {
+          for (const question of updatedQuestions) {
+            updatedCards.push({
+              userId: user.id,
+              questionId: question.id,
+            });
+          }
+        }
+        await storage.bulkCreateReviewCards(updatedCards);
+      }
 
-      res.json({ success: true, count: questions.length });
+      res.json({ 
+        success: true, 
+        created: newQuestions.length,
+        updated: updatedQuestions.length,
+        total: newQuestions.length + updatedQuestions.length
+      });
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }

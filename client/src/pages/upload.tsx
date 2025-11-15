@@ -14,14 +14,25 @@ export default function UploadPage() {
   const [uploadedData, setUploadedData] = useState<JsonUpload | null>(null);
   const [pastedJson, setPastedJson] = useState<string>("");
 
-  const uploadMutation = useMutation<{ success: boolean; count: number }, Error, JsonUpload>({
+  const uploadMutation = useMutation<{ success: boolean; created: number; updated: number; total: number }, Error, JsonUpload>({
     mutationFn: async (data: JsonUpload) => {
       return await apiRequest("POST", "/api/questions/upload", data);
     },
     onSuccess: (response) => {
+      const parts = [];
+      if (response.created > 0) {
+        parts.push(`${response.created} created`);
+      }
+      if (response.updated > 0) {
+        parts.push(`${response.updated} updated (progress cleared)`);
+      }
+      const description = parts.length > 0 
+        ? parts.join(', ') + ` - ${response.total} total`
+        : `${response.total} ${response.total === 1 ? 'question' : 'questions'} imported successfully.`;
+      
       toast({
         title: "Success!",
-        description: `${response.count} ${response.count === 1 ? 'question' : 'questions'} imported successfully.`,
+        description,
       });
       setUploadedData(null);
       setPastedJson("");
@@ -29,6 +40,7 @@ export default function UploadPage() {
       // Invalidate all quiz/due queries including curriculum-specific ones
       queryClient.invalidateQueries({ queryKey: ["/api/quiz/due"], exact: false });
       queryClient.invalidateQueries({ queryKey: ["/api/questions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/progress/cards"] });
     },
     onError: (error: Error) => {
       toast({
@@ -241,6 +253,7 @@ Example:
 {`{
   "questions": [
     {
+      "id": "barolo-region-001",
       "question": "Which region is Barolo from?",
       "type": "single",
       "options": ["Piedmont, Italy", "Tuscany, Italy", 
@@ -250,6 +263,7 @@ Example:
       "curriculum": "WSET2"
     },
     {
+      "id": "red-grapes-001",
       "question": "Which are red grape varieties?",
       "type": "multi",
       "options": ["Cabernet Sauvignon", "Chardonnay",
@@ -269,6 +283,7 @@ Example:
               <div className="text-sm text-accent-foreground">
                 <p className="font-medium">Requirements:</p>
                 <ul className="list-disc list-inside mt-1 space-y-1">
+                  <li><strong>ID field (optional):</strong> Unique identifier for upsert - if provided and exists, updates question and clears all user progress; if not provided, auto-generates new ID</li>
                   <li><strong>Single Choice:</strong> 4 options, correctAnswer is index (0-3)</li>
                   <li><strong>Multi-Select:</strong> 6 options, correctAnswers is array of indices (0-5)</li>
                   <li>Type defaults to "single" if not specified</li>

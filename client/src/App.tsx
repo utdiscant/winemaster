@@ -19,7 +19,7 @@ function Navigation() {
   const { user, isAdmin } = useAuth();
 
   const navItems = [
-    { path: "/", icon: Wine, label: "Quiz" },
+    { path: "/", icon: Wine, label: "Learn" },
     { path: "/progress", icon: BarChart3, label: "Progress" },
     { path: "/profile", icon: User, label: "Profile" },
     ...(isAdmin ? [{ path: "/upload", icon: Upload, label: "Upload" }] : []),

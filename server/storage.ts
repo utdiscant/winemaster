@@ -29,6 +29,7 @@ export interface IStorage {
   deleteQuestion(id: string): Promise<boolean>;
   deleteAllQuestions(): Promise<{ count: number }>;
   getAllCurricula(): Promise<string[]>;
+  deleteReviewCardsByQuestionId(questionId: string): Promise<void>;
   
   // Review card methods (now user-specific)
   createReviewCard(card: InsertReviewCard): Promise<ReviewCard>;
@@ -178,6 +179,10 @@ export class DatabaseStorage implements IStorage {
       .map(r => r.curriculum)
       .filter((c): c is string => c !== null)
       .sort();
+  }
+
+  async deleteReviewCardsByQuestionId(questionId: string): Promise<void> {
+    await db.delete(reviewCards).where(eq(reviewCards.questionId, questionId));
   }
 
   // Review card methods (now user-specific)

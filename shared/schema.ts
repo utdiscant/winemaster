@@ -84,8 +84,10 @@ export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 
 // Question schemas
-export const insertQuestionSchema = createInsertSchema(questions).omit({
-  id: true,
+// ID is optional: if provided, used for upsert (update if exists, insert if new)
+// If not provided, auto-generated UUID is used
+export const insertQuestionSchema = createInsertSchema(questions).extend({
+  id: z.string().optional(),
 }).refine(
   (data) => {
     if (data.questionType === 'single') {
@@ -128,7 +130,10 @@ export type ReviewCard = typeof reviewCards.$inferSelect;
 
 // JSON upload schema - validates the uploaded JSON file structure
 // Supports both single-choice and multi-select questions
+// ID is optional: if provided, updates existing question (and clears all user progress)
+// If not provided, creates new question with auto-generated ID
 const singleChoiceQuestionSchema = z.object({
+  id: z.string().optional(),
   question: z.string().min(1, "Question cannot be empty"),
   type: z.literal('single').optional().default('single'),
   options: z.array(z.string()).length(4, "Single-choice questions must have exactly 4 options"),
@@ -138,6 +143,7 @@ const singleChoiceQuestionSchema = z.object({
 });
 
 const multiSelectQuestionSchema = z.object({
+  id: z.string().optional(),
   question: z.string().min(1, "Question cannot be empty"),
   type: z.literal('multi'),
   options: z.array(z.string()).length(6, "Multi-select questions must have exactly 6 options"),
