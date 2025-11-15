@@ -9,6 +9,7 @@ import {
   insertQuestionSchema,
 } from "@shared/schema";
 import { setupAuth, isAuthenticated, isAdmin } from "./replitAuth";
+import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication
@@ -128,6 +129,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update user curriculum preferences
+  app.patch('/api/user/curricula', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Validate request body
+      const curriculaSchema = z.object({
+        curricula: z.array(z.string()).max(20, "Maximum 20 curricula allowed"),
+      });
+      
+      const validation = curriculaSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ error: validation.error.message });
+      }
+      
+      const { curricula } = validation.data;
+      
+      const user = await storage.updateUserCurricula(userId, curricula);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      res.json(user);
+    } catch (error: any) {
+      console.error("Error updating user curricula:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Upload questions from JSON (admin only)
   app.post("/api/questions/upload", isAuthenticated, isAdmin, async (req: any, res) => {
     try {
@@ -241,17 +271,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all available curricula
+  app.get("/api/curricula", isAuthenticated, async (req, res) => {
+    try {
+      const curricula = await storage.getAllCurricula();
+      res.json(curricula);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Get due questions for quiz (user-specific)
   app.get("/api/quiz/due", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const curriculum = req.query.curriculum as string | undefined;
+      
+      // Parse curricula parameter (can be comma-separated string or array)
+      let curricula: string[] | undefined;
+      if (req.query.curricula) {
+        const curriculaParam = req.query.curricula as string;
+        curricula = curriculaParam.split(',').map(c => c.trim()).filter(Boolean);
+      }
       
       // Ensure user has review cards for all questions
       await storage.ensureUserReviewCards(userId);
       
       // Get due cards with questions in single optimized query
-      const dueCardsWithQuestions = await storage.getDueCardsWithQuestions(userId, curriculum);
+      const dueCardsWithQuestions = await storage.getDueCardsWithQuestions(userId, curricula);
       
       // Shuffle for variety
       const shuffled = dueCardsWithQuestions.sort(() => Math.random() - 0.5);

@@ -117,15 +117,25 @@ Example:
   "questions": [
     {
       "question": "Which region is Barolo from?",
+      "type": "single",
       "options": ["Piedmont, Italy", "Tuscany, Italy", "Bordeaux, France", "Rioja, Spain"],
       "correctAnswer": 0,
-      "category": "Italian Wines"
+      "category": "Italian Wines",
+      "curriculum": "WSET2"
+    },
+    {
+      "question": "Which are red grape varieties?",
+      "type": "multi",
+      "options": ["Cabernet Sauvignon", "Chardonnay", "Merlot", "Riesling", "Pinot Noir", "Sauvignon Blanc"],
+      "correctAnswers": [0, 2, 4],
+      "category": "Grape Varieties",
+      "curriculum": "WSET2"
     }
   ]
 }'
               value={pastedJson}
               onChange={(e) => setPastedJson(e.target.value)}
-              className="font-mono text-sm min-h-[200px]"
+              className="font-mono text-sm min-h-[300px]"
               data-testid="textarea-json"
             />
             <div className="flex gap-2">
@@ -226,29 +236,29 @@ Example:
             
             <div className="space-y-4">
               <div>
-                <p className="text-sm font-medium mb-2">Single Choice Format:</p>
+                <p className="text-sm font-medium mb-2">Complete Example:</p>
                 <pre className="p-4 rounded-lg bg-muted text-sm overflow-x-auto">
 {`{
-  "question": "Which region is Barolo from?",
-  "type": "single",
-  "options": ["Piedmont, Italy", "Tuscany, Italy", 
-              "Bordeaux, France", "Rioja, Spain"],
-  "correctAnswer": 0,
-  "category": "Italian Wines"
-}`}
-                </pre>
-              </div>
-
-              <div>
-                <p className="text-sm font-medium mb-2">Multi-Select Format:</p>
-                <pre className="p-4 rounded-lg bg-muted text-sm overflow-x-auto">
-{`{
-  "question": "Which are red grape varieties?",
-  "type": "multi",
-  "options": ["Cabernet Sauvignon", "Chardonnay",
-              "Merlot", "Riesling", "Pinot Noir", "Sauvignon Blanc"],
-  "correctAnswers": [0, 2, 4],
-  "category": "Grape Varieties"
+  "questions": [
+    {
+      "question": "Which region is Barolo from?",
+      "type": "single",
+      "options": ["Piedmont, Italy", "Tuscany, Italy", 
+                  "Bordeaux, France", "Rioja, Spain"],
+      "correctAnswer": 0,
+      "category": "Italian Wines",
+      "curriculum": "WSET2"
+    },
+    {
+      "question": "Which are red grape varieties?",
+      "type": "multi",
+      "options": ["Cabernet Sauvignon", "Chardonnay",
+                  "Merlot", "Riesling", "Pinot Noir", "Sauvignon Blanc"],
+      "correctAnswers": [0, 2, 4],
+      "category": "Grape Varieties",
+      "curriculum": "WSET2"
+    }
+  ]
 }`}
                 </pre>
               </div>
@@ -263,7 +273,8 @@ Example:
                   <li><strong>Multi-Select:</strong> 6 options, correctAnswers is array of indices (0-5)</li>
                   <li>Type defaults to "single" if not specified</li>
                   <li>Multi-select can have 0-6 correct answers</li>
-                  <li>Category is optional for both types</li>
+                  <li>Category and curriculum fields are optional for both types</li>
+                  <li>Curriculum examples: "WSET1", "WSET2", "WSET3", etc.</li>
                 </ul>
               </div>
             </div>

@@ -23,6 +23,7 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   isAdmin: boolean("is_admin").notNull().default(false), // Admin role for question management
+  selectedCurricula: text("selected_curricula").array(), // User's selected curricula for quiz filtering
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

@@ -18,6 +18,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   getAllUsers(): Promise<User[]>;
+  updateUserCurricula(userId: string, curricula: string[]): Promise<User | undefined>;
   
   // Question methods
   createQuestion(question: InsertQuestion): Promise<Question>;
@@ -27,6 +28,7 @@ export interface IStorage {
   updateQuestion(id: string, updates: Partial<InsertQuestion>): Promise<Question | undefined>;
   deleteQuestion(id: string): Promise<boolean>;
   deleteAllQuestions(): Promise<{ count: number }>;
+  getAllCurricula(): Promise<string[]>;
   
   // Review card methods (now user-specific)
   createReviewCard(card: InsertReviewCard): Promise<ReviewCard>;
@@ -35,7 +37,7 @@ export interface IStorage {
   getReviewCardByQuestionId(userId: string, questionId: string): Promise<ReviewCard | undefined>;
   updateReviewCard(id: string, updates: Partial<ReviewCard>): Promise<ReviewCard | undefined>;
   getDueReviewCards(userId: string): Promise<ReviewCard[]>;
-  getDueCardsWithQuestions(userId: string, curriculum?: string): Promise<Array<{
+  getDueCardsWithQuestions(userId: string, curricula?: string[]): Promise<Array<{
     reviewCardId: string;
     questionId: string;
     question: string;
@@ -75,6 +77,15 @@ export class DatabaseStorage implements IStorage {
 
   async getAllUsers(): Promise<User[]> {
     return await db.select().from(users);
+  }
+
+  async updateUserCurricula(userId: string, curricula: string[]): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({ selectedCurricula: curricula, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
   }
 
   // Question methods
@@ -140,6 +151,18 @@ export class DatabaseStorage implements IStorage {
     await db.delete(questions);
     
     return { count };
+  }
+
+  async getAllCurricula(): Promise<string[]> {
+    const result = await db
+      .selectDistinct({ curriculum: questions.curriculum })
+      .from(questions)
+      .where(sql`${questions.curriculum} IS NOT NULL`);
+    
+    return result
+      .map(r => r.curriculum)
+      .filter((c): c is string => c !== null)
+      .sort();
   }
 
   // Review card methods (now user-specific)
@@ -213,7 +236,7 @@ export class DatabaseStorage implements IStorage {
       );
   }
 
-  async getDueCardsWithQuestions(userId: string, curriculum?: string): Promise<Array<{
+  async getDueCardsWithQuestions(userId: string, curricula?: string[]): Promise<Array<{
     reviewCardId: string;
     questionId: string;
     question: string;
@@ -230,9 +253,10 @@ export class DatabaseStorage implements IStorage {
       lte(reviewCards.nextReviewDate, now)
     ];
     
-    // Add curriculum filter if provided
-    if (curriculum) {
-      conditions.push(eq(questions.curriculum, curriculum));
+    // Add curricula filter if provided (OR condition for multiple curricula)
+    if (curricula && curricula.length > 0) {
+      const curriculumConditions = curricula.map(c => eq(questions.curriculum, c));
+      conditions.push(sql`(${sql.join(curriculumConditions, sql` OR `)})`);
     }
     
     return await db

@@ -4,11 +4,12 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
-import { Wine, BarChart3, Upload, Settings, LogOut } from "lucide-react";
+import { Wine, BarChart3, Upload, Settings, LogOut, User } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/landing";
 import QuizPage from "@/pages/quiz";
 import ProgressPage from "@/pages/progress";
+import ProfilePage from "@/pages/profile";
 import UploadPage from "@/pages/upload";
 import AdminPage from "@/pages/admin";
 import NotFound from "@/pages/not-found";
@@ -20,6 +21,7 @@ function Navigation() {
   const navItems = [
     { path: "/", icon: Wine, label: "Quiz" },
     { path: "/progress", icon: BarChart3, label: "Progress" },
+    { path: "/profile", icon: User, label: "Profile" },
     ...(isAdmin ? [{ path: "/upload", icon: Upload, label: "Upload" }] : []),
     ...(isAdmin ? [{ path: "/admin", icon: Settings, label: "Admin" }] : []),
   ];
@@ -92,6 +94,7 @@ function Router() {
       <Switch>
         <Route path="/" component={QuizPage} />
         <Route path="/progress" component={ProgressPage} />
+        <Route path="/profile" component={ProfilePage} />
         {isAdmin && <Route path="/upload" component={UploadPage} />}
         {isAdmin && <Route path="/admin" component={AdminPage} />}
         <Route component={NotFound} />
