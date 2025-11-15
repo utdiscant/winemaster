@@ -21,21 +21,29 @@ export default function MapQuestion({
   textAnswer,
   onTextAnswerChange,
 }: MapQuestionProps) {
-  const mapUrl = `https://worldwineregions.com/wwrmap/#view=${question.mapZoom}/${question.mapLatitude}/${question.mapLongitude}`;
+  const mapUrl = `https://worldwineregions.com/wwrmap/#view=${question.mapZoom}/${question.mapLatitude}/${question.mapLongitude}&ui=minimal&search=false&labels=false&info=false&attribution=false`;
   
   const isLocationToName = question.mapVariant === 'location-to-name';
 
   return (
     <div className="space-y-4">
       {/* Map Display */}
-      <Card className="overflow-hidden">
-        <CardContent className="p-0">
+      <Card className="overflow-hidden relative">
+        <CardContent className="p-0 relative">
           <iframe
             src={mapUrl}
             className="w-full h-96 border-0"
             title="Wine Region Map"
             data-testid="map-iframe"
+            style={{
+              clipPath: 'inset(0 0 25px 0)'
+            }}
           />
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-background to-transparent opacity-90" />
+            <div className="absolute bottom-0 left-0 right-0 h-12 bg-background" />
+            <div className="absolute bottom-0 left-0 w-16 h-16 bg-background" />
+          </div>
         </CardContent>
       </Card>
 
