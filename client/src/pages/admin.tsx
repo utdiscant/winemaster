@@ -52,6 +52,7 @@ export default function AdminPage() {
     option4: "",
     correctAnswer: 0,
     category: "",
+    acceptedAnswers: [] as string[],
   });
 
   const ITEMS_PER_PAGE = 10;
@@ -195,32 +196,78 @@ export default function AdminPage() {
   // Populate form when editing
   useEffect(() => {
     if (editingQuestion) {
-      setFormData({
-        question: editingQuestion.question,
-        option1: editingQuestion.options[0] || "",
-        option2: editingQuestion.options[1] || "",
-        option3: editingQuestion.options[2] || "",
-        option4: editingQuestion.options[3] || "",
-        correctAnswer: editingQuestion.correctAnswer ?? 0,
-        category: editingQuestion.category || "",
-      });
+      if (editingQuestion.questionType === 'text-input') {
+        setFormData({
+          question: editingQuestion.question,
+          option1: "",
+          option2: "",
+          option3: "",
+          option4: "",
+          correctAnswer: 0,
+          category: editingQuestion.category || "",
+          acceptedAnswers: editingQuestion.options || [],
+        });
+      } else {
+        setFormData({
+          question: editingQuestion.question,
+          option1: editingQuestion.options[0] || "",
+          option2: editingQuestion.options[1] || "",
+          option3: editingQuestion.options[2] || "",
+          option4: editingQuestion.options[3] || "",
+          correctAnswer: editingQuestion.correctAnswer ?? 0,
+          category: editingQuestion.category || "",
+          acceptedAnswers: [],
+        });
+      }
     }
   }, [editingQuestion]);
 
   const handleSave = () => {
     if (!editingQuestion) return;
 
-    const updates = {
-      question: formData.question,
-      options: [
-        formData.option1,
-        formData.option2,
-        formData.option3,
-        formData.option4,
-      ],
-      correctAnswer: formData.correctAnswer,
-      category: formData.category || undefined,
-    };
+    let updates;
+    if (editingQuestion.questionType === 'text-input') {
+      // Validate text-input has at least one accepted answer
+      const nonEmptyAnswers = formData.acceptedAnswers.filter(a => a.trim() !== '');
+      if (nonEmptyAnswers.length === 0) {
+        toast({
+          title: "Validation Error",
+          description: "Text-input questions must have at least one accepted answer",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      updates = {
+        question: formData.question,
+        options: nonEmptyAnswers,
+        category: formData.category || undefined,
+      };
+    } else {
+      // Validate single-choice has all four non-empty options
+      const options = [
+        formData.option1.trim(),
+        formData.option2.trim(),
+        formData.option3.trim(),
+        formData.option4.trim(),
+      ];
+      
+      if (options.some(opt => opt === '')) {
+        toast({
+          title: "Validation Error",
+          description: "All four options must be filled in for single-choice questions",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      updates = {
+        question: formData.question,
+        options,
+        correctAnswer: formData.correctAnswer,
+        category: formData.category || undefined,
+      };
+    }
 
     updateMutation.mutate({ id: editingQuestion.id, updates });
   };
@@ -334,6 +381,7 @@ export default function AdminPage() {
 
         {paginatedQuestions.map((question) => {
           const isMulti = question.questionType === 'multi';
+          const isTextInput = question.questionType === 'text-input';
           const correctSet = new Set(isMulti ? (question.correctAnswers || []) : [question.correctAnswer]);
           
           return (
@@ -343,8 +391,8 @@ export default function AdminPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <CardTitle className="text-lg">{question.question}</CardTitle>
-                      <Badge variant={isMulti ? "default" : "secondary"} className="shrink-0">
-                        {isMulti ? 'Multi-Select' : 'Single Choice'}
+                      <Badge variant={isMulti ? "default" : isTextInput ? "outline" : "secondary"} className="shrink-0">
+                        {isMulti ? 'Multi-Select' : isTextInput ? 'Text Input' : 'Single Choice'}
                       </Badge>
                     </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -381,31 +429,48 @@ export default function AdminPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  {question.options.map((option, index) => {
-                    const isCorrect = correctSet.has(index);
-                    return (
+                {isTextInput ? (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-muted-foreground">Accepted answers:</p>
+                    {question.options.map((answer, index) => (
                       <div
                         key={index}
-                        className={`p-3 rounded-lg border ${
-                          isCorrect
-                            ? "bg-green-50 dark:bg-green-950/20 border-green-500"
-                            : "bg-muted/50"
-                        }`}
+                        className="p-3 rounded-lg border bg-green-50 dark:bg-green-950/20 border-green-500"
                       >
-                        <span className="font-medium mr-2">
-                          {String.fromCharCode(65 + index)}.
+                        {answer}
+                        <span className="ml-2 text-sm text-green-600 dark:text-green-400">
+                          ✓ Accepted
                         </span>
-                        {option}
-                        {isCorrect && (
-                          <span className="ml-2 text-sm text-green-600 dark:text-green-400">
-                            ✓ Correct
-                          </span>
-                        )}
                       </div>
-                    );
-                  })}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {question.options.map((option, index) => {
+                      const isCorrect = correctSet.has(index);
+                      return (
+                        <div
+                          key={index}
+                          className={`p-3 rounded-lg border ${
+                            isCorrect
+                              ? "bg-green-50 dark:bg-green-950/20 border-green-500"
+                              : "bg-muted/50"
+                          }`}
+                        >
+                          <span className="font-medium mr-2">
+                            {String.fromCharCode(65 + index)}.
+                          </span>
+                          {option}
+                          {isCorrect && (
+                            <span className="ml-2 text-sm text-green-600 dark:text-green-400">
+                              ✓ Correct
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
           );
@@ -471,61 +536,105 @@ export default function AdminPage() {
               />
             </div>
 
-            <div>
-              <Label htmlFor="option1">Option A</Label>
-              <Input
-                id="option1"
-                value={formData.option1}
-                onChange={(e) => setFormData({ ...formData, option1: e.target.value })}
-                data-testid="input-edit-option1"
-              />
-            </div>
+            {editingQuestion?.questionType === 'text-input' ? (
+              <div>
+                <Label>Accepted Answers</Label>
+                <div className="space-y-2">
+                  {formData.acceptedAnswers.map((answer, index) => (
+                    <div key={index} className="flex gap-2">
+                      <Input
+                        value={answer}
+                        onChange={(e) => {
+                          const newAnswers = [...formData.acceptedAnswers];
+                          newAnswers[index] = e.target.value;
+                          setFormData({ ...formData, acceptedAnswers: newAnswers });
+                        }}
+                        data-testid={`input-edit-accepted-answer-${index}`}
+                      />
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => {
+                          const newAnswers = formData.acceptedAnswers.filter((_, i) => i !== index);
+                          setFormData({ ...formData, acceptedAnswers: newAnswers });
+                        }}
+                        data-testid={`button-remove-accepted-answer-${index}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setFormData({ ...formData, acceptedAnswers: [...formData.acceptedAnswers, ""] });
+                    }}
+                    className="w-full"
+                    data-testid="button-add-accepted-answer"
+                  >
+                    Add Answer
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <Label htmlFor="option1">Option A</Label>
+                  <Input
+                    id="option1"
+                    value={formData.option1}
+                    onChange={(e) => setFormData({ ...formData, option1: e.target.value })}
+                    data-testid="input-edit-option1"
+                  />
+                </div>
 
-            <div>
-              <Label htmlFor="option2">Option B</Label>
-              <Input
-                id="option2"
-                value={formData.option2}
-                onChange={(e) => setFormData({ ...formData, option2: e.target.value })}
-                data-testid="input-edit-option2"
-              />
-            </div>
+                <div>
+                  <Label htmlFor="option2">Option B</Label>
+                  <Input
+                    id="option2"
+                    value={formData.option2}
+                    onChange={(e) => setFormData({ ...formData, option2: e.target.value })}
+                    data-testid="input-edit-option2"
+                  />
+                </div>
 
-            <div>
-              <Label htmlFor="option3">Option C</Label>
-              <Input
-                id="option3"
-                value={formData.option3}
-                onChange={(e) => setFormData({ ...formData, option3: e.target.value })}
-                data-testid="input-edit-option3"
-              />
-            </div>
+                <div>
+                  <Label htmlFor="option3">Option C</Label>
+                  <Input
+                    id="option3"
+                    value={formData.option3}
+                    onChange={(e) => setFormData({ ...formData, option3: e.target.value })}
+                    data-testid="input-edit-option3"
+                  />
+                </div>
 
-            <div>
-              <Label htmlFor="option4">Option D</Label>
-              <Input
-                id="option4"
-                value={formData.option4}
-                onChange={(e) => setFormData({ ...formData, option4: e.target.value })}
-                data-testid="input-edit-option4"
-              />
-            </div>
+                <div>
+                  <Label htmlFor="option4">Option D</Label>
+                  <Input
+                    id="option4"
+                    value={formData.option4}
+                    onChange={(e) => setFormData({ ...formData, option4: e.target.value })}
+                    data-testid="input-edit-option4"
+                  />
+                </div>
 
-            <div>
-              <Label htmlFor="correctAnswer">Correct Answer</Label>
-              <select
-                id="correctAnswer"
-                value={formData.correctAnswer}
-                onChange={(e) => setFormData({ ...formData, correctAnswer: parseInt(e.target.value) })}
-                className="w-full p-2 border rounded-md"
-                data-testid="select-edit-correct-answer"
-              >
-                <option value={0}>A</option>
-                <option value={1}>B</option>
-                <option value={2}>C</option>
-                <option value={3}>D</option>
-              </select>
-            </div>
+                <div>
+                  <Label htmlFor="correctAnswer">Correct Answer</Label>
+                  <select
+                    id="correctAnswer"
+                    value={formData.correctAnswer}
+                    onChange={(e) => setFormData({ ...formData, correctAnswer: parseInt(e.target.value) })}
+                    className="w-full p-2 border rounded-md"
+                    data-testid="select-edit-correct-answer"
+                  >
+                    <option value={0}>A</option>
+                    <option value={1}>B</option>
+                    <option value={2}>C</option>
+                    <option value={3}>D</option>
+                  </select>
+                </div>
+              </>
+            )}
 
             <div>
               <Label htmlFor="category">Category (Optional)</Label>

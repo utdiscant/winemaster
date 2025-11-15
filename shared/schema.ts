@@ -30,14 +30,15 @@ export const users = pgTable("users", {
 
 // Question schema - represents a wine question
 // Questions are shared app-wide (not per-user)
-// Supports two types:
+// Supports three types:
 // - 'single': Single-choice with 4 options, correctAnswer field used
 // - 'multi': Multi-select with 6 options, correctAnswers array field used
+// - 'text-input': Free text input, options field stores accepted answers for fuzzy matching
 export const questions = pgTable("questions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   question: text("question").notNull(),
-  questionType: text("question_type").notNull().default('single'), // 'single' or 'multi'
-  options: text("options").array().notNull(), // Array of 4 (single) or 6 (multi) answer options
+  questionType: text("question_type").notNull().default('single'), // 'single', 'multi', or 'text-input'
+  options: text("options").array().notNull(), // Array of 4 (single), 6 (multi), or accepted text answers (text-input)
   correctAnswer: integer("correct_answer"), // For single-choice: Index of correct answer (0-3)
   correctAnswers: integer("correct_answers").array(), // For multi-select: Array of correct answer indices (0-5)
   category: text("category"), // Optional category (e.g., "Bordeaux", "Italian Wines")
@@ -103,11 +104,15 @@ export const insertQuestionSchema = createInsertSchema(questions).extend({
         Array.isArray(data.correctAnswers) &&
         data.correctAnswers.every((ans: number) => ans >= 0 && ans <= 5)
       );
+    } else if (data.questionType === 'text-input') {
+      return (
+        data.options.length >= 1 // Must have at least 1 accepted answer
+      );
     }
     return false;
   },
   {
-    message: "Single-choice questions must have 4 options and correctAnswer (0-3). Multi-select questions must have 6 options and correctAnswers array (0-5)."
+    message: "Single-choice questions must have 4 options and correctAnswer (0-3). Multi-select questions must have 6 options and correctAnswers array (0-5). Text-input questions must have at least 1 accepted answer in options array."
   }
 );
 
@@ -129,7 +134,7 @@ export type InsertReviewCard = z.infer<typeof insertReviewCardSchema>;
 export type ReviewCard = typeof reviewCards.$inferSelect;
 
 // JSON upload schema - validates the uploaded JSON file structure
-// Supports both single-choice and multi-select questions
+// Supports single-choice, multi-select, and text-input questions
 // ID is optional: if provided, updates existing question (and clears all user progress)
 // If not provided, creates new question with auto-generated ID
 const singleChoiceQuestionSchema = z.object({
@@ -152,11 +157,21 @@ const multiSelectQuestionSchema = z.object({
   curriculum: z.string().optional(),
 });
 
+const textInputQuestionSchema = z.object({
+  id: z.string().optional(),
+  question: z.string().min(1, "Question cannot be empty"),
+  type: z.literal('text-input'),
+  acceptedAnswers: z.array(z.string()).min(1, "Text-input questions must have at least 1 accepted answer"),
+  category: z.string().optional(),
+  curriculum: z.string().optional(),
+});
+
 export const jsonUploadSchema = z.object({
   questions: z.array(
     z.discriminatedUnion('type', [
       singleChoiceQuestionSchema,
-      multiSelectQuestionSchema
+      multiSelectQuestionSchema,
+      textInputQuestionSchema
     ])
   ).min(1, "Must have at least 1 question"),
 });
@@ -166,18 +181,24 @@ export type JsonUpload = z.infer<typeof jsonUploadSchema>;
 // Answer submission schema
 // For single-choice: selectedAnswer is used
 // For multi-select: selectedAnswers array is used
+// For text-input: textAnswer is used
 export const answerSubmissionSchema = z.object({
   questionId: z.string(),
   selectedAnswer: z.number().min(0).max(3).optional(), // For single-choice
   selectedAnswers: z.array(z.number().min(0).max(5)).optional(), // For multi-select
+  textAnswer: z.string().optional(), // For text-input
   timeTaken: z.number().optional(), // Optional: time taken to answer in seconds
 }).refine(
   (data) => {
-    // Must have either selectedAnswer or selectedAnswers, but not both
-    return (data.selectedAnswer !== undefined) !== (data.selectedAnswers !== undefined);
+    // Must have exactly one of: selectedAnswer, selectedAnswers, or textAnswer
+    const hasSelectedAnswer = data.selectedAnswer !== undefined;
+    const hasSelectedAnswers = data.selectedAnswers !== undefined;
+    const hasTextAnswer = data.textAnswer !== undefined;
+    const count = [hasSelectedAnswer, hasSelectedAnswers, hasTextAnswer].filter(Boolean).length;
+    return count === 1;
   },
   {
-    message: "Must provide either selectedAnswer (single-choice) or selectedAnswers (multi-select), but not both"
+    message: "Must provide exactly one of: selectedAnswer (single-choice), selectedAnswers (multi-select), or textAnswer (text-input)"
   }
 );
 
@@ -187,7 +208,7 @@ export type AnswerSubmission = z.infer<typeof answerSubmissionSchema>;
 export const quizQuestionSchema = z.object({
   id: z.string(),
   question: z.string(),
-  questionType: z.enum(['single', 'multi']),
+  questionType: z.enum(['single', 'multi', 'text-input']),
   options: z.array(z.string()),
   category: z.string().optional(),
   curriculum: z.string().optional(),

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
 import { CheckCircle2, XCircle, Wine } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { QuizQuestion, User } from "@shared/schema";
@@ -13,10 +14,12 @@ export default function QuizPage() {
   const { toast } = useToast();
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null); // For single-choice
   const [selectedAnswers, setSelectedAnswers] = useState<Set<number>>(new Set()); // For multi-select
+  const [textAnswer, setTextAnswer] = useState<string>(""); // For text-input
   const [isAnswered, setIsAnswered] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
   const [shuffledOptions, setShuffledOptions] = useState<{ text: string; originalIndex: number }[]>([]);
   const [correctAnswerIndexes, setCorrectAnswerIndexes] = useState<Set<number>>(new Set()); // Changed to Set for multi-select
+  const [correctTextAnswers, setCorrectTextAnswers] = useState<string[]>([]); // For text-input correct answers
   const [sessionStartCount, setSessionStartCount] = useState<number | null>(null);
   const [answeredInSession, setAnsweredInSession] = useState(0);
   const [isAdvancing, setIsAdvancing] = useState(false);
@@ -92,18 +95,23 @@ export default function QuizPage() {
   }, [isError, isAdvancing, toast]);
 
   const submitAnswerMutation = useMutation({
-    mutationFn: async (data: { questionId: string; selectedAnswer?: number; selectedAnswers?: number[] }) => {
+    mutationFn: async (data: { questionId: string; selectedAnswer?: number; selectedAnswers?: number[]; textAnswer?: string }) => {
       return await apiRequest("POST", "/api/quiz/answer", data);
     },
     onSuccess: (response) => {
-      // Find the shuffled indexes of the correct answer(s)
-      const correctAnswers = Array.isArray(response.correctAnswer) ? response.correctAnswer : [response.correctAnswer];
-      const correctShuffledIndexes = new Set<number>(
-        correctAnswers.map((origIndex: number) =>
-          shuffledOptions.findIndex(opt => opt.originalIndex === origIndex)
-        )
-      );
-      setCorrectAnswerIndexes(correctShuffledIndexes);
+      if (currentQuestion?.questionType === 'text-input') {
+        // For text-input, store the correct text answers
+        setCorrectTextAnswers(response.correctAnswer || []);
+      } else {
+        // Find the shuffled indexes of the correct answer(s)
+        const correctAnswers = Array.isArray(response.correctAnswer) ? response.correctAnswer : [response.correctAnswer];
+        const correctShuffledIndexes = new Set<number>(
+          correctAnswers.map((origIndex: number) =>
+            shuffledOptions.findIndex(opt => opt.originalIndex === origIndex)
+          )
+        );
+        setCorrectAnswerIndexes(correctShuffledIndexes);
+      }
       setIsCorrect(response.correct);
       setIsAnswered(true);
       
@@ -126,20 +134,27 @@ export default function QuizPage() {
   // Shuffle options when question changes
   useEffect(() => {
     if (currentQuestion) {
-      const options = currentQuestion.options.map((text, index) => ({
-        text,
-        originalIndex: index,
-      }));
-      
-      // Fisher-Yates shuffle
-      for (let i = options.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [options[i], options[j]] = [options[j], options[i]];
+      if (currentQuestion.questionType === 'text-input') {
+        // No need to shuffle for text-input
+        setShuffledOptions([]);
+      } else {
+        const options = currentQuestion.options.map((text, index) => ({
+          text,
+          originalIndex: index,
+        }));
+        
+        // Fisher-Yates shuffle
+        for (let i = options.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [options[i], options[j]] = [options[j], options[i]];
+        }
+        
+        setShuffledOptions(options);
       }
       
-      setShuffledOptions(options);
       setSelectedAnswer(null);
       setSelectedAnswers(new Set());
+      setTextAnswer("");
       setIsAnswered(false);
     }
   }, [currentQuestion]);
@@ -168,8 +183,15 @@ export default function QuizPage() {
     if (!currentQuestion) return;
 
     const isMulti = currentQuestion.questionType === 'multi';
+    const isTextInput = currentQuestion.questionType === 'text-input';
     
-    if (isMulti) {
+    if (isTextInput) {
+      // Text-input: submit the text answer
+      submitAnswerMutation.mutate({
+        questionId: currentQuestion.id,
+        textAnswer: textAnswer,
+      });
+    } else if (isMulti) {
       // Multi-select: need at least zero selections (empty is allowed)
       const originalIndexes = Array.from(selectedAnswers).map(i => shuffledOptions[i].originalIndex);
       
@@ -194,6 +216,7 @@ export default function QuizPage() {
     setIsAnswered(false);
     setSelectedAnswer(null);
     setSelectedAnswers(new Set());
+    setTextAnswer("");
     setIsAdvancing(true);
     
     // Refetch to get next question (answered one is removed by backend)
@@ -262,11 +285,11 @@ export default function QuizPage() {
                   #{currentQuestionNumber}
                 </Badge>
                 <Badge 
-                  variant={currentQuestion.questionType === 'multi' ? 'default' : 'outline'}
+                  variant={currentQuestion.questionType === 'multi' ? 'default' : currentQuestion.questionType === 'text-input' ? 'secondary' : 'outline'}
                   className="shrink-0"
                   data-testid="badge-question-type"
                 >
-                  {currentQuestion.questionType === 'multi' ? 'Multi-Select' : 'Single Choice'}
+                  {currentQuestion.questionType === 'multi' ? 'Multi-Select' : currentQuestion.questionType === 'text-input' ? 'Text Input' : 'Single Choice'}
                 </Badge>
               </div>
               {currentQuestion.category && (
@@ -280,14 +303,46 @@ export default function QuizPage() {
                 Select all correct answers (there may be multiple)
               </p>
             )}
+            {currentQuestion.questionType === 'text-input' && !isAnswered && (
+              <p className="text-sm text-muted-foreground">
+                Type your answer below (not case-sensitive)
+              </p>
+            )}
           </CardHeader>
           <CardContent className="space-y-6">
             <h2 className="text-2xl md:text-3xl font-medium leading-relaxed" data-testid="text-question">
               {currentQuestion.question}
             </h2>
 
-            {/* Answer Options */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Text Input for text-input questions */}
+            {currentQuestion.questionType === 'text-input' ? (
+              <div className="space-y-4">
+                <Input
+                  type="text"
+                  value={textAnswer}
+                  onChange={(e) => setTextAnswer(e.target.value)}
+                  placeholder="Type your answer here..."
+                  disabled={isAnswered}
+                  className="text-lg"
+                  data-testid="input-text-answer"
+                />
+                {isAnswered && !isCorrect && (
+                  <div className="p-4 rounded-lg border-2 border-green-600 bg-green-50 dark:bg-green-950/40">
+                    <p className="text-sm font-medium text-green-700 dark:text-green-400 mb-2">
+                      Correct answers:
+                    </p>
+                    <ul className="list-disc list-inside space-y-1">
+                      {correctTextAnswers.map((answer, idx) => (
+                        <li key={idx} className="text-sm" data-testid={`text-correct-answer-${idx}`}>
+                          {answer}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {shuffledOptions.map((option, index) => {
                 const isMulti = currentQuestion.questionType === 'multi';
                 const isSelected = isMulti ? selectedAnswers.has(index) : selectedAnswer === index;
@@ -360,7 +415,8 @@ export default function QuizPage() {
                   </button>
                 );
               })}
-            </div>
+              </div>
+            )}
 
             {/* Action Buttons */}
             <div className="flex justify-end gap-3 pt-4">

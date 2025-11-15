@@ -142,6 +142,13 @@ Example:
       "correctAnswers": [0, 2, 4],
       "category": "Grape Varieties",
       "curriculum": "WSET2"
+    },
+    {
+      "question": "What is the primary grape variety used in Champagne?",
+      "type": "text-input",
+      "acceptedAnswers": ["Chardonnay", "Pinot Noir", "Pinot Meunier"],
+      "category": "French Wines",
+      "curriculum": "WSET2"
     }
   ]
 }'
@@ -190,29 +197,45 @@ Example:
                 <p className="text-sm font-medium text-muted-foreground">Sample Questions:</p>
                 {uploadedData.questions.slice(0, 3).map((q, i) => {
                   const isMulti = q.type === 'multi';
-                  const correctSet = new Set(isMulti ? (q as any).correctAnswers : [q.correctAnswer]);
+                  const isTextInput = q.type === 'text-input';
                   
                   return (
                     <div key={i} className="p-4 rounded-lg bg-card border border-card-border" data-testid={`preview-question-${i}`}>
                       <div className="flex items-start justify-between mb-2">
                         <p className="font-medium flex-1">{q.question}</p>
-                        <Badge variant={isMulti ? "secondary" : "default"} className="ml-2">
-                          {isMulti ? 'Multi-Select' : 'Single Choice'}
+                        <Badge variant={isMulti ? "secondary" : isTextInput ? "outline" : "default"} className="ml-2">
+                          {isMulti ? 'Multi-Select' : isTextInput ? 'Text Input' : 'Single Choice'}
                         </Badge>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        {q.options.map((opt, j) => (
-                          <div
-                            key={j}
-                            className={`text-sm p-2 rounded border ${correctSet.has(j) ? "border-green-500 bg-green-50 dark:bg-green-950/30" : "border-border"}`}
-                          >
-                            {String.fromCharCode(65 + j)}. {opt}
-                            {correctSet.has(j) && (
-                              <span className="ml-1 text-xs text-green-600 dark:text-green-400">✓</span>
-                            )}
+                      {isTextInput ? (
+                        <div className="space-y-2">
+                          <p className="text-sm text-muted-foreground">Accepted answers:</p>
+                          <div className="space-y-1">
+                            {(q as any).acceptedAnswers.map((ans: string, j: number) => (
+                              <div key={j} className="text-sm p-2 rounded border border-green-500 bg-green-50 dark:bg-green-950/30">
+                                {ans} <span className="ml-1 text-xs text-green-600 dark:text-green-400">✓</span>
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          {(q as any).options.map((opt: string, j: number) => {
+                            const correctSet = new Set(isMulti ? (q as any).correctAnswers : [(q as any).correctAnswer]);
+                            return (
+                              <div
+                                key={j}
+                                className={`text-sm p-2 rounded border ${correctSet.has(j) ? "border-green-500 bg-green-50 dark:bg-green-950/30" : "border-border"}`}
+                              >
+                                {String.fromCharCode(65 + j)}. {opt}
+                                {correctSet.has(j) && (
+                                  <span className="ml-1 text-xs text-green-600 dark:text-green-400">✓</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -243,7 +266,7 @@ Example:
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-muted-foreground mb-2">
-              Supports two question types: <strong>Single Choice</strong> (4 options) and <strong>Multi-Select</strong> (6 options)
+              Supports three question types: <strong>Single Choice</strong> (4 options), <strong>Multi-Select</strong> (6 options), and <strong>Text Input</strong> (free text with accepted answers)
             </p>
             
             <div className="space-y-4">
@@ -271,6 +294,14 @@ Example:
       "correctAnswers": [0, 2, 4],
       "category": "Grape Varieties",
       "curriculum": "WSET2"
+    },
+    {
+      "id": "champagne-grapes-001",
+      "question": "Name a grape variety used in Champagne",
+      "type": "text-input",
+      "acceptedAnswers": ["Chardonnay", "Pinot Noir", "Pinot Meunier"],
+      "category": "French Wines",
+      "curriculum": "WSET2"
     }
   ]
 }`}
@@ -286,9 +317,11 @@ Example:
                   <li><strong>ID field (optional):</strong> Unique identifier for upsert - if provided and exists, updates question and clears all user progress; if not provided, auto-generates new ID</li>
                   <li><strong>Single Choice:</strong> 4 options, correctAnswer is index (0-3)</li>
                   <li><strong>Multi-Select:</strong> 6 options, correctAnswers is array of indices (0-5)</li>
+                  <li><strong>Text Input:</strong> acceptedAnswers is array of valid text answers (case-insensitive matching)</li>
                   <li>Type defaults to "single" if not specified</li>
                   <li>Multi-select can have 0-6 correct answers</li>
-                  <li>Category and curriculum fields are optional for both types</li>
+                  <li>Text input answers are matched case-insensitively with trimming</li>
+                  <li>Category and curriculum fields are optional for all types</li>
                   <li>Curriculum examples: "WSET1", "WSET2", "WSET3", etc.</li>
                 </ul>
               </div>

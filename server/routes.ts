@@ -204,25 +204,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Process each question: upsert if ID provided, create if not
       for (const q of validatedData.questions) {
-        const questionData = q.type === 'multi' 
-          ? {
-              id: q.id,
-              question: q.question,
-              questionType: 'multi' as const,
-              options: q.options,
-              correctAnswers: q.correctAnswers,
-              category: q.category,
-              curriculum: q.curriculum,
-            }
-          : {
-              id: q.id,
-              question: q.question,
-              questionType: 'single' as const,
-              options: q.options,
-              correctAnswer: q.correctAnswer,
-              category: q.category,
-              curriculum: q.curriculum,
-            };
+        let questionData;
+        
+        if (q.type === 'multi') {
+          questionData = {
+            id: q.id,
+            question: q.question,
+            questionType: 'multi' as const,
+            options: q.options,
+            correctAnswers: q.correctAnswers,
+            category: q.category,
+            curriculum: q.curriculum,
+          };
+        } else if (q.type === 'text-input') {
+          questionData = {
+            id: q.id,
+            question: q.question,
+            questionType: 'text-input' as const,
+            options: q.acceptedAnswers, // Store accepted answers in options field
+            category: q.category,
+            curriculum: q.curriculum,
+          };
+        } else {
+          questionData = {
+            id: q.id,
+            question: q.question,
+            questionType: 'single' as const,
+            options: q.options,
+            correctAnswer: q.correctAnswer,
+            category: q.category,
+            curriculum: q.curriculum,
+          };
+        }
         
         if (q.id) {
           // Check if question exists
@@ -402,7 +415,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const submission = answerSubmissionSchema.parse(req.body);
-      const { questionId, selectedAnswer, selectedAnswers } = submission;
+      const { questionId, selectedAnswer, selectedAnswers, textAnswer } = submission;
       
       // Ensure user has review cards for all questions
       await storage.ensureUserReviewCards(userId);
@@ -415,9 +428,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if answer is correct based on question type
       let isCorrect = false;
-      let correctAnswerData: number | number[];
+      let correctAnswerData: number | number[] | string[];
       
-      if (question.questionType === 'multi') {
+      if (question.questionType === 'text-input') {
+        // Text-input: case-insensitive fuzzy matching against accepted answers
+        const normalizedInput = (textAnswer || '').trim().toLowerCase();
+        const acceptedAnswers = question.options || [];
+        isCorrect = acceptedAnswers.some(accepted => 
+          accepted.trim().toLowerCase() === normalizedInput
+        );
+        correctAnswerData = acceptedAnswers;
+      } else if (question.questionType === 'multi') {
         // Multi-select: check if selected set exactly matches correct set
         const selected = new Set(selectedAnswers || []);
         const correct = new Set(question.correctAnswers || []);
