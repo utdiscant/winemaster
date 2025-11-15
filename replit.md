@@ -70,3 +70,13 @@ Preferred communication style: Simple, everyday language.
 **Data Fetching:** TanStack Query, Native Fetch API.
 
 **Fonts:** Google Fonts (Playfair Display, Inter).
+
+## Recent Features
+
+**Admin User Overview (November 2025):**
+- Added `/users` page for admins to view all registered users
+- Displays table with name, email, and user type (Admin/User badge)
+- Shows total user count below the table
+- Backend endpoint: GET `/api/users` (admin-only)
+- Proper loading and empty states with data-testid attributes for testing
+- Navigation includes Users link for admin users only
