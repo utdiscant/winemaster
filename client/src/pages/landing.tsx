@@ -23,9 +23,7 @@ export default function Landing() {
               <h1 className="text-5xl md:text-6xl font-semibold font-serif text-foreground">
                 Wine Master
               </h1>
-              <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto">
-                Master wine knowledge through intelligent spaced repetition
-              </p>
+              <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto">Master wine knowledge through intelligent quizzes and exercises - for free</p>
             </div>
 
             {/* CTA */}
