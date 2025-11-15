@@ -16,6 +16,25 @@ Wine Master is a multi-user web-based educational application that uses spaced r
 
 Preferred communication style: Simple, everyday language.
 
+## Development Quick Login
+
+For easier testing in development mode, the application includes quick login shortcuts:
+
+**Landing Page Dev Buttons:**
+- "Login as Admin" - Creates/logs in as test admin (admin@winemaster.dev) with full privileges
+- "Login as User" - Creates/logs in as test user (user@winemaster.dev) with standard access
+
+**How to Use:**
+1. Run the app in development mode (`npm run dev`)
+2. Visit the landing page - you'll see dev login buttons below "Get Started"
+3. Click either button to instantly login without OAuth
+4. Logout and switch between users as needed for testing
+
+**Security:**
+- Dev endpoints only work when `NODE_ENV=development`
+- Production builds automatically exclude dev login UI
+- Test users: `dev-admin-user` and `dev-regular-user`
+
 ## Recent Changes (November 2025)
 
 **Multi-User Migration:**
@@ -26,6 +45,7 @@ Preferred communication style: Simple, everyday language.
 - Implemented single router-level authentication guard (removed redundant per-page redirects)
 - Optimized backend queries using JOINs and bulk inserts
 - Added automatic review card provisioning on login and lazy provisioning in quiz endpoints
+- Added dev-mode quick login for easy testing (admin and regular user)
 
 ## System Architecture
 

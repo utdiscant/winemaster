@@ -14,6 +14,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication
   await setupAuth(app);
 
+  // Dev-only: Quick admin login for testing
+  if (process.env.NODE_ENV === 'development') {
+    app.get('/api/dev/login-admin', async (req: any, res) => {
+      try {
+        const testAdminId = 'dev-admin-user';
+        const testAdmin = {
+          id: testAdminId,
+          email: 'admin@winemaster.dev',
+          name: 'Test Admin',
+          isAdmin: true,
+        };
+
+        // Create or update test admin user
+        await storage.upsertUser({
+          id: testAdminId,
+          email: testAdmin.email,
+          firstName: 'Test',
+          lastName: 'Admin',
+          isAdmin: true,
+        });
+
+        // Ensure admin has review cards
+        await storage.ensureUserReviewCards(testAdminId);
+
+        // Create a session matching the OAuth flow structure
+        const devUser = {
+          claims: {
+            sub: testAdminId,
+            email: testAdmin.email,
+            first_name: 'Test',
+            last_name: 'Admin',
+          }
+        };
+        
+        req.login(devUser, (err: any) => {
+          if (err) {
+            console.error("Dev login error:", err);
+            return res.status(500).json({ error: "Failed to create dev session" });
+          }
+          res.redirect('/');
+        });
+      } catch (error) {
+        console.error("Dev admin login error:", error);
+        res.status(500).json({ error: "Failed to login as dev admin" });
+      }
+    });
+
+    app.get('/api/dev/login-user', async (req: any, res) => {
+      try {
+        const testUserId = 'dev-regular-user';
+        const testUser = {
+          id: testUserId,
+          email: 'user@winemaster.dev',
+          name: 'Test User',
+          isAdmin: false,
+        };
+
+        // Create or update test user
+        await storage.upsertUser({
+          id: testUserId,
+          email: testUser.email,
+          firstName: 'Test',
+          lastName: 'User',
+          isAdmin: false,
+        });
+
+        // Ensure user has review cards
+        await storage.ensureUserReviewCards(testUserId);
+
+        // Create a session matching the OAuth flow structure
+        const devUser = {
+          claims: {
+            sub: testUserId,
+            email: testUser.email,
+            first_name: 'Test',
+            last_name: 'User',
+          }
+        };
+        
+        req.login(devUser, (err: any) => {
+          if (err) {
+            console.error("Dev login error:", err);
+            return res.status(500).json({ error: "Failed to create dev session" });
+          }
+          res.redirect('/');
+        });
+      } catch (error) {
+        console.error("Dev user login error:", error);
+        res.status(500).json({ error: "Failed to login as dev user" });
+      }
+    });
+  }
+
   // Auth routes
   // Public session endpoint - doesn't require auth, returns user if logged in or null
   app.get('/api/auth/user', async (req: any, res) => {

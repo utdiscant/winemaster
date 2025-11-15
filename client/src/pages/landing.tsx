@@ -29,7 +29,7 @@ export default function Landing() {
             </div>
 
             {/* CTA */}
-            <div className="flex justify-center gap-4">
+            <div className="flex flex-col items-center gap-4">
               <Button
                 size="lg"
                 onClick={() => window.location.href = "/api/login"}
@@ -38,6 +38,31 @@ export default function Landing() {
               >
                 Get Started
               </Button>
+
+              {/* Dev-only quick login buttons */}
+              {import.meta.env.DEV && (
+                <div className="flex flex-col items-center gap-2 mt-4 p-4 bg-muted/50 rounded-lg border border-dashed border-primary/30">
+                  <p className="text-xs text-muted-foreground font-mono">DEV MODE - Quick Login</p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.location.href = "/api/dev/login-admin"}
+                      data-testid="button-dev-login-admin"
+                    >
+                      Login as Admin
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.location.href = "/api/dev/login-user"}
+                      data-testid="button-dev-login-user"
+                    >
+                      Login as User
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
