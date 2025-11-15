@@ -29,17 +29,19 @@ export default function QuizPage() {
     enabled: true,
   });
 
-  const queryKey = selectedCurriculum === "all" 
-    ? ["/api/quiz/due"] 
-    : ["/api/quiz/due", selectedCurriculum];
+  // Build segmented query key with curriculum parameter
+  const queryKey = selectedCurriculum === "all"
+    ? ["/api/quiz/due"]
+    : ["/api/quiz/due", { curriculum: selectedCurriculum }];
 
   const { data: dueQuestions, isLoading, isFetching, refetch, isError } = useQuery<QuizQuestion[]>({
     queryKey,
-    queryFn: async () => {
-      const url = selectedCurriculum === "all" 
-        ? "/api/quiz/due" 
-        : `/api/quiz/due?curriculum=${encodeURIComponent(selectedCurriculum)}`;
-      const response = await fetch(url, { credentials: "include" });
+    queryFn: async ({ queryKey }) => {
+      const [url, params] = queryKey as [string, { curriculum?: string } | undefined];
+      const fullUrl = params?.curriculum
+        ? `${url}?curriculum=${encodeURIComponent(params.curriculum)}`
+        : url;
+      const response = await fetch(fullUrl, { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch quiz questions");
       return response.json();
     },

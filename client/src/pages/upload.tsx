@@ -26,7 +26,8 @@ export default function UploadPage() {
       setUploadedData(null);
       setPastedJson("");
       queryClient.invalidateQueries({ queryKey: ["/api/statistics"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/quiz/due"] });
+      // Invalidate all quiz/due queries including curriculum-specific ones
+      queryClient.invalidateQueries({ queryKey: ["/api/quiz/due"], exact: false });
       queryClient.invalidateQueries({ queryKey: ["/api/questions"] });
     },
     onError: (error: Error) => {

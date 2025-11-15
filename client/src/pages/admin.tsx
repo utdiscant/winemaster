@@ -155,7 +155,8 @@ export default function AdminPage() {
       setDeletingQuestionId(null);
       queryClient.invalidateQueries({ queryKey: ["/api/questions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/statistics"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/quiz/due"] });
+      // Invalidate all quiz/due queries including curriculum-specific ones
+      queryClient.invalidateQueries({ queryKey: ["/api/quiz/due"], exact: false });
     },
     onError: (error: Error) => {
       toast({
@@ -179,7 +180,8 @@ export default function AdminPage() {
       setShowDeleteAllDialog(false);
       queryClient.invalidateQueries({ queryKey: ["/api/questions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/statistics"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/quiz/due"] });
+      // Invalidate all quiz/due queries including curriculum-specific ones
+      queryClient.invalidateQueries({ queryKey: ["/api/quiz/due"], exact: false });
     },
     onError: (error: Error) => {
       toast({
