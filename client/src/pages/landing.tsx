@@ -67,7 +67,6 @@ export default function Landing() {
           </div>
         </div>
       </div>
-
       {/* Features Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -76,9 +75,7 @@ export default function Landing() {
               <Brain className="w-6 h-6 text-primary" />
             </div>
             <h3 className="text-xl font-semibold">Smart Learning</h3>
-            <p className="text-muted-foreground">
-              Uses the proven SM-2 algorithm to optimize your review schedule and maximize retention
-            </p>
+            <p className="text-muted-foreground">Uses proven algorithms to optimize your review schedule and maximize retention</p>
           </Card>
 
           <Card className="p-6 space-y-4">
@@ -102,7 +99,6 @@ export default function Landing() {
           </Card>
         </div>
       </div>
-
       {/* How It Works Section */}
       <div className="bg-muted/30 py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -172,7 +168,6 @@ export default function Landing() {
           </div>
         </div>
       </div>
-
       {/* Footer */}
       <div className="py-8 border-t">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-muted-foreground">
