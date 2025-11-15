@@ -45,7 +45,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             email: testAdmin.email,
             first_name: 'Test',
             last_name: 'Admin',
-          }
+          },
+          // Add expires_at far in the future so isAuthenticated middleware accepts it
+          expires_at: Math.floor(Date.now() / 1000) + (365 * 24 * 60 * 60), // 1 year
         };
         
         req.login(devUser, (err: any) => {
@@ -90,7 +92,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             email: testUser.email,
             first_name: 'Test',
             last_name: 'User',
-          }
+          },
+          // Add expires_at far in the future so isAuthenticated middleware accepts it
+          expires_at: Math.floor(Date.now() / 1000) + (365 * 24 * 60 * 60), // 1 year
         };
         
         req.login(devUser, (err: any) => {
