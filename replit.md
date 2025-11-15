@@ -47,6 +47,21 @@ For easier testing in development mode, the application includes quick login sho
 - Added automatic review card provisioning on login and lazy provisioning in quiz endpoints
 - Added dev-mode quick login for easy testing (admin and regular user)
 
+**Multi-Select Question Support:**
+- Added support for multi-select questions (6 options, 0-6 correct answers)
+- Backend scoring requires exact set matching for full credit
+- Quiz UI shows checkboxes for multi-select, radio buttons for single-choice
+- Upload page accepts both "type" and "questionType" field names for compatibility
+- Admin page displays question type badges and disables editing for multi-select
+- Backward compatible with existing single-choice questions
+
+**Delete All Questions Feature:**
+- Added admin-only "Delete All Questions" button to admin page
+- Confirmation dialog shows total question count before deletion
+- Backend endpoint deletes all review cards and questions atomically
+- Success message displays count of deleted questions
+- Button only visible when questions exist
+
 ## System Architecture
 
 ### Frontend Architecture

@@ -228,6 +228,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete all questions (admin only)
+  app.delete("/api/questions", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const result = await storage.deleteAllQuestions();
+      res.json({ success: true, count: result.count });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Get due questions for quiz (user-specific)
   app.get("/api/quiz/due", isAuthenticated, async (req: any, res) => {
     try {

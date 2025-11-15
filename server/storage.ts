@@ -26,6 +26,7 @@ export interface IStorage {
   getAllQuestions(): Promise<Question[]>;
   updateQuestion(id: string, updates: Partial<InsertQuestion>): Promise<Question | undefined>;
   deleteQuestion(id: string): Promise<boolean>;
+  deleteAllQuestions(): Promise<{ count: number }>;
   
   // Review card methods (now user-specific)
   createReviewCard(card: InsertReviewCard): Promise<ReviewCard>;
@@ -124,6 +125,20 @@ export class DatabaseStorage implements IStorage {
       .where(eq(questions.id, id))
       .returning();
     return result.length > 0;
+  }
+
+  async deleteAllQuestions(): Promise<{ count: number }> {
+    // First, get count of questions
+    const allQuestions = await db.select().from(questions);
+    const count = allQuestions.length;
+    
+    // Delete all review cards first (cascading)
+    await db.delete(reviewCards);
+    
+    // Then delete all questions
+    await db.delete(questions);
+    
+    return { count };
   }
 
   // Review card methods (now user-specific)

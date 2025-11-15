@@ -39,6 +39,7 @@ export default function AdminPage() {
   const { toast } = useToast();
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [deletingQuestionId, setDeletingQuestionId] = useState<string | null>(null);
+  const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -153,6 +154,30 @@ export default function AdminPage() {
     },
   });
 
+  // Delete all questions mutation
+  const deleteAllMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("DELETE", "/api/questions");
+    },
+    onSuccess: (response: { success: boolean; count: number }) => {
+      toast({
+        title: "Success",
+        description: `${response.count} ${response.count === 1 ? 'question' : 'questions'} deleted successfully`,
+      });
+      setShowDeleteAllDialog(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/questions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/statistics"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/quiz/due"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   // Populate form when editing
   useEffect(() => {
     if (editingQuestion) {
@@ -162,7 +187,7 @@ export default function AdminPage() {
         option2: editingQuestion.options[1] || "",
         option3: editingQuestion.options[2] || "",
         option4: editingQuestion.options[3] || "",
-        correctAnswer: editingQuestion.correctAnswer,
+        correctAnswer: editingQuestion.correctAnswer ?? 0,
         category: editingQuestion.category || "",
       });
     }
@@ -203,9 +228,21 @@ export default function AdminPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <Settings className="w-8 h-8 text-primary" />
-          <h1 className="text-4xl font-serif font-semibold">Question Management</h1>
+        <div className="flex items-start justify-between gap-4 mb-2">
+          <div className="flex items-center gap-3">
+            <Settings className="w-8 h-8 text-primary" />
+            <h1 className="text-4xl font-serif font-semibold">Question Management</h1>
+          </div>
+          {questions && questions.length > 0 && (
+            <Button
+              variant="destructive"
+              onClick={() => setShowDeleteAllDialog(true)}
+              data-testid="button-delete-all-questions"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete All Questions
+            </Button>
+          )}
         </div>
         <p className="text-muted-foreground">
           Manage all questions in the system. Edit or delete existing questions.
@@ -508,6 +545,32 @@ export default function AdminPage() {
               data-testid="button-confirm-delete"
             >
               {deleteMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete All Questions Confirmation Dialog */}
+      <AlertDialog
+        open={showDeleteAllDialog}
+        onOpenChange={setShowDeleteAllDialog}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete All Questions?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete ALL {questions?.length || 0} questions and ALL associated review cards for ALL users. This is a destructive operation that cannot be undone. Are you absolutely sure?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete-all">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteAllMutation.mutate()}
+              className="bg-destructive text-destructive-foreground"
+              disabled={deleteAllMutation.isPending}
+              data-testid="button-confirm-delete-all"
+            >
+              {deleteAllMutation.isPending ? "Deleting..." : "Delete All"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
