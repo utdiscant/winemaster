@@ -40,6 +40,7 @@ export const questions = pgTable("questions", {
   correctAnswer: integer("correct_answer"), // For single-choice: Index of correct answer (0-3)
   correctAnswers: integer("correct_answers").array(), // For multi-select: Array of correct answer indices (0-5)
   category: text("category"), // Optional category (e.g., "Bordeaux", "Italian Wines")
+  curriculum: text("curriculum"), // Optional curriculum (e.g., "WSET1", "WSET2", "WSET3")
 });
 
 // Review card schema - tracks SM-2 spaced repetition data per user per question
