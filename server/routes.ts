@@ -403,6 +403,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get review cards with questions for progress details
+  app.get("/api/progress/cards", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Ensure user has review cards for all questions
+      await storage.ensureUserReviewCards(userId);
+      
+      const cards = await storage.getReviewCardsWithQuestions(userId);
+      res.json(cards);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

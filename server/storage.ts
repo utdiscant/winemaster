@@ -48,6 +48,21 @@ export interface IStorage {
   }>>;
   getAllReviewCards(userId: string): Promise<ReviewCard[]>;
   ensureUserReviewCards(userId: string): Promise<void>;
+  getReviewCardsWithQuestions(userId: string): Promise<Array<{
+    reviewCardId: string;
+    questionId: string;
+    question: string;
+    options: string[];
+    correctAnswer: number | null;
+    correctAnswers: number[] | null;
+    questionType: string;
+    category: string | null;
+    curriculum: string | null;
+    repetitions: number;
+    interval: number;
+    nextReviewDate: Date;
+    easeFactor: number;
+  }>>;
   
   // Statistics (now user-specific)
   getStatistics(userId: string): Promise<Statistics>;
@@ -306,6 +321,42 @@ export class DatabaseStorage implements IStorage {
       
       await db.insert(reviewCards).values(newCards).onConflictDoNothing();
     }
+  }
+
+  async getReviewCardsWithQuestions(userId: string): Promise<Array<{
+    reviewCardId: string;
+    questionId: string;
+    question: string;
+    options: string[];
+    correctAnswer: number | null;
+    correctAnswers: number[] | null;
+    questionType: string;
+    category: string | null;
+    curriculum: string | null;
+    repetitions: number;
+    interval: number;
+    nextReviewDate: Date;
+    easeFactor: number;
+  }>> {
+    return await db
+      .select({
+        reviewCardId: reviewCards.id,
+        questionId: questions.id,
+        question: questions.question,
+        options: questions.options,
+        correctAnswer: questions.correctAnswer,
+        correctAnswers: questions.correctAnswers,
+        questionType: questions.questionType,
+        category: questions.category,
+        curriculum: questions.curriculum,
+        repetitions: reviewCards.repetitions,
+        interval: reviewCards.interval,
+        nextReviewDate: reviewCards.nextReviewDate,
+        easeFactor: reviewCards.easeFactor,
+      })
+      .from(reviewCards)
+      .innerJoin(questions, eq(reviewCards.questionId, questions.id))
+      .where(eq(reviewCards.userId, userId));
   }
 
   // Statistics (now user-specific)
