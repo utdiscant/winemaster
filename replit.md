@@ -80,3 +80,13 @@ Preferred communication style: Simple, everyday language.
 - Backend endpoint: GET `/api/users` (admin-only)
 - Proper loading and empty states with data-testid attributes for testing
 - Navigation includes Users link for admin users only
+
+**User Deletion (November 2025):**
+- Admin users can delete other users from the database
+- Delete button added to each user row in the Users page
+- Confirmation dialog prevents accidental deletions
+- Users cannot delete themselves (delete button disabled for current user)
+- Backend endpoint: DELETE `/api/users/:id` (admin-only)
+- Deletes all user's review cards before deleting the user
+- Proper error handling for nonexistent users (returns 404)
+- Backend prevents self-deletion attempts (returns 400 error)
