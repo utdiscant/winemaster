@@ -62,14 +62,17 @@ For easier testing in development mode, the application includes quick login sho
 - Success message displays count of deleted questions
 - Button only visible when questions exist
 
-**Curriculum Field (November 2025):**
+**Curriculum Preference System (November 2025):**
 - Added optional `curriculum` field to questions table (e.g., "WSET1", "WSET2", "WSET3")
-- Backend supports curriculum filtering via query parameter on `/api/quiz/due?curriculum=WSET1`
-- Quiz page displays curriculum selector dropdown when curriculums are available
-- Selecting a curriculum filters quiz questions to only show that curriculum
-- Admin page displays curriculum field for each question
-- Admin page includes curriculum filter dropdown alongside category filter
-- Upload page supports curriculum field in JSON uploads
+- Added `selected_curricula` text array field to users table for storing curriculum preferences
+- Created Profile page (/profile) with multi-select curriculum picker using checkboxes
+- Users select their study curricula in Profile, which filters quiz questions globally
+- Backend endpoints: GET /api/curricula (list all), GET /api/user/curricula (fetch prefs), PATCH /api/user/curricula (save with Zod validation)
+- Quiz page automatically uses user's saved curricula preferences (no per-session dropdown)
+- Backend supports filtering by multiple curricula using OR logic via comma-separated query parameter
+- Empty curriculum selection shows all questions (default behavior for new users)
+- Admin page displays curriculum field and includes curriculum filter dropdown
+- Upload page supports curriculum field in JSON uploads with unified example showing both question types
 - Backward compatible - existing questions without curriculum continue to work
 
 ## System Architecture
@@ -92,12 +95,12 @@ For easier testing in development mode, the application includes quick login sho
 - Responsive design with mobile-first approach
 
 **Component Structure:**
-- Page-based routing: Landing, Quiz, Progress, Upload (admin), Admin (admin)
+- Page-based routing: Landing, Quiz, Progress, Profile, Upload (admin), Admin (admin)
 - Single router-level authentication guard in App.tsx
 - Conditional routing and navigation based on user role (admin/non-admin)
 - Shared UI components from shadcn/ui in `client/src/components/ui/`
 - Custom hooks: useAuth for authentication state
-- Global navigation component with role-based menu items
+- Global navigation component with role-based menu items (Profile accessible to all users)
 
 **State Management Strategy:**
 - TanStack Query for API data fetching and caching with credentials: "include"
@@ -130,9 +133,12 @@ For easier testing in development mode, the application includes quick login sho
 - `GET /api/logout` - Destroys session and redirects
 
 **Protected Endpoints:**
-- `GET /api/quiz/due` - Retrieve questions due for current user
+- `GET /api/quiz/due` - Retrieve questions due for current user (accepts optional `curricula` query param)
 - `POST /api/quiz/answer` - Submit answer and update user's review schedule
 - `GET /api/statistics` - Retrieve current user's progress statistics
+- `GET /api/curricula` - List all unique curricula in database
+- `GET /api/user/curricula` - Fetch current user's curriculum preferences
+- `PATCH /api/user/curricula` - Update user's curriculum preferences (validated with Zod)
 
 **Admin-Only Endpoints:**
 - `POST /api/questions/upload` - Bulk upload questions from JSON
@@ -169,13 +175,17 @@ For easier testing in development mode, the application includes quick login sho
 - `email` TEXT NOT NULL
 - `name` TEXT - concatenated firstName + lastName
 - `is_admin` BOOLEAN DEFAULT false - admin role flag
+- `selected_curricula` TEXT[] - user's curriculum preferences for quiz filtering
 
 **Questions Table (snake_case):**
 - `id` VARCHAR PRIMARY KEY
 - `question` TEXT NOT NULL
-- `options` TEXT[] NOT NULL - exactly 4 options
-- `correct_answer` INTEGER NOT NULL - index 0-3
+- `options` TEXT[] NOT NULL - 4 options for single-choice, 6 for multi-select
+- `correct_answer` INTEGER NOT NULL - index 0-3 for single-choice
+- `correct_answers` INTEGER[] - indices for multi-select questions
+- `question_type` TEXT DEFAULT 'single' - 'single' or 'multi-select'
 - `category` TEXT - e.g., "Grapes", "Regions", "Techniques"
+- `curriculum` TEXT - optional curriculum code (e.g., "WSET1", "WSET2")
 
 **Review Cards Table (snake_case):**
 - `id` VARCHAR PRIMARY KEY
