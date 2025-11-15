@@ -1,17 +1,31 @@
-# Wine Master - Spaced Repetition Quiz Application
+# Wine Master - Multi-User Spaced Repetition Quiz Application
 
 ## Overview
 
-Wine Master is a web-based educational application that uses spaced repetition algorithms to help users master wine knowledge. The application presents quiz questions about wine regions, grape varieties, winemaking techniques, and other wine-related topics. Using the SM-2 (SuperMemo 2) algorithm, it intelligently schedules question reviews based on user performance to optimize long-term retention.
+Wine Master is a multi-user web-based educational application that uses spaced repetition algorithms to help users master wine knowledge. Users authenticate via Replit Auth (Google, GitHub, or email/password) and receive personalized quiz questions about wine regions, grape varieties, winemaking techniques, and other wine-related topics. Using the SM-2 (SuperMemo 2) algorithm, the app intelligently schedules question reviews based on individual user performance to optimize long-term retention.
 
-The application allows users to:
-- Take quizzes on wine-related questions with intelligent scheduling
-- Track their learning progress and statistics
-- Upload custom question sets via JSON
+**Key Features:**
+- Multi-user authentication via Replit Auth with session persistence
+- Individual progress tracking with per-user review cards
+- Shared question database accessible to all users
+- Admin-only question management (upload, edit, delete)
+- Intelligent spaced repetition scheduling using SM-2 algorithm
+- Real-time progress statistics and learning analytics
 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+
+## Recent Changes (November 2025)
+
+**Multi-User Migration:**
+- Implemented Replit Auth integration with Google, GitHub, and email/password providers
+- Migrated from in-memory storage to PostgreSQL database with Drizzle ORM
+- Created per-user review card system with unique(userId, questionId) constraint
+- Built admin-only question management interface
+- Implemented single router-level authentication guard (removed redundant per-page redirects)
+- Optimized backend queries using JOINs and bulk inserts
+- Added automatic review card provisioning on login and lazy provisioning in quiz endpoints
 
 ## System Architecture
 
@@ -33,42 +47,60 @@ Preferred communication style: Simple, everyday language.
 - Responsive design with mobile-first approach
 
 **Component Structure:**
-- Page-based routing with three main pages: Quiz, Progress, Upload
+- Page-based routing: Landing, Quiz, Progress, Upload (admin), Admin (admin)
+- Single router-level authentication guard in App.tsx
+- Conditional routing and navigation based on user role (admin/non-admin)
 - Shared UI components from shadcn/ui in `client/src/components/ui/`
-- Custom hooks for mobile detection and toast notifications
-- Global navigation component with sticky header
+- Custom hooks: useAuth for authentication state
+- Global navigation component with role-based menu items
 
 **State Management Strategy:**
-- TanStack Query for API data fetching and caching
+- TanStack Query for API data fetching and caching with credentials: "include"
+- Public `/api/auth/user` endpoint returns user object or null (no 401 loops)
 - Query invalidation on data mutations (e.g., after uploading questions)
 - Local component state for UI interactions (e.g., quiz answer selection)
+- No redundant per-page auth redirects (centralized in router)
 
 ### Backend Architecture
 
 **Technology Stack:**
 - **Runtime**: Node.js with TypeScript
 - **Framework**: Express.js
-- **ORM**: Drizzle ORM
+- **ORM**: Drizzle ORM with snake_case schema
 - **Database**: PostgreSQL (via Neon serverless)
-- **Session Storage**: In-memory storage with interface for potential database migration
+- **Authentication**: Replit Auth (passport.js with OIDC strategy)
+- **Session Storage**: PostgreSQL via connect-pg-simple
 
 **API Design:**
 - RESTful API endpoints under `/api` prefix
+- Authentication middleware: isAuthenticated for protected routes
+- Admin middleware: isAdmin for question management
 - Request/response logging middleware
-- JSON request body parsing with raw body preservation
 - Error handling with appropriate HTTP status codes
 
-**Key Endpoints:**
+**Public Endpoints:**
+- `GET /api/auth/user` - Returns user object or null (no auth required)
+- `GET /api/login` - Initiates Replit Auth OAuth flow
+- `GET /api/callback` - OAuth callback handler
+- `GET /api/logout` - Destroys session and redirects
+
+**Protected Endpoints:**
+- `GET /api/quiz/due` - Retrieve questions due for current user
+- `POST /api/quiz/answer` - Submit answer and update user's review schedule
+- `GET /api/statistics` - Retrieve current user's progress statistics
+
+**Admin-Only Endpoints:**
 - `POST /api/questions/upload` - Bulk upload questions from JSON
-- `GET /api/quiz/due` - Retrieve questions due for review
-- `POST /api/quiz/answer` - Submit quiz answer and update review schedule
-- `GET /api/statistics` - Retrieve learning progress statistics
+- `PATCH /api/questions/:id` - Edit existing question
+- `DELETE /api/questions/:id` - Delete question and related review cards
+- `GET /api/questions` - List all questions (admin page)
 
 **Storage Layer:**
-- Interface-based storage abstraction (`IStorage`)
-- Current implementation: In-memory storage (`MemStorage`)
-- Design supports future migration to persistent database storage
-- Separate concerns: Questions, Review Cards, and Statistics
+- PostgreSQL-based DatabaseStorage implementation
+- Optimized JOIN queries for performance (getDueCardsWithQuestions)
+- Bulk insert operations with conflict handling
+- Automatic review card provisioning: on login + lazy in quiz endpoints
+- Transactions for data consistency
 
 ### Spaced Repetition Algorithm
 
@@ -87,21 +119,40 @@ Preferred communication style: Simple, everyday language.
 
 ### Database Schema
 
-**Questions Table:**
-- Stores quiz questions with 4 multiple-choice options
-- Fields: id, question text, options array, correct answer index, category
-- UUID primary keys
+**Users Table (snake_case):**
+- `id` VARCHAR PRIMARY KEY - from OIDC sub claim
+- `email` TEXT NOT NULL
+- `name` TEXT - concatenated firstName + lastName
+- `is_admin` BOOLEAN DEFAULT false - admin role flag
 
-**Review Cards Table:**
-- One-to-one relationship with questions
-- SM-2 algorithm parameters: ease factor, interval, repetitions
-- Temporal tracking: next review date, last review date
-- Default values: ease factor 2.5, interval 0, repetitions 0
+**Questions Table (snake_case):**
+- `id` VARCHAR PRIMARY KEY
+- `question` TEXT NOT NULL
+- `options` TEXT[] NOT NULL - exactly 4 options
+- `correct_answer` INTEGER NOT NULL - index 0-3
+- `category` TEXT - e.g., "Grapes", "Regions", "Techniques"
+
+**Review Cards Table (snake_case):**
+- `id` VARCHAR PRIMARY KEY
+- `user_id` VARCHAR REFERENCES users(id) - per-user progress
+- `question_id` VARCHAR REFERENCES questions(id)
+- `ease_factor` REAL DEFAULT 2.5 - SM-2 algorithm parameter
+- `interval` INTEGER DEFAULT 0 - days until next review
+- `repetitions` INTEGER DEFAULT 0 - consecutive correct answers
+- `next_review_date` TIMESTAMP - when card becomes due
+- `last_review_date` TIMESTAMP - last answered time
+- **UNIQUE CONSTRAINT**: (user_id, question_id) - prevents duplicate cards
+
+**Sessions Table:**
+- Managed by connect-pg-simple for session persistence
+- Stores serialized session data and expiration
 
 **Design Rationale:**
-- Separation of static question content from dynamic learning state
-- Allows same question to be reviewed by multiple users (future multi-user support)
-- Efficient querying of due cards without joining large question tables
+- Separation of users, questions, and individual progress tracking
+- Questions are shared app-wide; review cards are per-user
+- Unique constraint ensures each user has exactly one card per question
+- Snake_case column names for PostgreSQL convention
+- Optimized for multi-user concurrent access
 
 ### Data Flow
 

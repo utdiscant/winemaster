@@ -1,9 +1,34 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, real, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, real, timestamp, boolean, jsonb, index, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { relations } from "drizzle-orm";
+
+// Session storage table for Replit Auth
+export const sessions = pgTable(
+  "sessions",
+  {
+    sid: varchar("sid").primaryKey(),
+    sess: jsonb("sess").notNull(),
+    expire: timestamp("expire").notNull(),
+  },
+  (table) => [index("IDX_session_expire").on(table.expire)],
+);
+
+// User storage table for Replit Auth
+export const users = pgTable("users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: varchar("email").unique(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  profileImageUrl: varchar("profile_image_url"),
+  isAdmin: boolean("is_admin").notNull().default(false), // Admin role for question management
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
 
 // Question schema - represents a single wine question with 4 answer options
+// Questions are shared app-wide (not per-user)
 export const questions = pgTable("questions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   question: text("question").notNull(),
@@ -12,16 +37,44 @@ export const questions = pgTable("questions", {
   category: text("category"), // Optional category (e.g., "Bordeaux", "Italian Wines")
 });
 
-// Review card schema - tracks SM-2 spaced repetition data for each question
+// Review card schema - tracks SM-2 spaced repetition data per user per question
 export const reviewCards = pgTable("review_cards", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  questionId: varchar("question_id").notNull(),
+  userId: varchar("user_id").notNull(), // Links to user - progress is per-user
+  questionId: varchar("question_id").notNull(), // Links to question
   easeFactor: real("ease_factor").notNull().default(2.5), // SM-2 ease factor (default 2.5)
   interval: integer("interval").notNull().default(0), // Days until next review
   repetitions: integer("repetitions").notNull().default(0), // Number of successful reviews
   nextReviewDate: timestamp("next_review_date").notNull().defaultNow(),
   lastReviewDate: timestamp("last_review_date"),
-});
+}, (table) => ({
+  // Unique constraint: each user can have only one review card per question
+  userQuestionUnique: unique("user_question_unique").on(table.userId, table.questionId),
+}));
+
+// Relations
+export const usersRelations = relations(users, ({ many }) => ({
+  reviewCards: many(reviewCards),
+}));
+
+export const questionsRelations = relations(questions, ({ many }) => ({
+  reviewCards: many(reviewCards),
+}));
+
+export const reviewCardsRelations = relations(reviewCards, ({ one }) => ({
+  user: one(users, {
+    fields: [reviewCards.userId],
+    references: [users.id],
+  }),
+  question: one(questions, {
+    fields: [reviewCards.questionId],
+    references: [questions.id],
+  }),
+}));
+
+// User schemas
+export type UpsertUser = typeof users.$inferInsert;
+export type User = typeof users.$inferSelect;
 
 // Question schemas
 export const insertQuestionSchema = createInsertSchema(questions).omit({

@@ -4,114 +4,261 @@ import {
   type ReviewCard,
   type InsertReviewCard,
   type Statistics,
+  type User,
+  type UpsertUser,
+  questions,
+  reviewCards,
+  users,
 } from "@shared/schema";
-import { randomUUID } from "crypto";
+import { db } from "./db";
+import { eq, and, lte, gte, sql } from "drizzle-orm";
 
 export interface IStorage {
+  // User methods (required for Replit Auth)
+  getUser(id: string): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
+  getAllUsers(): Promise<User[]>;
+  
   // Question methods
   createQuestion(question: InsertQuestion): Promise<Question>;
   createQuestions(questions: InsertQuestion[]): Promise<Question[]>;
   getQuestion(id: string): Promise<Question | undefined>;
   getAllQuestions(): Promise<Question[]>;
+  updateQuestion(id: string, updates: Partial<InsertQuestion>): Promise<Question | undefined>;
+  deleteQuestion(id: string): Promise<boolean>;
   
-  // Review card methods
+  // Review card methods (now user-specific)
   createReviewCard(card: InsertReviewCard): Promise<ReviewCard>;
+  bulkCreateReviewCards(cards: Array<{ userId: string; questionId: string }>): Promise<void>;
   getReviewCard(id: string): Promise<ReviewCard | undefined>;
-  getReviewCardByQuestionId(questionId: string): Promise<ReviewCard | undefined>;
+  getReviewCardByQuestionId(userId: string, questionId: string): Promise<ReviewCard | undefined>;
   updateReviewCard(id: string, updates: Partial<ReviewCard>): Promise<ReviewCard | undefined>;
-  getDueReviewCards(): Promise<ReviewCard[]>;
-  getAllReviewCards(): Promise<ReviewCard[]>;
+  getDueReviewCards(userId: string): Promise<ReviewCard[]>;
+  getDueCardsWithQuestions(userId: string): Promise<Array<{
+    reviewCardId: string;
+    questionId: string;
+    question: string;
+    options: string[];
+    category: string | null;
+  }>>;
+  getAllReviewCards(userId: string): Promise<ReviewCard[]>;
+  ensureUserReviewCards(userId: string): Promise<void>;
   
-  // Statistics
-  getStatistics(): Promise<Statistics>;
+  // Statistics (now user-specific)
+  getStatistics(userId: string): Promise<Statistics>;
 }
 
-export class MemStorage implements IStorage {
-  private questions: Map<string, Question>;
-  private reviewCards: Map<string, ReviewCard>;
+export class DatabaseStorage implements IStorage {
+  // User methods (required for Replit Auth)
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
 
-  constructor() {
-    this.questions = new Map();
-    this.reviewCards = new Map();
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users);
   }
 
   // Question methods
   async createQuestion(insertQuestion: InsertQuestion): Promise<Question> {
-    const id = randomUUID();
-    const question: Question = { ...insertQuestion, id };
-    this.questions.set(id, question);
+    const [question] = await db
+      .insert(questions)
+      .values(insertQuestion)
+      .returning();
     return question;
   }
 
   async createQuestions(insertQuestions: InsertQuestion[]): Promise<Question[]> {
-    const questions: Question[] = [];
-    for (const insertQuestion of insertQuestions) {
-      const question = await this.createQuestion(insertQuestion);
-      questions.push(question);
-    }
-    return questions;
+    if (insertQuestions.length === 0) return [];
+    const createdQuestions = await db
+      .insert(questions)
+      .values(insertQuestions)
+      .returning();
+    return createdQuestions;
   }
 
   async getQuestion(id: string): Promise<Question | undefined> {
-    return this.questions.get(id);
+    const [question] = await db
+      .select()
+      .from(questions)
+      .where(eq(questions.id, id));
+    return question;
   }
 
   async getAllQuestions(): Promise<Question[]> {
-    return Array.from(this.questions.values());
+    return await db.select().from(questions);
   }
 
-  // Review card methods
+  async updateQuestion(id: string, updates: Partial<InsertQuestion>): Promise<Question | undefined> {
+    const [question] = await db
+      .update(questions)
+      .set(updates)
+      .where(eq(questions.id, id))
+      .returning();
+    return question;
+  }
+
+  async deleteQuestion(id: string): Promise<boolean> {
+    // First delete all review cards for this question
+    await db.delete(reviewCards).where(eq(reviewCards.questionId, id));
+    
+    // Then delete the question
+    const result = await db
+      .delete(questions)
+      .where(eq(questions.id, id))
+      .returning();
+    return result.length > 0;
+  }
+
+  // Review card methods (now user-specific)
   async createReviewCard(insertCard: InsertReviewCard): Promise<ReviewCard> {
-    const id = randomUUID();
-    const card: ReviewCard = {
-      id,
-      questionId: insertCard.questionId,
+    const [card] = await db
+      .insert(reviewCards)
+      .values(insertCard)
+      .returning();
+    return card;
+  }
+
+  async bulkCreateReviewCards(cards: Array<{ userId: string; questionId: string }>): Promise<void> {
+    if (cards.length === 0) return;
+    
+    const newCards = cards.map(c => ({
+      userId: c.userId,
+      questionId: c.questionId,
       easeFactor: 2.5,
       interval: 0,
       repetitions: 0,
       nextReviewDate: new Date(),
-      lastReviewDate: insertCard.lastReviewDate ?? null,
-    };
-    this.reviewCards.set(id, card);
-    return card;
+      lastReviewDate: null,
+    }));
+    
+    await db.insert(reviewCards).values(newCards).onConflictDoNothing();
   }
 
   async getReviewCard(id: string): Promise<ReviewCard | undefined> {
-    return this.reviewCards.get(id);
+    const [card] = await db
+      .select()
+      .from(reviewCards)
+      .where(eq(reviewCards.id, id));
+    return card;
   }
 
-  async getReviewCardByQuestionId(questionId: string): Promise<ReviewCard | undefined> {
-    return Array.from(this.reviewCards.values()).find(
-      (card) => card.questionId === questionId
-    );
+  async getReviewCardByQuestionId(userId: string, questionId: string): Promise<ReviewCard | undefined> {
+    const [card] = await db
+      .select()
+      .from(reviewCards)
+      .where(
+        and(
+          eq(reviewCards.userId, userId),
+          eq(reviewCards.questionId, questionId)
+        )
+      );
+    return card;
   }
 
   async updateReviewCard(
     id: string,
     updates: Partial<ReviewCard>
   ): Promise<ReviewCard | undefined> {
-    const card = this.reviewCards.get(id);
-    if (!card) return undefined;
-
-    const updatedCard = { ...card, ...updates };
-    this.reviewCards.set(id, updatedCard);
-    return updatedCard;
+    const [card] = await db
+      .update(reviewCards)
+      .set(updates)
+      .where(eq(reviewCards.id, id))
+      .returning();
+    return card;
   }
 
-  async getDueReviewCards(): Promise<ReviewCard[]> {
+  async getDueReviewCards(userId: string): Promise<ReviewCard[]> {
     const now = new Date();
-    return Array.from(this.reviewCards.values()).filter(
-      (card) => card.nextReviewDate <= now
-    );
+    return await db
+      .select()
+      .from(reviewCards)
+      .where(
+        and(
+          eq(reviewCards.userId, userId),
+          lte(reviewCards.nextReviewDate, now)
+        )
+      );
   }
 
-  async getAllReviewCards(): Promise<ReviewCard[]> {
-    return Array.from(this.reviewCards.values());
+  async getDueCardsWithQuestions(userId: string): Promise<Array<{
+    reviewCardId: string;
+    questionId: string;
+    question: string;
+    options: string[];
+    category: string | null;
+  }>> {
+    const now = new Date();
+    return await db
+      .select({
+        reviewCardId: reviewCards.id,
+        questionId: questions.id,
+        question: questions.question,
+        options: questions.options,
+        category: questions.category,
+      })
+      .from(reviewCards)
+      .innerJoin(questions, eq(reviewCards.questionId, questions.id))
+      .where(
+        and(
+          eq(reviewCards.userId, userId),
+          lte(reviewCards.nextReviewDate, now)
+        )
+      );
   }
 
-  // Statistics
-  async getStatistics(): Promise<Statistics> {
-    const allCards = Array.from(this.reviewCards.values());
+  async getAllReviewCards(userId: string): Promise<ReviewCard[]> {
+    return await db
+      .select()
+      .from(reviewCards)
+      .where(eq(reviewCards.userId, userId));
+  }
+
+  async ensureUserReviewCards(userId: string): Promise<void> {
+    // Get all questions
+    const allQuestions = await this.getAllQuestions();
+    
+    // Get existing review cards for this user
+    const existingCards = await this.getAllReviewCards(userId);
+    const existingQuestionIds = new Set(existingCards.map(card => card.questionId));
+    
+    // Find questions without review cards
+    const missingQuestions = allQuestions.filter(q => !existingQuestionIds.has(q.id));
+    
+    // Create review cards for missing questions with bulk insert
+    if (missingQuestions.length > 0) {
+      const newCards = missingQuestions.map(q => ({
+        userId,
+        questionId: q.id,
+        easeFactor: 2.5,
+        interval: 0,
+        repetitions: 0,
+        nextReviewDate: new Date(),
+        lastReviewDate: null,
+      }));
+      
+      await db.insert(reviewCards).values(newCards).onConflictDoNothing();
+    }
+  }
+
+  // Statistics (now user-specific)
+  async getStatistics(userId: string): Promise<Statistics> {
+    const allCards = await this.getAllReviewCards(userId);
     const now = new Date();
     const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
@@ -145,8 +292,11 @@ export class MemStorage implements IStorage {
 
     const totalReviews = allCards.reduce((sum, card) => sum + card.repetitions, 0);
 
+    // Get total questions count from database
+    const allQuestions = await this.getAllQuestions();
+
     return {
-      totalQuestions: this.questions.size,
+      totalQuestions: allQuestions.length,
       masteredQuestions,
       learningQuestions,
       newQuestions,
@@ -158,4 +308,4 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();

@@ -84,6 +84,13 @@ export default function QuizPage() {
       // We'll invalidate due questions when user clicks "Next Question"
       queryClient.invalidateQueries({ queryKey: ["/api/statistics"] });
     },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   // Always show the first question in the list (backend removes answered ones)

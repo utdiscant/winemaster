@@ -6,15 +6,37 @@ import {
   jsonUploadSchema,
   answerSubmissionSchema,
   type QuizQuestion,
+  insertQuestionSchema,
 } from "@shared/schema";
+import { setupAuth, isAuthenticated, isAdmin } from "./replitAuth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Upload questions from JSON
-  app.post("/api/questions/upload", async (req, res) => {
+  // Setup authentication
+  await setupAuth(app);
+
+  // Auth routes
+  // Public session endpoint - doesn't require auth, returns user if logged in or null
+  app.get('/api/auth/user', async (req: any, res) => {
+    try {
+      if (!req.isAuthenticated() || !req.user?.claims?.sub) {
+        return res.json(null);
+      }
+      
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Upload questions from JSON (admin only)
+  app.post("/api/questions/upload", isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const validatedData = jsonUploadSchema.parse(req.body);
       
-      // Create questions and their review cards
+      // Create questions (shared app-wide)
       const questions = await storage.createQuestions(
         validatedData.questions.map((q) => ({
           question: q.question,
@@ -24,11 +46,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }))
       );
 
-      // Create review cards for each question
-      for (const question of questions) {
-        await storage.createReviewCard({
-          questionId: question.id,
-        });
+      // Create review cards for all existing users (bulk insert)
+      const allUsers = await storage.getAllUsers();
+      if (allUsers.length > 0 && questions.length > 0) {
+        const newCards = [];
+        for (const user of allUsers) {
+          for (const question of questions) {
+            newCards.push({
+              userId: user.id,
+              questionId: question.id,
+            });
+          }
+        }
+        await storage.bulkCreateReviewCards(newCards);
       }
 
       res.json({ success: true, count: questions.length });
@@ -37,28 +67,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get due questions for quiz
-  app.get("/api/quiz/due", async (req, res) => {
+  // Get all questions (admin only)
+  app.get("/api/questions", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const dueCards = await storage.getDueReviewCards();
+      const questions = await storage.getAllQuestions();
+      res.json(questions);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update a question (admin only)
+  app.patch("/api/questions/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = insertQuestionSchema.partial().parse(req.body);
       
-      // Shuffle due cards for variety
-      const shuffledCards = dueCards.sort(() => Math.random() - 0.5);
-      
-      // Get questions for due cards
-      const quizQuestions: QuizQuestion[] = [];
-      for (const card of shuffledCards) {
-        const question = await storage.getQuestion(card.questionId);
-        if (question) {
-          quizQuestions.push({
-            id: question.id,
-            question: question.question,
-            options: question.options,
-            category: question.category,
-            reviewCardId: card.id,
-          });
-        }
+      const question = await storage.updateQuestion(id, updates);
+      if (!question) {
+        return res.status(404).json({ error: "Question not found" });
       }
+
+      res.json(question);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Delete a question (admin only)
+  app.delete("/api/questions/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteQuestion(id);
+      
+      if (!deleted) {
+        return res.status(404).json({ error: "Question not found" });
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get due questions for quiz (user-specific)
+  app.get("/api/quiz/due", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Ensure user has review cards for all questions
+      await storage.ensureUserReviewCards(userId);
+      
+      // Get due cards with questions in single optimized query
+      const dueCardsWithQuestions = await storage.getDueCardsWithQuestions(userId);
+      
+      // Shuffle for variety
+      const shuffled = dueCardsWithQuestions.sort(() => Math.random() - 0.5);
+      
+      // Map to QuizQuestion format
+      const quizQuestions: QuizQuestion[] = shuffled.map((row) => ({
+        id: row.questionId,
+        question: row.question,
+        options: row.options,
+        category: row.category ?? undefined,
+        reviewCardId: row.reviewCardId,
+      }));
 
       res.json(quizQuestions);
     } catch (error: any) {
@@ -66,10 +139,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Submit answer and update SM-2
-  app.post("/api/quiz/answer", async (req, res) => {
+  // Submit answer and update SM-2 (user-specific)
+  app.post("/api/quiz/answer", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
       const { questionId, selectedAnswer } = answerSubmissionSchema.parse(req.body);
+      
+      // Ensure user has review cards for all questions
+      await storage.ensureUserReviewCards(userId);
       
       // Get question to check correct answer
       const question = await storage.getQuestion(questionId);
@@ -80,8 +157,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if answer is correct
       const isCorrect = selectedAnswer === question.correctAnswer;
       
-      // Get review card
-      const reviewCard = await storage.getReviewCardByQuestionId(questionId);
+      // Get review card for this user
+      const reviewCard = await storage.getReviewCardByQuestionId(userId, questionId);
       if (!reviewCard) {
         return res.status(404).json({ error: "Review card not found" });
       }
@@ -115,10 +192,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get statistics
-  app.get("/api/statistics", async (req, res) => {
+  // Get statistics (user-specific)
+  app.get("/api/statistics", isAuthenticated, async (req: any, res) => {
     try {
-      const stats = await storage.getStatistics();
+      const userId = req.user.claims.sub;
+      
+      // Ensure user has review cards for all questions
+      await storage.ensureUserReviewCards(userId);
+      
+      const stats = await storage.getStatistics(userId);
       res.json(stats);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
