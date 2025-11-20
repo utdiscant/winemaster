@@ -9,17 +9,20 @@ import { CheckCircle2, XCircle, Wine } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { QuizQuestion, User } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import WineMap from "@/components/WineMap";
 
 export default function QuizPage() {
   const { toast } = useToast();
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null); // For single-choice
   const [selectedAnswers, setSelectedAnswers] = useState<Set<number>>(new Set()); // For multi-select
-  const [textAnswer, setTextAnswer] = useState<string>(""); // For text-input
+  const [textAnswer, setTextAnswer] = useState<string>(""); // For text-input and map-to-text
+  const [mapClick, setMapClick] = useState<{ lat: number; lng: number } | null>(null); // For text-to-map
   const [isAnswered, setIsAnswered] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
   const [shuffledOptions, setShuffledOptions] = useState<{ text: string; originalIndex: number }[]>([]);
   const [correctAnswerIndexes, setCorrectAnswerIndexes] = useState<Set<number>>(new Set()); // Changed to Set for multi-select
   const [correctTextAnswers, setCorrectTextAnswers] = useState<string[]>([]); // For text-input correct answers
+  const [correctMapData, setCorrectMapData] = useState<{ regionName?: string; regionPolygon?: any } | null>(null); // For map questions feedback
   const [sessionStartCount, setSessionStartCount] = useState<number | null>(null);
   const [answeredInSession, setAnsweredInSession] = useState(0);
   const [isAdvancing, setIsAdvancing] = useState(false);
@@ -95,13 +98,16 @@ export default function QuizPage() {
   }, [isError, isAdvancing, toast]);
 
   const submitAnswerMutation = useMutation({
-    mutationFn: async (data: { questionId: string; selectedAnswer?: number; selectedAnswers?: number[]; textAnswer?: string }) => {
+    mutationFn: async (data: { questionId: string; selectedAnswer?: number; selectedAnswers?: number[]; textAnswer?: string; mapClick?: { lat: number; lng: number } }) => {
       return await apiRequest("POST", "/api/quiz/answer", data);
     },
     onSuccess: (response) => {
       if (currentQuestion?.questionType === 'text-input') {
         // For text-input, store the correct text answers
         setCorrectTextAnswers(response.correctAnswer || []);
+      } else if (currentQuestion?.questionType === 'text-to-map' || currentQuestion?.questionType === 'map-to-text') {
+        // For map questions, store the correct region data
+        setCorrectMapData(response.correctAnswer || null);
       } else {
         // Find the shuffled indexes of the correct answer(s)
         const correctAnswers = Array.isArray(response.correctAnswer) ? response.correctAnswer : [response.correctAnswer];
@@ -134,8 +140,8 @@ export default function QuizPage() {
   // Shuffle options when question changes
   useEffect(() => {
     if (currentQuestion) {
-      if (currentQuestion.questionType === 'text-input') {
-        // No need to shuffle for text-input
+      if (currentQuestion.questionType === 'text-input' || currentQuestion.questionType === 'text-to-map' || currentQuestion.questionType === 'map-to-text') {
+        // No need to shuffle for text-input or map questions
         setShuffledOptions([]);
       } else {
         const options = currentQuestion.options.map((text, index) => ({
@@ -155,7 +161,9 @@ export default function QuizPage() {
       setSelectedAnswer(null);
       setSelectedAnswers(new Set());
       setTextAnswer("");
+      setMapClick(null);
       setIsAnswered(false);
+      setCorrectMapData(null);
     }
   }, [currentQuestion]);
 
@@ -184,9 +192,24 @@ export default function QuizPage() {
 
     const isMulti = currentQuestion.questionType === 'multi';
     const isTextInput = currentQuestion.questionType === 'text-input';
+    const isTextToMap = currentQuestion.questionType === 'text-to-map';
+    const isMapToText = currentQuestion.questionType === 'map-to-text';
     
     if (isTextInput) {
       // Text-input: submit the text answer
+      submitAnswerMutation.mutate({
+        questionId: currentQuestion.id,
+        textAnswer: textAnswer,
+      });
+    } else if (isTextToMap) {
+      // Text-to-map: submit the map click
+      if (!mapClick) return;
+      submitAnswerMutation.mutate({
+        questionId: currentQuestion.id,
+        mapClick: mapClick,
+      });
+    } else if (isMapToText) {
+      // Map-to-text: submit the text answer
       submitAnswerMutation.mutate({
         questionId: currentQuestion.id,
         textAnswer: textAnswer,
@@ -217,6 +240,8 @@ export default function QuizPage() {
     setSelectedAnswer(null);
     setSelectedAnswers(new Set());
     setTextAnswer("");
+    setMapClick(null);
+    setCorrectMapData(null);
     setIsAdvancing(true);
     
     // Refetch to get next question (answered one is removed by backend)
@@ -285,11 +310,19 @@ export default function QuizPage() {
                   #{currentQuestionNumber}
                 </Badge>
                 <Badge 
-                  variant={currentQuestion.questionType === 'multi' ? 'default' : currentQuestion.questionType === 'text-input' ? 'secondary' : 'outline'}
+                  variant={
+                    currentQuestion.questionType === 'multi' ? 'default' : 
+                    currentQuestion.questionType === 'text-input' || currentQuestion.questionType === 'map-to-text' ? 'secondary' : 
+                    'outline'
+                  }
                   className="shrink-0"
                   data-testid="badge-question-type"
                 >
-                  {currentQuestion.questionType === 'multi' ? 'Multi-Select' : currentQuestion.questionType === 'text-input' ? 'Text Input' : 'Single Choice'}
+                  {currentQuestion.questionType === 'multi' ? 'Multi-Select' : 
+                   currentQuestion.questionType === 'text-input' ? 'Text Input' : 
+                   currentQuestion.questionType === 'text-to-map' ? 'Map Click' : 
+                   currentQuestion.questionType === 'map-to-text' ? 'Name the Region' : 
+                   'Single Choice'}
                 </Badge>
               </div>
               {currentQuestion.category && (
@@ -306,6 +339,16 @@ export default function QuizPage() {
             {currentQuestion.questionType === 'text-input' && !isAnswered && (
               <p className="text-sm text-muted-foreground">
                 Type your answer below (not case-sensitive)
+              </p>
+            )}
+            {currentQuestion.questionType === 'text-to-map' && !isAnswered && (
+              <p className="text-sm text-muted-foreground">
+                Click on the map to identify the wine region
+              </p>
+            )}
+            {currentQuestion.questionType === 'map-to-text' && !isAnswered && (
+              <p className="text-sm text-muted-foreground">
+                Name the highlighted wine region (not case-sensitive)
               </p>
             )}
           </CardHeader>
@@ -338,6 +381,60 @@ export default function QuizPage() {
                         </li>
                       ))}
                     </ul>
+                  </div>
+                )}
+              </div>
+            ) : currentQuestion.questionType === 'text-to-map' ? (
+              /* Text-to-map: Show map and let user click */
+              <div className="space-y-4">
+                <WineMap
+                  onMapClick={(lat, lng) => {
+                    if (!isAnswered) {
+                      setMapClick({ lat, lng });
+                    }
+                  }}
+                  clickedLocation={mapClick}
+                  showCorrectRegion={isAnswered && !isCorrect}
+                  correctRegionPolygon={correctMapData?.regionPolygon}
+                  data-testid="map-text-to-map"
+                />
+                {mapClick && !isAnswered && (
+                  <p className="text-sm text-muted-foreground">
+                    Selected location: {mapClick.lat.toFixed(4)}, {mapClick.lng.toFixed(4)}
+                  </p>
+                )}
+                {isAnswered && !isCorrect && correctMapData?.regionName && (
+                  <div className="p-4 rounded-lg border-2 border-green-600 bg-green-50 dark:bg-green-950/40">
+                    <p className="text-sm font-medium text-green-700 dark:text-green-400">
+                      Correct region: {correctMapData.regionName}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : currentQuestion.questionType === 'map-to-text' ? (
+              /* Map-to-text: Show map with region, let user type name */
+              <div className="space-y-4">
+                <WineMap
+                  regionPolygon={currentQuestion.regionPolygon}
+                  data-testid="map-map-to-text"
+                />
+                <Input
+                  type="text"
+                  value={textAnswer}
+                  onChange={(e) => setTextAnswer(e.target.value)}
+                  placeholder="Type the region name..."
+                  disabled={isAnswered}
+                  className="text-lg"
+                  data-testid="input-map-to-text-answer"
+                />
+                {isAnswered && !isCorrect && correctMapData && (
+                  <div className="p-4 rounded-lg border-2 border-green-600 bg-green-50 dark:bg-green-950/40">
+                    <p className="text-sm font-medium text-green-700 dark:text-green-400 mb-2">
+                      Correct answers:
+                    </p>
+                    {correctMapData.regionName && (
+                      <p className="text-sm">Primary: {correctMapData.regionName}</p>
+                    )}
                   </div>
                 )}
               </div>
@@ -423,7 +520,13 @@ export default function QuizPage() {
               {!isAnswered ? (
                 <Button
                   onClick={handleSubmitAnswer}
-                  disabled={(currentQuestion.questionType === 'single' && selectedAnswer === null) || submitAnswerMutation.isPending}
+                  disabled={
+                    (currentQuestion.questionType === 'single' && selectedAnswer === null) ||
+                    (currentQuestion.questionType === 'text-input' && textAnswer.trim() === '') ||
+                    (currentQuestion.questionType === 'text-to-map' && mapClick === null) ||
+                    (currentQuestion.questionType === 'map-to-text' && textAnswer.trim() === '') ||
+                    submitAnswerMutation.isPending
+                  }
                   size="lg"
                   data-testid="button-submit-answer"
                 >
