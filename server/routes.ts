@@ -10,6 +10,7 @@ import {
 } from "@shared/schema";
 import { setupAuth, isAuthenticated, isAdmin } from "./replitAuth";
 import { z } from "zod";
+import { isPointInPolygon } from "./utils/geoUtils";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication
@@ -204,7 +205,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Process each question: upsert if ID provided, create if not
       for (const q of validatedData.questions) {
-        let questionData;
+        let questionData: any;
         
         if (q.type === 'multi') {
           questionData = {
@@ -222,6 +223,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
             question: q.question,
             questionType: 'text-input' as const,
             options: q.acceptedAnswers, // Store accepted answers in options field
+            category: q.category,
+            curriculum: q.curriculum,
+          };
+        } else if (q.type === 'text-to-map') {
+          questionData = {
+            id: q.id,
+            question: q.question,
+            questionType: 'text-to-map' as const,
+            regionName: q.regionName,
+            regionPolygon: q.regionPolygon,
+            category: q.category,
+            curriculum: q.curriculum,
+          };
+        } else if (q.type === 'map-to-text') {
+          questionData = {
+            id: q.id,
+            question: q.question,
+            questionType: 'map-to-text' as const,
+            options: q.acceptedAnswers, // Store accepted answers in options field
+            regionPolygon: q.regionPolygon,
             category: q.category,
             curriculum: q.curriculum,
           };
@@ -397,11 +418,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const quizQuestions: QuizQuestion[] = shuffled.map((row) => ({
         id: row.questionId,
         question: row.question,
-        questionType: (row.questionType || 'single') as 'single' | 'multi',
+        questionType: (row.questionType || 'single') as 'single' | 'multi' | 'text-input' | 'text-to-map' | 'map-to-text',
         options: row.options,
         category: row.category ?? undefined,
         curriculum: row.curriculum ?? undefined,
         reviewCardId: row.reviewCardId,
+        regionPolygon: row.regionPolygon,
+        regionName: row.regionName ?? undefined,
       }));
 
       res.json(quizQuestions);
@@ -415,7 +438,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const submission = answerSubmissionSchema.parse(req.body);
-      const { questionId, selectedAnswer, selectedAnswers, textAnswer } = submission;
+      const { questionId, selectedAnswer, selectedAnswers, textAnswer, mapClick } = submission;
       
       // Ensure user has review cards for all questions
       await storage.ensureUserReviewCards(userId);
@@ -428,7 +451,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if answer is correct based on question type
       let isCorrect = false;
-      let correctAnswerData: number | number[] | string[];
+      let correctAnswerData: number | number[] | string[] | { regionName?: string; regionPolygon?: any };
       
       if (question.questionType === 'text-input') {
         // Text-input: case-insensitive fuzzy matching against accepted answers
@@ -438,6 +461,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           accepted.trim().toLowerCase() === normalizedInput
         );
         correctAnswerData = acceptedAnswers;
+      } else if (question.questionType === 'text-to-map') {
+        // Text-to-map: check if clicked point is inside the region polygon
+        if (mapClick && question.regionPolygon) {
+          isCorrect = isPointInPolygon(mapClick, question.regionPolygon);
+        }
+        correctAnswerData = {
+          regionName: question.regionName || undefined,
+          regionPolygon: question.regionPolygon,
+        };
+      } else if (question.questionType === 'map-to-text') {
+        // Map-to-text: check if text answer matches any accepted answer (stored in options)
+        const normalizedInput = (textAnswer || '').trim().toLowerCase();
+        const acceptedAnswers = question.options || [];
+        isCorrect = acceptedAnswers.some(accepted => 
+          accepted.trim().toLowerCase() === normalizedInput
+        );
+        correctAnswerData = {
+          regionName: question.regionName || undefined,
+          regionPolygon: question.regionPolygon,
+        };
       } else if (question.questionType === 'multi') {
         // Multi-select: check if selected set exactly matches correct set
         const selected = new Set(selectedAnswers || []);

@@ -47,6 +47,8 @@ export interface IStorage {
     options: string[];
     category: string | null;
     curriculum: string | null;
+    regionPolygon: any;
+    regionName: string | null;
   }>>;
   getAllReviewCards(userId: string): Promise<ReviewCard[]>;
   ensureUserReviewCards(userId: string): Promise<void>;
@@ -274,6 +276,8 @@ export class DatabaseStorage implements IStorage {
     options: string[];
     category: string | null;
     curriculum: string | null;
+    regionPolygon: any;
+    regionName: string | null;
   }>> {
     const now = new Date();
     
@@ -297,6 +301,8 @@ export class DatabaseStorage implements IStorage {
         questionType: questions.questionType,
         options: questions.options,
         category: questions.category,
+        regionPolygon: questions.regionPolygon,
+        regionName: questions.regionName,
         curriculum: questions.curriculum,
       })
       .from(reviewCards)
