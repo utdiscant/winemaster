@@ -453,6 +453,8 @@ export default function AdminPage() {
         {paginatedQuestions.map((question) => {
           const isMulti = question.questionType === 'multi';
           const isTextInput = question.questionType === 'text-input';
+          const isTextToMap = question.questionType === 'text-to-map';
+          const isMapToText = question.questionType === 'map-to-text';
           const correctSet = new Set(isMulti ? (question.correctAnswers || []) : [question.correctAnswer]);
           
           return (
@@ -462,8 +464,16 @@ export default function AdminPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <CardTitle className="text-lg">{question.question}</CardTitle>
-                      <Badge variant={isMulti ? "default" : isTextInput ? "outline" : "secondary"} className="shrink-0">
-                        {isMulti ? 'Multi-Select' : isTextInput ? 'Text Input' : 'Single Choice'}
+                      <Badge variant={
+                        isMulti ? "default" : 
+                        isTextInput || isMapToText ? "outline" : 
+                        "secondary"
+                      } className="shrink-0">
+                        {isMulti ? 'Multi-Select' : 
+                         isTextInput ? 'Text Input' : 
+                         isTextToMap ? 'Map Click' : 
+                         isMapToText ? 'Name Region' : 
+                         'Single Choice'}
                       </Badge>
                     </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -483,8 +493,12 @@ export default function AdminPage() {
                       size="icon"
                       onClick={() => setEditingQuestion(question)}
                       data-testid={`button-edit-${question.id}`}
-                      disabled={isMulti}
-                      title={isMulti ? "Multi-select editing not yet supported in UI" : "Edit question"}
+                      disabled={isMulti || isTextToMap || isMapToText}
+                      title={
+                        isMulti ? "Multi-select editing not yet supported in UI" : 
+                        (isTextToMap || isMapToText) ? "Map-based questions can only be edited via JSON upload" : 
+                        "Edit question"
+                      }
                     >
                       <Edit2 className="w-4 h-4" />
                     </Button>
@@ -514,6 +528,44 @@ export default function AdminPage() {
                         </span>
                       </div>
                     ))}
+                  </div>
+                ) : isTextToMap ? (
+                  <div className="space-y-2">
+                    <div className="p-3 rounded-lg border bg-green-50 dark:bg-green-950/20 border-green-500">
+                      <p className="text-sm font-medium text-muted-foreground mb-1">Correct Region:</p>
+                      <p className="font-medium">{question.regionName}</p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Region polygon defined (GeoJSON)
+                      </p>
+                    </div>
+                  </div>
+                ) : isMapToText ? (
+                  <div className="space-y-2">
+                    <div className="p-3 rounded-lg border bg-green-50 dark:bg-green-950/20 border-green-500">
+                      <p className="text-sm font-medium text-muted-foreground mb-1">Primary Region:</p>
+                      <p className="font-medium">{question.regionName}</p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Region polygon defined (GeoJSON)
+                      </p>
+                    </div>
+                    {question.options && question.options.length > 0 && (
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground mb-1">Accepted answers:</p>
+                        <div className="space-y-1">
+                          {question.options.map((answer, index) => (
+                            <div
+                              key={index}
+                              className="p-2 text-sm rounded border bg-muted/50"
+                            >
+                              {answer}
+                              <span className="ml-2 text-xs text-green-600 dark:text-green-400">
+                                ✓ Accepted
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-2">
