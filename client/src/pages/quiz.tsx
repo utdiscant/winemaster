@@ -388,6 +388,7 @@ export default function QuizPage() {
               /* Text-to-map: Show map and let user click */
               <div className="space-y-4">
                 <WineMap
+                  key={currentQuestion.id}
                   onMapClick={(lat, lng) => {
                     if (!isAnswered) {
                       setMapClick({ lat, lng });
@@ -423,6 +424,7 @@ export default function QuizPage() {
               /* Map-to-text: Show map with region, let user type name */
               <div className="space-y-4">
                 <WineMap
+                  key={currentQuestion.id}
                   regionPolygon={currentQuestion.regionPolygon}
                   data-testid="map-map-to-text"
                 />

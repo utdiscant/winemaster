@@ -98,10 +98,18 @@ Preferred communication style: Simple, everyday language.
 - **Text-to-Map:** Users click on a map to identify wine regions; backend validates with point-in-polygon checking
 - **Map-to-Text:** Users see a highlighted region on map and type its name; supports fuzzy text matching
 - Schema updates: Added `region_name` (TEXT) and `region_polygon` (JSONB, GeoJSON format) to Questions table
+- Made `options` column nullable to support text-to-map questions (which don't have options)
 - Created reusable `WineMap` component using React Leaflet for interactive maps with zoom, pan, and click handling
 - Backend validation: Implemented `isPointInPolygon` utility for spatial validation of text-to-map answers
 - Quiz page: Renders interactive maps for both question types with visual feedback for correct/incorrect answers
 - Upload page: Updated examples and preview to support map-based questions with GeoJSON polygon format
 - Admin page: Displays region information and polygon status for map-based questions
 - Map-based questions can only be edited via JSON upload due to complex polygon data requirements
-- Uses OpenStreetMap tiles for base map layer
+
+**Map Display Improvements (November 20, 2025):**
+- **Tile Layer:** Switched from CartoDB Voyager no-labels to Voyager with labels (shows countries and major cities for moderate difficulty)
+- **Answer Feedback:** Correct region polygon now displays for both correct AND incorrect answers in text-to-map questions (previously only showed for incorrect answers)
+- **Map Reset:** Added ViewResetter component with imperative Leaflet API to reset map view between questions
+  - Text-to-map questions: Zoom level 4 centered on Europe (48.0, 10.0) for exploration
+  - Map-to-text questions: Zoom level 6 centered on the specific region polygon for focused identification
+- Backend returns `{ regionName, regionPolygon }` in `correctAnswer` field for map questions to support polygon display

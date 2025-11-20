@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import L from 'leaflet';
 import { MapContainer, TileLayer, Polygon, useMapEvents, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -72,6 +72,17 @@ function ClickMarker({ location }: { location: { lat: number; lng: number } | nu
   return null;
 }
 
+// Component to imperatively reset map view when center/zoom changes
+function ViewResetter({ center, zoom }: { center: [number, number]; zoom: number }) {
+  const map = useMap();
+
+  useEffect(() => {
+    map.setView(center, zoom, { animate: false });
+  }, [map, center, zoom]);
+
+  return null;
+}
+
 export default function WineMap({
   onMapClick,
   clickedLocation,
@@ -108,41 +119,52 @@ export default function WineMap({
     return [];
   };
 
-  const questionRegion = getPolygonCoordinates(regionPolygon);
-  const correctRegion = showCorrectRegion ? getPolygonCoordinates(correctRegionPolygon) : [];
+  const questionRegion = useMemo(() => getPolygonCoordinates(regionPolygon), [regionPolygon]);
+  const correctRegion = useMemo(
+    () => (showCorrectRegion ? getPolygonCoordinates(correctRegionPolygon) : []),
+    [showCorrectRegion, correctRegionPolygon]
+  );
 
-  // Calculate center and zoom based on region if available
-  const getMapCenter = (): [number, number] => {
+  // Memoize center and zoom to prevent unnecessary map resets
+  // For text-to-map: zoom out to Europe view for exploration
+  // For map-to-text: zoom in to the specific region
+  const center = useMemo((): [number, number] => {
     if (questionRegion.length > 0) {
-      // Calculate center of polygon
+      // Map-to-text: Calculate center of the question region
       const lats = questionRegion.map((coord: any) => coord[0]);
       const lngs = questionRegion.map((coord: any) => coord[1]);
       const centerLat = (Math.min(...lats) + Math.max(...lats)) / 2;
       const centerLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
       return [centerLat, centerLng];
     }
-    // Default to world view centered on Europe
-    return [46.0, 2.0];
-  };
+    // Text-to-map or no region: Default to Europe view
+    return [48.0, 10.0];
+  }, [questionRegion]);
 
-  const getInitialZoom = () => {
-    return questionRegion.length > 0 ? 5 : 2;
-  };
+  const zoom = useMemo(() => {
+    // Map-to-text: Zoom to region (higher zoom)
+    if (questionRegion.length > 0) return 6;
+    // Text-to-map: Europe view (lower zoom for exploration)
+    return 4;
+  }, [questionRegion]);
 
   return (
     <div className={`relative ${className}`} style={{ height: '400px', width: '100%' }}>
       <MapContainer
-        center={getMapCenter()}
-        zoom={getInitialZoom()}
+        center={center}
+        zoom={zoom}
         style={{ height: '100%', width: '100%', borderRadius: '0.5rem' }}
         data-testid="wine-map"
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png"
+          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
           subdomains="abcd"
           maxZoom={20}
         />
+        
+        {/* Imperatively reset view when question changes */}
+        <ViewResetter center={center} zoom={zoom} />
         
         {/* Handle map clicks for text-to-map questions */}
         {onMapClick && <MapClickHandler onMapClick={onMapClick} />}
@@ -151,7 +173,7 @@ export default function WineMap({
         {clickedLocation && <ClickMarker location={clickedLocation} />}
         
         {/* Display question region (for map-to-text) */}
-        {questionRegion.length > 0 && (
+        {questionRegion.length >= 3 && (
           <Polygon
             positions={questionRegion}
             pathOptions={{
@@ -163,8 +185,8 @@ export default function WineMap({
           />
         )}
         
-        {/* Display correct region (feedback) */}
-        {showCorrectRegion && correctRegion.length > 0 && (
+        {/* Display correct region (feedback) - requires at least 3 points for valid polygon */}
+        {showCorrectRegion && correctRegion.length >= 3 && (
           <Polygon
             positions={correctRegion}
             pathOptions={{
