@@ -107,9 +107,12 @@ Preferred communication style: Simple, everyday language.
 - Map-based questions can only be edited via JSON upload due to complex polygon data requirements
 
 **Map Display Improvements (November 20, 2025):**
-- **Tile Layer:** Switched from CartoDB Voyager no-labels to Voyager with labels (shows countries and major cities for moderate difficulty)
+- **Tile Layer:** Switched from CartoDB Voyager no-labels to Voyager with labels (shows countries, regions, and major cities)
 - **Answer Feedback:** Correct region polygon now displays for both correct AND incorrect answers in text-to-map questions (previously only showed for incorrect answers)
 - **Map Reset:** Added ViewResetter component with imperative Leaflet API to reset map view between questions
   - Text-to-map questions: Zoom level 4 centered on Europe (48.0, 10.0) for exploration
   - Map-to-text questions: Zoom level 6 centered on the specific region polygon for focused identification
+  - Memoized center/zoom values prevent unnecessary map resets during user interaction (e.g., typing in map-to-text input)
+- **Polygon Validation:** Added minimum 3-coordinate validation before rendering polygons to handle malformed GeoJSON data
 - Backend returns `{ regionName, regionPolygon }` in `correctAnswer` field for map questions to support polygon display
+- WineMap component uses `useMemo` hooks to optimize rendering and prevent flicker during state updates
