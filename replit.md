@@ -43,7 +43,7 @@ Preferred communication style: Simple, everyday language.
 
 **Key Tables:**
 - **Users:** `id`, `email`, `name`, `is_admin`, `selected_curricula` (TEXT[] for filtering questions).
-- **Questions:** `id`, `question`, `options` (TEXT[]), `correct_answer` (INTEGER), `correct_answers` (INTEGER[]), `question_type` ('single' or 'multi-select'), `category`, `curriculum` (optional for filtering). Supports upserting via `id` field.
+- **Questions:** `id`, `question`, `options` (TEXT[]), `correct_answer` (INTEGER), `correct_answers` (INTEGER[]), `question_type` ('single', 'multi', 'text-input', 'text-to-map', or 'map-to-text'), `category`, `curriculum` (optional for filtering), `region_name` (TEXT, for map questions), `region_polygon` (JSONB, GeoJSON format for map questions). Supports upserting via `id` field.
 - **Review Cards:** `id`, `user_id`, `question_id`, `ease_factor`, `interval`, `repetitions`, `next_review_date`, `last_review_date`. Enforces a unique constraint on `(user_id, question_id)`.
 - **Sessions:** Managed by `connect-pg-simple`.
 
@@ -71,6 +71,8 @@ Preferred communication style: Simple, everyday language.
 
 **Fonts:** Google Fonts (Playfair Display, Inter).
 
+**Maps:** React Leaflet, Leaflet, OpenStreetMap tiles.
+
 ## Recent Features
 
 **Admin User Overview (November 2025):**
@@ -90,3 +92,16 @@ Preferred communication style: Simple, everyday language.
 - Deletes all user's review cards before deleting the user
 - Proper error handling for nonexistent users (returns 404)
 - Backend prevents self-deletion attempts (returns 400 error)
+
+**Map-Based Question Types (November 2025):**
+- Added support for two new question types: text-to-map and map-to-text
+- **Text-to-Map:** Users click on a map to identify wine regions; backend validates with point-in-polygon checking
+- **Map-to-Text:** Users see a highlighted region on map and type its name; supports fuzzy text matching
+- Schema updates: Added `region_name` (TEXT) and `region_polygon` (JSONB, GeoJSON format) to Questions table
+- Created reusable `WineMap` component using React Leaflet for interactive maps with zoom, pan, and click handling
+- Backend validation: Implemented `isPointInPolygon` utility for spatial validation of text-to-map answers
+- Quiz page: Renders interactive maps for both question types with visual feedback for correct/incorrect answers
+- Upload page: Updated examples and preview to support map-based questions with GeoJSON polygon format
+- Admin page: Displays region information and polygon status for map-based questions
+- Map-based questions can only be edited via JSON upload due to complex polygon data requirements
+- Uses OpenStreetMap tiles for base map layer
