@@ -394,7 +394,7 @@ export default function QuizPage() {
                     }
                   }}
                   clickedLocation={mapClick}
-                  showCorrectRegion={isAnswered && !isCorrect}
+                  showCorrectRegion={isAnswered}
                   correctRegionPolygon={correctMapData?.regionPolygon}
                   data-testid="map-text-to-map"
                 />
@@ -403,9 +403,17 @@ export default function QuizPage() {
                     Selected location: {mapClick.lat.toFixed(4)}, {mapClick.lng.toFixed(4)}
                   </p>
                 )}
-                {isAnswered && !isCorrect && correctMapData?.regionName && (
-                  <div className="p-4 rounded-lg border-2 border-green-600 bg-green-50 dark:bg-green-950/40">
-                    <p className="text-sm font-medium text-green-700 dark:text-green-400">
+                {isAnswered && correctMapData?.regionName && (
+                  <div className={`p-4 rounded-lg border-2 ${
+                    isCorrect 
+                      ? 'border-green-600 bg-green-50 dark:bg-green-950/40' 
+                      : 'border-green-600 bg-green-50 dark:bg-green-950/40'
+                  }`}>
+                    <p className={`text-sm font-medium ${
+                      isCorrect 
+                        ? 'text-green-700 dark:text-green-400' 
+                        : 'text-green-700 dark:text-green-400'
+                    }`}>
                       Correct region: {correctMapData.regionName}
                     </p>
                   </div>
