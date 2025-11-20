@@ -40,7 +40,7 @@ export const questions = pgTable("questions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   question: text("question").notNull(),
   questionType: text("question_type").notNull().default('single'), // 'single', 'multi', 'text-input', 'text-to-map', or 'map-to-text'
-  options: text("options").array().notNull(), // Array of 4 (single), 6 (multi), or accepted text answers (text-input/map-to-text)
+  options: text("options").array(), // Array of 4 (single), 6 (multi), or accepted text answers (text-input/map-to-text); null for text-to-map
   correctAnswer: integer("correct_answer"), // For single-choice: Index of correct answer (0-3)
   correctAnswers: integer("correct_answers").array(), // For multi-select: Array of correct answer indices (0-5)
   regionPolygon: jsonb("region_polygon"), // For text-to-map/map-to-text: GeoJSON polygon coordinates
@@ -97,20 +97,20 @@ export const insertQuestionSchema = createInsertSchema(questions).extend({
   (data) => {
     if (data.questionType === 'single') {
       return (
-        data.options.length === 4 &&
+        data.options && data.options.length === 4 &&
         typeof data.correctAnswer === 'number' &&
         data.correctAnswer >= 0 &&
         data.correctAnswer <= 3
       );
     } else if (data.questionType === 'multi') {
       return (
-        data.options.length === 6 &&
+        data.options && data.options.length === 6 &&
         Array.isArray(data.correctAnswers) &&
         data.correctAnswers.every((ans: number) => ans >= 0 && ans <= 5)
       );
     } else if (data.questionType === 'text-input') {
       return (
-        data.options.length >= 1 // Must have at least 1 accepted answer
+        data.options && data.options.length >= 1 // Must have at least 1 accepted answer
       );
     } else if (data.questionType === 'text-to-map') {
       return (
@@ -123,7 +123,7 @@ export const insertQuestionSchema = createInsertSchema(questions).extend({
       return (
         data.regionPolygon !== null &&
         data.regionPolygon !== undefined &&
-        data.options.length >= 1 // Must have at least 1 accepted name
+        data.options && data.options.length >= 1 // Must have at least 1 accepted name
       );
     }
     return false;

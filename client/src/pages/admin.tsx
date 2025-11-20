@@ -90,7 +90,7 @@ export default function AdminPage() {
     let filtered = questions.filter(q => {
       const matchesSearch = searchQuery === "" || 
         q.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        q.options.some(opt => opt.toLowerCase().includes(searchQuery.toLowerCase()));
+        (q.options && q.options.some(opt => opt.toLowerCase().includes(searchQuery.toLowerCase())));
       
       const matchesCategory = categoryFilter === "all" || q.category === categoryFilter;
       const matchesCurriculum = curriculumFilter === "all" || q.curriculum === curriculumFilter;
@@ -210,10 +210,10 @@ export default function AdminPage() {
       } else {
         setFormData({
           question: editingQuestion.question,
-          option1: editingQuestion.options[0] || "",
-          option2: editingQuestion.options[1] || "",
-          option3: editingQuestion.options[2] || "",
-          option4: editingQuestion.options[3] || "",
+          option1: editingQuestion.options?.[0] || "",
+          option2: editingQuestion.options?.[1] || "",
+          option3: editingQuestion.options?.[2] || "",
+          option4: editingQuestion.options?.[3] || "",
           correctAnswer: editingQuestion.correctAnswer ?? 0,
           category: editingQuestion.category || "",
           acceptedAnswers: [],
@@ -517,7 +517,7 @@ export default function AdminPage() {
                 {isTextInput ? (
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-muted-foreground">Accepted answers:</p>
-                    {question.options.map((answer, index) => (
+                    {question.options?.map((answer, index) => (
                       <div
                         key={index}
                         className="p-3 rounded-lg border bg-green-50 dark:bg-green-950/20 border-green-500"
@@ -569,7 +569,7 @@ export default function AdminPage() {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {question.options.map((option, index) => {
+                    {question.options?.map((option, index) => {
                       const isCorrect = correctSet.has(index);
                       return (
                         <div
