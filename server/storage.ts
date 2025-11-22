@@ -243,6 +243,50 @@ export class DatabaseStorage implements IStorage {
     return card;
   }
 
+  async getQuestionWithReviewCard(userId: string, questionId: string): Promise<{
+    questionId: string;
+    question: string;
+    questionType: string;
+    options: string[];
+    correctAnswer: number | null;
+    correctAnswers: number[] | null;
+    regionPolygon: any;
+    regionName: string | null;
+    reviewCardId: string;
+    easeFactor: number;
+    interval: number;
+    repetitions: number;
+  } | undefined> {
+    const [result] = await db
+      .select({
+        questionId: questions.id,
+        question: questions.question,
+        questionType: questions.questionType,
+        options: questions.options,
+        correctAnswer: questions.correctAnswer,
+        correctAnswers: questions.correctAnswers,
+        regionPolygon: questions.regionPolygon,
+        regionName: questions.regionName,
+        reviewCardId: reviewCards.id,
+        easeFactor: reviewCards.easeFactor,
+        interval: reviewCards.interval,
+        repetitions: reviewCards.repetitions,
+      })
+      .from(questions)
+      .innerJoin(reviewCards, and(
+        eq(reviewCards.questionId, questions.id),
+        eq(reviewCards.userId, userId)
+      ))
+      .where(eq(questions.id, questionId));
+    
+    if (!result) return undefined;
+    
+    return {
+      ...result,
+      options: result.options || [], // Handle nullable options for text-to-map questions
+    };
+  }
+
   async updateReviewCard(
     id: string,
     updates: Partial<ReviewCard>
@@ -293,7 +337,7 @@ export class DatabaseStorage implements IStorage {
       conditions.push(sql`(${sql.join(curriculumConditions, sql` OR `)})`);
     }
     
-    return await db
+    const results = await db
       .select({
         reviewCardId: reviewCards.id,
         questionId: questions.id,
@@ -308,6 +352,11 @@ export class DatabaseStorage implements IStorage {
       .from(reviewCards)
       .innerJoin(questions, eq(reviewCards.questionId, questions.id))
       .where(and(...conditions));
+    
+    return results.map(r => ({
+      ...r,
+      options: r.options || [], // Handle nullable options for text-to-map questions
+    }));
   }
 
   async getAllReviewCards(userId: string): Promise<ReviewCard[]> {
@@ -359,7 +408,7 @@ export class DatabaseStorage implements IStorage {
     nextReviewDate: Date;
     easeFactor: number;
   }>> {
-    return await db
+    const results = await db
       .select({
         reviewCardId: reviewCards.id,
         questionId: questions.id,
@@ -378,6 +427,11 @@ export class DatabaseStorage implements IStorage {
       .from(reviewCards)
       .innerJoin(questions, eq(reviewCards.questionId, questions.id))
       .where(eq(reviewCards.userId, userId));
+    
+    return results.map(r => ({
+      ...r,
+      options: r.options || [], // Handle nullable options for text-to-map questions
+    }));
   }
 
   // Statistics (now user-specific with curriculum filtering)

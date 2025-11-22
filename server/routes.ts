@@ -432,10 +432,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         curricula = curriculaParam.split(',').map(c => c.trim()).filter(Boolean);
       }
       
-      // Ensure user has review cards for all questions
-      await storage.ensureUserReviewCards(userId);
-      
       // Get due cards with questions in single optimized query
+      // Note: ensureUserReviewCards is called on login/initial load, not on every quiz fetch
       const dueCardsWithQuestions = await storage.getDueCardsWithQuestions(userId, curricula);
       
       // Shuffle for variety
@@ -467,14 +465,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const submission = answerSubmissionSchema.parse(req.body);
       const { questionId, selectedAnswer, selectedAnswers, textAnswer, mapClick } = submission;
       
-      // Ensure user has review cards for all questions
-      await storage.ensureUserReviewCards(userId);
+      // Get question and review card in a single optimized query
+      let questionAndCard = await storage.getQuestionWithReviewCard(userId, questionId);
       
-      // Get question to check correct answer
-      const question = await storage.getQuestion(questionId);
-      if (!question) {
-        return res.status(404).json({ error: "Question not found" });
+      // Fallback: If review card doesn't exist, create it and retry
+      if (!questionAndCard) {
+        await storage.ensureUserReviewCards(userId);
+        questionAndCard = await storage.getQuestionWithReviewCard(userId, questionId);
+        
+        if (!questionAndCard) {
+          return res.status(404).json({ error: "Question or review card not found" });
+        }
       }
+      
+      const question = {
+        id: questionAndCard.questionId,
+        question: questionAndCard.question,
+        questionType: questionAndCard.questionType,
+        options: questionAndCard.options,
+        correctAnswer: questionAndCard.correctAnswer,
+        correctAnswers: questionAndCard.correctAnswers,
+        regionPolygon: questionAndCard.regionPolygon,
+        regionName: questionAndCard.regionName,
+      };
+      
+      const reviewCard = {
+        id: questionAndCard.reviewCardId,
+        easeFactor: questionAndCard.easeFactor,
+        interval: questionAndCard.interval,
+        repetitions: questionAndCard.repetitions,
+      };
 
       // Check if answer is correct based on question type
       let isCorrect = false;
@@ -484,7 +504,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Text-input: case-insensitive fuzzy matching against accepted answers
         const normalizedInput = (textAnswer || '').trim().toLowerCase();
         const acceptedAnswers = question.options || [];
-        isCorrect = acceptedAnswers.some(accepted => 
+        isCorrect = acceptedAnswers.some((accepted: string) => 
           accepted.trim().toLowerCase() === normalizedInput
         );
         correctAnswerData = acceptedAnswers;
@@ -501,7 +521,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Map-to-text: check if text answer matches any accepted answer (stored in options)
         const normalizedInput = (textAnswer || '').trim().toLowerCase();
         const acceptedAnswers = question.options || [];
-        isCorrect = acceptedAnswers.some(accepted => 
+        isCorrect = acceptedAnswers.some((accepted: string) => 
           accepted.trim().toLowerCase() === normalizedInput
         );
         correctAnswerData = {
@@ -521,12 +541,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         correctAnswerData = question.correctAnswer || 0;
       }
       
-      // Get review card for this user
-      const reviewCard = await storage.getReviewCardByQuestionId(userId, questionId);
-      if (!reviewCard) {
-        return res.status(404).json({ error: "Review card not found" });
-      }
-
       // Calculate SM-2 parameters
       const quality = correctnessToQuality(isCorrect);
       const sm2Result = calculateSM2(
