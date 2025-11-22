@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { QuizQuestion, User } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import WineMap from "@/components/WineMap";
+import { getPolygonCentroid } from "@/utils/geoUtils";
 
 export default function QuizPage() {
   const { toast } = useToast();
@@ -397,6 +398,7 @@ export default function QuizPage() {
                   clickedLocation={mapClick}
                   showCorrectRegion={isAnswered}
                   correctRegionPolygon={correctMapData?.regionPolygon}
+                  centerMarker={isAnswered && correctMapData?.regionPolygon ? getPolygonCentroid(correctMapData.regionPolygon) : null}
                   data-testid="map-text-to-map"
                 />
                 {mapClick && !isAnswered && (

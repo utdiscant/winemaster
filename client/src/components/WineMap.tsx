@@ -29,6 +29,7 @@ interface WineMapProps {
   // For displaying feedback after answer
   showCorrectRegion?: boolean;
   correctRegionPolygon?: any;
+  centerMarker?: { lat: number; lng: number } | null; // Green pin for correct region center
   
   className?: string;
 }
@@ -72,6 +73,42 @@ function ClickMarker({ location }: { location: { lat: number; lng: number } | nu
   return null;
 }
 
+// Component to add a green marker for the center of correct region
+function CenterMarker({ location }: { location: { lat: number; lng: number } | null }) {
+  const map = useMap();
+  const markerRef = useRef<L.Marker | null>(null);
+
+  useEffect(() => {
+    // Remove existing marker
+    if (markerRef.current) {
+      map.removeLayer(markerRef.current);
+      markerRef.current = null;
+    }
+
+    // Add new green marker if location exists
+    if (location) {
+      const greenIcon = L.icon({
+        iconUrl: icon,
+        iconRetinaUrl: iconRetina,
+        shadowUrl: iconShadow,
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        className: 'hue-rotate-90', // Make it green
+      });
+
+      markerRef.current = L.marker([location.lat, location.lng], { icon: greenIcon }).addTo(map);
+    }
+
+    return () => {
+      if (markerRef.current) {
+        map.removeLayer(markerRef.current);
+      }
+    };
+  }, [location, map]);
+
+  return null;
+}
+
 // Component to imperatively reset map view when center/zoom changes
 function ViewResetter({ center, zoom }: { center: [number, number]; zoom: number }) {
   const map = useMap();
@@ -89,6 +126,7 @@ export default function WineMap({
   regionPolygon,
   showCorrectRegion,
   correctRegionPolygon,
+  centerMarker,
   className = '',
 }: WineMapProps) {
   // Convert GeoJSON polygon to Leaflet format
@@ -171,6 +209,9 @@ export default function WineMap({
         
         {/* Show clicked location marker */}
         {clickedLocation && <ClickMarker location={clickedLocation} />}
+        
+        {/* Show green center marker for correct region */}
+        {centerMarker && <CenterMarker location={centerMarker} />}
         
         {/* Display question region (for map-to-text) */}
         {questionRegion.length >= 3 && (
