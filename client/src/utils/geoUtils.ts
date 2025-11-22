@@ -6,7 +6,7 @@
  * @param geometry - GeoJSON geometry object
  * @returns Array of [lat, lng] coordinates from all rings
  */
-function normalizeGeoJSONCoordinates(geometry: any): number[][] {
+export function normalizeGeoJSONCoordinates(geometry: any): number[][] {
   if (!geometry) return [];
 
   try {
@@ -92,7 +92,7 @@ export function getBoundsForPolygonAndPoint(
 
 /**
  * Calculate the centroid (center point) of a polygon or multipolygon
- * For MultiPolygon, calculates the centroid of the largest polygon by area
+ * Uses the geometric center of all coordinates (bounds center)
  * @param geometry - GeoJSON polygon or multipolygon object
  * @returns centroid as { lat: number; lng: number } or null if invalid
  */
@@ -100,42 +100,22 @@ export function getPolygonCentroid(geometry: any): { lat: number; lng: number } 
   if (!geometry) return null;
 
   try {
-    let targetCoords: number[][] = [];
-
-    if (geometry.type === 'Polygon' && geometry.coordinates && geometry.coordinates[0]) {
-      // Simple polygon - use outer ring
-      targetCoords = geometry.coordinates[0].map((coord: number[]) => [coord[1], coord[0]]);
-    } else if (geometry.type === 'MultiPolygon' && geometry.coordinates) {
-      // MultiPolygon - find the largest polygon by number of vertices (proxy for area)
-      let largestPolygon: number[][] = [];
-      let maxVertices = 0;
-
-      for (const polygon of geometry.coordinates) {
-        if (Array.isArray(polygon) && polygon[0]) {
-          const outerRing = polygon[0];
-          if (outerRing.length > maxVertices) {
-            maxVertices = outerRing.length;
-            largestPolygon = outerRing.map((coord: number[]) => [coord[1], coord[0]]);
-          }
-        }
-      }
-
-      targetCoords = largestPolygon;
-    } else if (Array.isArray(geometry) && geometry.length > 0) {
-      // Direct array format [[lat, lng], ...]
-      targetCoords = geometry;
-    } else {
-      return null;
-    }
-
-    if (targetCoords.length === 0) return null;
-
-    // Calculate centroid using the average of all points
-    const lats = targetCoords.map(coord => coord[0]);
-    const lngs = targetCoords.map(coord => coord[1]);
+    // Get all coordinates from the geometry
+    const coords = normalizeGeoJSONCoordinates(geometry);
     
-    const centerLat = lats.reduce((sum, lat) => sum + lat, 0) / lats.length;
-    const centerLng = lngs.reduce((sum, lng) => sum + lng, 0) / lngs.length;
+    if (coords.length === 0) return null;
+
+    // Calculate center from bounds (more reliable than vertex average for complex geometries)
+    const lats = coords.map(coord => coord[0]);
+    const lngs = coords.map(coord => coord[1]);
+    
+    const minLat = Math.min(...lats);
+    const maxLat = Math.max(...lats);
+    const minLng = Math.min(...lngs);
+    const maxLng = Math.max(...lngs);
+    
+    const centerLat = (minLat + maxLat) / 2;
+    const centerLng = (minLng + maxLng) / 2;
 
     return { lat: centerLat, lng: centerLng };
   } catch (error) {

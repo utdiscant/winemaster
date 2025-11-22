@@ -120,7 +120,7 @@ Preferred communication style: Simple, everyday language.
 **Text-to-Map Visual Enhancements (November 22, 2025):**
 - **Center Marker:** Added green pin marker at the centroid of correct regions for text-to-map questions
   - Makes it easier to locate the correct region on the map after answering
-  - Uses `getPolygonCentroid()` utility to calculate center point from polygon vertices
+  - Uses `getPolygonCentroid()` utility to calculate bounds center from all coordinates
   - Green marker rendered using CSS hue-rotate filter on default Leaflet marker
 - **Automatic Zoom/Center:** Map automatically fits to show both user's click and correct region when answer is revealed
   - Uses `getBoundsForPolygonAndPoint()` utility to calculate bounds including all polygon vertices plus user's clicked point
@@ -128,7 +128,14 @@ Preferred communication style: Simple, everyday language.
   - Smooth 0.5s animation with maxZoom:8 to prevent over-zooming
   - One-time fit allows users to pan/zoom freely after initial reveal
   - Bounds reset when moving to next question
-  - Note: Currently supports simple Polygon GeoJSON format; MultiPolygon support could be added if needed
+- **MultiPolygon Support:** Full support for MultiPolygon wine regions (e.g., islands, disjoint areas)
+  - Created `normalizeGeoJSONCoordinates()` utility that extracts coordinates from both Polygon and MultiPolygon geometries
+  - WineMap component renders all parts of MultiPolygon regions separately
+  - Bounds calculation includes all polygon parts for proper auto-fitting
+  - Centroid calculated from bounds center of all coordinates (reliable for complex geometries)
+  - Map-to-text questions display all parts of MultiPolygon for identification
+  - Text-to-map feedback shows all parts of correct MultiPolygon answer
+  - Note: Interior rings (polygon holes) are not currently rendered but are accounted for in bounds/centroid calculations
 
 **Performance Optimizations (November 22, 2025):**
 - **Answer Submission:** Optimized from 3 sequential DB queries to 1 combined JOIN query
