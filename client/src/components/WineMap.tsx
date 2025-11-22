@@ -31,6 +31,9 @@ interface WineMapProps {
   correctRegionPolygon?: any;
   centerMarker?: { lat: number; lng: number } | null; // Green pin for correct region center
   
+  // For fitting bounds to show both pins
+  fitBounds?: [[number, number], [number, number]] | null; // [[minLat, minLng], [maxLat, maxLng]]
+  
   className?: string;
 }
 
@@ -120,6 +123,35 @@ function ViewResetter({ center, zoom }: { center: [number, number]; zoom: number
   return null;
 }
 
+// Component to fit map bounds to show specific area
+function BoundsFitter({ bounds }: { bounds: [[number, number], [number, number]] | null }) {
+  const map = useMap();
+  const hasFittedRef = useRef(false);
+
+  useEffect(() => {
+    if (bounds) {
+      // Only fit once when bounds are first provided
+      // After that, let user pan/zoom freely
+      if (!hasFittedRef.current) {
+        hasFittedRef.current = true;
+        
+        // Fit bounds with padding - Leaflet handles padding correctly as pixels
+        map.fitBounds(bounds, { 
+          padding: [60, 60], // 60px padding for ~10-15% visual buffer
+          animate: true, // Smooth transition
+          maxZoom: 8, // Don't zoom in too close
+          duration: 0.5, // Fast animation
+        });
+      }
+    } else {
+      // Reset when bounds are cleared (new question)
+      hasFittedRef.current = false;
+    }
+  }, [map, bounds]);
+
+  return null;
+}
+
 export default function WineMap({
   onMapClick,
   clickedLocation,
@@ -127,6 +159,7 @@ export default function WineMap({
   showCorrectRegion,
   correctRegionPolygon,
   centerMarker,
+  fitBounds,
   className = '',
 }: WineMapProps) {
   // Convert GeoJSON polygon to Leaflet format
@@ -201,8 +234,12 @@ export default function WineMap({
           maxZoom={20}
         />
         
-        {/* Imperatively reset view when question changes */}
-        <ViewResetter center={center} zoom={zoom} />
+        {/* Imperatively reset view when question changes or fit to custom bounds */}
+        {fitBounds ? (
+          <BoundsFitter bounds={fitBounds} />
+        ) : (
+          <ViewResetter center={center} zoom={zoom} />
+        )}
         
         {/* Handle map clicks for text-to-map questions */}
         {onMapClick && <MapClickHandler onMapClick={onMapClick} />}

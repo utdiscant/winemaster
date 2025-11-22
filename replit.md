@@ -116,3 +116,28 @@ Preferred communication style: Simple, everyday language.
 - **Polygon Validation:** Added minimum 3-coordinate validation before rendering polygons to handle malformed GeoJSON data
 - Backend returns `{ regionName, regionPolygon }` in `correctAnswer` field for map questions to support polygon display
 - WineMap component uses `useMemo` hooks to optimize rendering and prevent flicker during state updates
+
+**Text-to-Map Visual Enhancements (November 22, 2025):**
+- **Center Marker:** Added green pin marker at the centroid of correct regions for text-to-map questions
+  - Makes it easier to locate the correct region on the map after answering
+  - Uses `getPolygonCentroid()` utility to calculate center point from polygon vertices
+  - Green marker rendered using CSS hue-rotate filter on default Leaflet marker
+- **Automatic Zoom/Center:** Map automatically fits to show both user's click and correct region when answer is revealed
+  - Uses `getBoundsForPolygonAndPoint()` utility to calculate bounds including all polygon vertices plus user's clicked point
+  - Leaflet's `fitBounds()` API with 60px padding provides ~10-15% visual buffer
+  - Smooth 0.5s animation with maxZoom:8 to prevent over-zooming
+  - One-time fit allows users to pan/zoom freely after initial reveal
+  - Bounds reset when moving to next question
+  - Note: Currently supports simple Polygon GeoJSON format; MultiPolygon support could be added if needed
+
+**Performance Optimizations (November 22, 2025):**
+- **Answer Submission:** Optimized from 3 sequential DB queries to 1 combined JOIN query
+  - Created `getQuestionWithReviewCard()` method that fetches question and review card in single query
+  - Removed expensive `ensureUserReviewCards()` call from answer submission hot path
+  - Added lazy fallback: creates missing review cards only when needed (shouldn't happen in normal flow)
+- **Quiz Loading:** Removed `ensureUserReviewCards()` from `/api/quiz/due` endpoint
+  - Review cards now only created during login/auth callback
+  - Significantly faster question fetching
+- **Session Endpoint:** Kept `/api/auth/user` as O(1) user lookup without expensive operations
+  - No longer calls `ensureUserReviewCards()` on every page load
+- **Expected Performance:** Answer submission and next question fetch should be 2-3x faster

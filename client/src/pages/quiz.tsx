@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { QuizQuestion, User } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import WineMap from "@/components/WineMap";
-import { getPolygonCentroid } from "@/utils/geoUtils";
+import { getPolygonCentroid, getBoundsForPolygonAndPoint } from "@/utils/geoUtils";
 
 export default function QuizPage() {
   const { toast } = useToast();
@@ -138,6 +138,23 @@ export default function QuizPage() {
   // Always show the first question in the list (backend removes answered ones)
   const currentQuestion = dueQuestions?.[0];
 
+  // Calculate bounds for text-to-map questions to show both the user's pin and entire polygon
+  const centerMarkerPos = useMemo(() => {
+    if (isAnswered && correctMapData?.regionPolygon) {
+      return getPolygonCentroid(correctMapData.regionPolygon);
+    }
+    return null;
+  }, [isAnswered, correctMapData]);
+
+  const textToMapBounds = useMemo(() => {
+    // Include entire polygon plus user's click point in bounds
+    // Only calculate when all data is available for current question
+    if (isAnswered && mapClick && correctMapData?.regionPolygon && currentQuestion?.id) {
+      return getBoundsForPolygonAndPoint(correctMapData.regionPolygon, mapClick);
+    }
+    return null;
+  }, [isAnswered, mapClick, correctMapData, currentQuestion?.id]);
+
   // Shuffle options when question changes
   useEffect(() => {
     if (currentQuestion) {
@@ -166,7 +183,7 @@ export default function QuizPage() {
       setIsAnswered(false);
       setCorrectMapData(null);
     }
-  }, [currentQuestion]);
+  }, [currentQuestion?.id]); // Key on question ID to reset when question changes
 
   const handleAnswerSelect = (index: number) => {
     if (!isAnswered) {
@@ -398,7 +415,8 @@ export default function QuizPage() {
                   clickedLocation={mapClick}
                   showCorrectRegion={isAnswered}
                   correctRegionPolygon={correctMapData?.regionPolygon}
-                  centerMarker={isAnswered && correctMapData?.regionPolygon ? getPolygonCentroid(correctMapData.regionPolygon) : null}
+                  centerMarker={centerMarkerPos}
+                  fitBounds={textToMapBounds}
                   data-testid="map-text-to-map"
                 />
                 {mapClick && !isAnswered && (
