@@ -198,6 +198,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // If question has no ID or doesn't exist, creates new question
   app.post("/api/questions/upload", isAuthenticated, isAdmin, async (req: any, res) => {
     try {
+      // Log request body for debugging
+      console.log("Upload request body:", JSON.stringify(req.body).substring(0, 200));
+      
       const validatedData = jsonUploadSchema.parse(req.body);
       
       let newQuestions = [];
@@ -317,6 +320,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         total: newQuestions.length + updatedQuestions.length
       });
     } catch (error: any) {
+      console.error("Upload error:", error);
+      // If it's a Zod validation error, provide detailed info
+      if (error.issues) {
+        return res.status(400).json({ 
+          error: "Validation failed", 
+          details: error.issues.map((issue: any) => ({
+            path: issue.path.join('.'),
+            message: issue.message,
+            code: issue.code
+          }))
+        });
+      }
       res.status(400).json({ error: error.message });
     }
   });
