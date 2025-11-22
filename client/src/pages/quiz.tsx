@@ -456,6 +456,7 @@ export default function QuizPage() {
                 const isCorrectAnswer = correctAnswerIndexes.has(index);
                 const showAsCorrect = isAnswered && isCorrectAnswer;
                 const showAsIncorrect = isAnswered && isSelected && !isCorrectAnswer;
+                const showAsMissed = isAnswered && isMulti && isCorrectAnswer && !isSelected;
 
                 return (
                   <button
@@ -468,6 +469,7 @@ export default function QuizPage() {
                       ${isSelected && !isAnswered ? "border-primary bg-primary/5" : "border-border"}
                       ${showAsCorrect ? "border-green-600 bg-green-50 dark:bg-green-950/40 border-[3px]" : ""}
                       ${showAsIncorrect ? "border-destructive bg-destructive/10 border-[3px]" : ""}
+                      ${showAsMissed ? "border-amber-500 bg-amber-50 dark:bg-amber-950/40 border-[3px]" : ""}
                       ${!isAnswered ? "hover-elevate active-elevate-2 cursor-pointer" : "cursor-default"}
                       disabled:opacity-100
                     `}
@@ -481,6 +483,7 @@ export default function QuizPage() {
                             ${isSelected && !isAnswered ? "bg-primary border-primary" : "border-muted-foreground"}
                             ${showAsCorrect ? "bg-green-600 border-green-600" : ""}
                             ${showAsIncorrect ? "bg-destructive border-destructive" : ""}
+                            ${showAsMissed ? "border-amber-500" : ""}
                           `}
                         >
                           {isSelected && !isAnswered && (
@@ -506,16 +509,24 @@ export default function QuizPage() {
                           {String.fromCharCode(65 + index)}
                         </span>
                       )}
-                      <span className={`flex-1 pt-1 ${showAsCorrect ? "font-medium" : ""}`}>
+                      <span className={`flex-1 pt-1 ${showAsCorrect || showAsMissed ? "font-medium" : ""}`}>
                         {option.text}
                       </span>
                       {showAsCorrect && <CheckCircle2 className="w-6 h-6 text-green-600 shrink-0" />}
                       {showAsIncorrect && <XCircle className="w-6 h-6 text-destructive shrink-0" />}
+                      {showAsMissed && <CheckCircle2 className="w-6 h-6 text-amber-500 shrink-0" />}
                     </div>
                     {showAsCorrect && (
                       <div className="mt-2 pt-2 border-t border-green-600/20">
                         <span className="text-sm font-medium text-green-700 dark:text-green-400">
                           ✓ Correct Answer
+                        </span>
+                      </div>
+                    )}
+                    {showAsMissed && (
+                      <div className="mt-2 pt-2 border-t border-amber-500/20">
+                        <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                          ⚠ You missed this
                         </span>
                       </div>
                     )}
