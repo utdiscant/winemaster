@@ -201,86 +201,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Log request body for debugging
       console.log("Upload request body:", JSON.stringify(req.body).substring(0, 200));
       
-      const validatedData = jsonUploadSchema.parse(req.body);
+      let validatedData;
+      try {
+        validatedData = jsonUploadSchema.parse(req.body);
+      } catch (validationError: any) {
+        console.error("Validation error details:", validationError);
+        throw validationError;
+      }
       
       let newQuestions = [];
       let updatedQuestions = [];
       
       // Process each question: upsert if ID provided, create if not
       for (const q of validatedData.questions) {
-        let questionData: any;
+        try {
+          console.log("Processing question:", q.id || "no-id-yet", "type:", q.type);
+          let questionData: any;
         
-        if (q.type === 'multi') {
-          questionData = {
-            id: q.id,
-            question: q.question,
-            questionType: 'multi' as const,
-            options: q.options,
-            correctAnswers: q.correctAnswers,
-            category: q.category,
-            curriculum: q.curriculum,
-          };
-        } else if (q.type === 'text-input') {
-          questionData = {
-            id: q.id,
-            question: q.question,
-            questionType: 'text-input' as const,
-            options: q.acceptedAnswers, // Store accepted answers in options field
-            category: q.category,
-            curriculum: q.curriculum,
-          };
-        } else if (q.type === 'text-to-map') {
-          questionData = {
-            id: q.id,
-            question: q.question,
-            questionType: 'text-to-map' as const,
-            regionName: q.regionName,
-            regionPolygon: q.regionPolygon,
-            category: q.category,
-            curriculum: q.curriculum,
-          };
-        } else if (q.type === 'map-to-text') {
-          questionData = {
-            id: q.id,
-            question: q.question,
-            questionType: 'map-to-text' as const,
-            options: q.acceptedAnswers, // Store accepted answers in options field
-            regionPolygon: q.regionPolygon,
-            category: q.category,
-            curriculum: q.curriculum,
-          };
-        } else {
-          questionData = {
-            id: q.id,
-            question: q.question,
-            questionType: 'single' as const,
-            options: q.options,
-            correctAnswer: q.correctAnswer,
-            category: q.category,
-            curriculum: q.curriculum,
-          };
-        }
-        
-        if (q.id) {
-          // Check if question exists
-          const existingQuestion = await storage.getQuestion(q.id);
+          if (q.type === 'multi') {
+            questionData = {
+              id: q.id,
+              question: q.question,
+              questionType: 'multi' as const,
+              options: q.options,
+              correctAnswers: q.correctAnswers,
+              category: q.category,
+              curriculum: q.curriculum,
+            };
+          } else if (q.type === 'text-input') {
+            questionData = {
+              id: q.id,
+              question: q.question,
+              questionType: 'text-input' as const,
+              options: q.acceptedAnswers, // Store accepted answers in options field
+              category: q.category,
+              curriculum: q.curriculum,
+            };
+          } else if (q.type === 'text-to-map') {
+            questionData = {
+              id: q.id,
+              question: q.question,
+              questionType: 'text-to-map' as const,
+              regionName: q.regionName,
+              regionPolygon: q.regionPolygon,
+              category: q.category,
+              curriculum: q.curriculum,
+            };
+          } else if (q.type === 'map-to-text') {
+            questionData = {
+              id: q.id,
+              question: q.question,
+              questionType: 'map-to-text' as const,
+              options: q.acceptedAnswers, // Store accepted answers in options field
+              regionPolygon: q.regionPolygon,
+              category: q.category,
+              curriculum: q.curriculum,
+            };
+          } else {
+            questionData = {
+              id: q.id,
+              question: q.question,
+              questionType: 'single' as const,
+              options: q.options,
+              correctAnswer: q.correctAnswer,
+              category: q.category,
+              curriculum: q.curriculum,
+            };
+          }
           
-          if (existingQuestion) {
-            // Update existing question and clear all user progress
-            await storage.deleteReviewCardsByQuestionId(q.id);
-            const updated = await storage.updateQuestion(q.id, questionData);
-            if (updated) {
-              updatedQuestions.push(updated);
+          if (q.id) {
+            // Check if question exists
+            const existingQuestion = await storage.getQuestion(q.id);
+            
+            if (existingQuestion) {
+              // Update existing question and clear all user progress
+              await storage.deleteReviewCardsByQuestionId(q.id);
+              const updated = await storage.updateQuestion(q.id, questionData);
+              if (updated) {
+                updatedQuestions.push(updated);
+              }
+            } else {
+              // Create new question with provided ID
+              const created = await storage.createQuestion(questionData);
+              newQuestions.push(created);
             }
           } else {
-            // Create new question with provided ID
+            // Create new question (ID auto-generated)
             const created = await storage.createQuestion(questionData);
             newQuestions.push(created);
           }
-        } else {
-          // Create new question (ID auto-generated)
-          const created = await storage.createQuestion(questionData);
-          newQuestions.push(created);
+        } catch (questionError: any) {
+          console.error(`Error processing question ID "${q.id || 'no-id-yet'}":`, questionError);
+          throw new Error(`Question "${q.id || 'new question'}" failed: ${questionError.message}`);
         }
       }
 
