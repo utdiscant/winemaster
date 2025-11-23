@@ -151,18 +151,11 @@ Example:
       "curriculum": "WSET2"
     },
     {
-      "question": "Click on the Bordeaux region on the map",
-      "type": "text-to-map",
+      "question": "Identify the Bordeaux region",
+      "type": "map",
       "regionName": "Bordeaux",
       "regionPolygon": {"type":"Polygon","coordinates":[[[-1.0,45.0],[-0.5,45.0],[-0.5,44.5],[-1.0,44.5],[-1.0,45.0]]]},
-      "category": "French Regions"
-    },
-    {
-      "question": "Name this wine region",
-      "type": "map-to-text",
-      "regionName": "Burgundy",
-      "regionPolygon": {"type":"Polygon","coordinates":[[[4.5,47.5],[5.0,47.5],[5.0,47.0],[4.5,47.0],[4.5,47.5]]]},
-      "acceptedAnswers": ["Burgundy", "Bourgogne"],
+      "acceptedAnswers": ["Bordeaux"],
       "category": "French Regions"
     }
   ]
@@ -213,8 +206,7 @@ Example:
                 {uploadedData.questions.slice(0, 3).map((q, i) => {
                   const isMulti = q.type === 'multi';
                   const isTextInput = q.type === 'text-input';
-                  const isTextToMap = q.type === 'text-to-map';
-                  const isMapToText = q.type === 'map-to-text';
+                  const isMap = q.type === 'map';
                   
                   return (
                     <div key={i} className="p-4 rounded-lg bg-card border border-card-border" data-testid={`preview-question-${i}`}>
@@ -222,17 +214,16 @@ Example:
                         <p className="font-medium flex-1">{q.question}</p>
                         <Badge variant={
                           isMulti ? "secondary" : 
-                          isTextInput || isMapToText ? "outline" : 
+                          isTextInput || isMap ? "outline" : 
                           "default"
                         } className="ml-2">
                           {isMulti ? 'Multi-Select' : 
                            isTextInput ? 'Text Input' : 
-                           isTextToMap ? 'Map Click' : 
-                           isMapToText ? 'Name Region' : 
+                           isMap ? 'Map Region' : 
                            'Single Choice'}
                         </Badge>
                       </div>
-                      {isTextInput || isMapToText ? (
+                      {isTextInput || isMap ? (
                         <div className="space-y-2">
                           <p className="text-sm text-muted-foreground">
                             {isTextInput ? 'Accepted answers:' : 'Accepted region names:'}
@@ -244,18 +235,16 @@ Example:
                               </div>
                             ))}
                           </div>
-                          {isMapToText && (q as any).regionName && (
+                          {isMap && (q as any).regionName && (
                             <p className="text-sm text-muted-foreground mt-2">
                               Primary region: {(q as any).regionName}
                             </p>
                           )}
-                        </div>
-                      ) : isTextToMap ? (
-                        <div className="space-y-2">
-                          <p className="text-sm text-muted-foreground">Region: {(q as any).regionName}</p>
-                          <div className="text-xs text-muted-foreground p-2 rounded bg-muted">
-                            Map polygon defined: {(q as any).regionPolygon ? 'Yes' : 'No'}
-                          </div>
+                          {isMap && (
+                            <div className="text-xs text-muted-foreground p-2 rounded bg-muted">
+                              Map polygon defined: {(q as any).regionPolygon ? 'Yes' : 'No'}
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -305,7 +294,7 @@ Example:
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-muted-foreground mb-2">
-              Supports five question types: <strong>Single Choice</strong> (4 options), <strong>Multi-Select</strong> (6 options), <strong>Text Input</strong> (free text with accepted answers), <strong>Text-to-Map</strong> (click region on map), and <strong>Map-to-Text</strong> (name highlighted region)
+              Supports four question types: <strong>Single Choice</strong> (4 options), <strong>Multi-Select</strong> (6 options), <strong>Text Input</strong> (free text with accepted answers), and <strong>Map</strong> (randomly shows either click-to-identify or name-the-region)
             </p>
             
             <div className="space-y-4">
@@ -344,8 +333,8 @@ Example:
     },
     {
       "id": "bordeaux-map-001",
-      "question": "Click on the Bordeaux region on the map",
-      "type": "text-to-map",
+      "question": "Identify the Bordeaux region",
+      "type": "map",
       "regionName": "Bordeaux",
       "regionPolygon": {
         "type": "Polygon",
@@ -354,22 +343,7 @@ Example:
           [-0.5, 44.5], [-1.0, 44.5], [-1.0, 45.0]
         ]]
       },
-      "category": "French Regions",
-      "curriculum": "WSET2"
-    },
-    {
-      "id": "burgundy-map-001",
-      "question": "Name this wine region",
-      "type": "map-to-text",
-      "regionName": "Burgundy",
-      "regionPolygon": {
-        "type": "Polygon",
-        "coordinates": [[
-          [4.5, 47.5], [5.0, 47.5],
-          [5.0, 47.0], [4.5, 47.0], [4.5, 47.5]
-        ]]
-      },
-      "acceptedAnswers": ["Burgundy", "Bourgogne"],
+      "acceptedAnswers": ["Bordeaux"],
       "category": "French Regions",
       "curriculum": "WSET2"
     }
@@ -388,12 +362,11 @@ Example:
                   <li><strong>Single Choice:</strong> 4 options, correctAnswer is index (0-3)</li>
                   <li><strong>Multi-Select:</strong> 6 options, correctAnswers is array of indices (0-5)</li>
                   <li><strong>Text Input:</strong> acceptedAnswers is array of valid text answers (case-insensitive matching)</li>
-                  <li><strong>Text-to-Map:</strong> regionName (primary name), regionPolygon (GeoJSON Polygon with coordinates array)</li>
-                  <li><strong>Map-to-Text:</strong> regionName (primary name), regionPolygon (GeoJSON Polygon), acceptedAnswers (fuzzy-matched region names)</li>
+                  <li><strong>Map:</strong> regionName (primary name), regionPolygon (GeoJSON Polygon), acceptedAnswers (region names for text matching) - randomly displays as either click-on-map or name-the-region during quiz</li>
                   <li>Type defaults to "single" if not specified</li>
                   <li>Multi-select can have 0-6 correct answers</li>
-                  <li>Text input and map-to-text answers are matched case-insensitively with trimming</li>
-                  <li>Map question regionPolygon must be valid GeoJSON Polygon format with coordinates in [longitude, latitude] order</li>
+                  <li>Text input and map answers are matched case-insensitively with trimming</li>
+                  <li>Map question regionPolygon must be valid GeoJSON Polygon or MultiPolygon format with coordinates in [longitude, latitude] order</li>
                   <li>Category and curriculum fields are optional for all types</li>
                   <li>Curriculum examples: "WSET1", "WSET2", "WSET3", etc.</li>
                 </ul>
