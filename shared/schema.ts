@@ -256,6 +256,7 @@ export const statisticsSchema = z.object({
   newQuestions: z.number(),
   dueToday: z.number(),
   dueThisWeek: z.number(),
+  completedToday: z.number(),
   averageEaseFactor: z.number(),
   totalReviews: z.number(),
 });

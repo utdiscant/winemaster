@@ -526,6 +526,9 @@ export class DatabaseStorage implements IStorage {
 
     const totalReviews = filteredCards.reduce((sum, card) => sum + card.repetitions, 0);
 
+    // Get count of reviews completed today
+    const completedToday = await this.getReviewsCompletedToday(userId, curricula);
+
     // Get total questions count (filtered by curriculum if provided)
     const allQuestions = await this.getAllQuestions();
     const totalQuestions = curricula && curricula.length > 0
@@ -539,6 +542,7 @@ export class DatabaseStorage implements IStorage {
       newQuestions,
       dueToday,
       dueThisWeek,
+      completedToday,
       averageEaseFactor,
       totalReviews,
     };
