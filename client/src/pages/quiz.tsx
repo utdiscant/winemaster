@@ -371,10 +371,10 @@ export default function QuizPage() {
                   className="text-sm md:text-base"
                   data-testid="input-text-answer"
                 />
-                {isAnswered && !isCorrect && (
+                {isAnswered && (
                   <div className="p-4 rounded-lg border-2 border-green-600 bg-green-50 dark:bg-green-950/40">
                     <p className="text-sm font-medium text-green-700 dark:text-green-400 mb-2">
-                      Correct answers:
+                      Accepted answers:
                     </p>
                     <ul className="list-disc list-inside space-y-1">
                       {correctTextAnswers.map((answer, idx) => (
