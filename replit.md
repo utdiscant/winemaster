@@ -43,7 +43,7 @@ Preferred communication style: Simple, everyday language.
 
 **Key Tables:**
 - **Users:** `id`, `email`, `name`, `is_admin`, `selected_curricula` (TEXT[] for filtering questions).
-- **Questions:** `id`, `question`, `options` (TEXT[]), `correct_answer` (INTEGER), `correct_answers` (INTEGER[]), `question_type` ('single', 'multi', 'text-input', 'text-to-map', or 'map-to-text'), `category`, `curriculum` (optional for filtering), `region_name` (TEXT, for map questions), `region_polygon` (JSONB, GeoJSON format for map questions). Supports upserting via `id` field.
+- **Questions:** `id`, `question`, `options` (TEXT[]), `correct_answer` (INTEGER), `correct_answers` (INTEGER[]), `question_type` ('single', 'multi', 'text-input', or 'map'), `category`, `curriculum` (optional for filtering), `region_name` (TEXT, for map questions), `region_polygon` (JSONB, GeoJSON format for map questions). Supports upserting via `id` field.
 - **Review Cards:** `id`, `user_id`, `question_id`, `ease_factor`, `interval`, `repetitions`, `next_review_date`, `last_review_date`. Enforces a unique constraint on `(user_id, question_id)`.
 - **Sessions:** Managed by `connect-pg-simple`.
 
@@ -93,32 +93,33 @@ Preferred communication style: Simple, everyday language.
 - Proper error handling for nonexistent users (returns 404)
 - Backend prevents self-deletion attempts (returns 400 error)
 
-**Map-Based Question Types (November 2025):**
-- Added support for two new question types: text-to-map and map-to-text
-- **Text-to-Map:** Users click on a map to identify wine regions; backend validates with point-in-polygon checking
-- **Map-to-Text:** Users see a highlighted region on map and type its name; supports fuzzy text matching
+**Map-Based Question Type (November 2025):**
+- Added support for 'map' question type that randomly displays as either click-to-identify or name-the-region during training
+- **Text-to-Map Mode:** Users click on a map to identify wine regions; backend validates with point-in-polygon checking
+- **Map-to-Text Mode:** Users see a highlighted region on map and type its name; supports fuzzy text matching
+- Display mode is randomly chosen when quiz loads a map question, avoiding duplicate polygon data storage
 - Schema updates: Added `region_name` (TEXT) and `region_polygon` (JSONB, GeoJSON format) to Questions table
-- Made `options` column nullable to support text-to-map questions (which don't have options)
+- Made `options` column nullable to support map questions (which use acceptedAnswers array instead)
 - Created reusable `WineMap` component using React Leaflet for interactive maps with zoom, pan, and click handling
-- Backend validation: Implemented `isPointInPolygon` utility for spatial validation of text-to-map answers
-- Quiz page: Renders interactive maps for both question types with visual feedback for correct/incorrect answers
-- Upload page: Updated examples and preview to support map-based questions with GeoJSON polygon format
-- Admin page: Displays region information and polygon status for map-based questions
+- Backend validation: Accepts `displayMode` parameter ('text-to-map' or 'map-to-text') to validate based on how question was shown
+- Quiz page: Renders interactive maps with visual feedback for correct/incorrect answers in both modes
+- Upload page: Updated examples and preview to support combined map question type with GeoJSON polygon format
+- Admin page: Displays region information and polygon status for map questions
 - Map-based questions can only be edited via JSON upload due to complex polygon data requirements
 
 **Map Display Improvements (November 20, 2025):**
 - **Tile Layer:** Switched from CartoDB Voyager no-labels to Voyager with labels (shows countries, regions, and major cities)
-- **Answer Feedback:** Correct region polygon now displays for both correct AND incorrect answers in text-to-map questions (previously only showed for incorrect answers)
+- **Answer Feedback:** Correct region polygon now displays for both correct AND incorrect answers in text-to-map mode (previously only showed for incorrect answers)
 - **Map Reset:** Added ViewResetter component with imperative Leaflet API to reset map view between questions
-  - Text-to-map questions: Zoom level 4 centered on Europe (48.0, 10.0) for exploration
-  - Map-to-text questions: Zoom level 6 centered on the specific region polygon for focused identification
+  - Text-to-map mode: Zoom level 4 centered on Europe (48.0, 10.0) for exploration
+  - Map-to-text mode: Zoom level 6 centered on the specific region polygon for focused identification
   - Memoized center/zoom values prevent unnecessary map resets during user interaction (e.g., typing in map-to-text input)
 - **Polygon Validation:** Added minimum 3-coordinate validation before rendering polygons to handle malformed GeoJSON data
 - Backend returns `{ regionName, regionPolygon }` in `correctAnswer` field for map questions to support polygon display
 - WineMap component uses `useMemo` hooks to optimize rendering and prevent flicker during state updates
 
-**Text-to-Map Visual Enhancements (November 22, 2025):**
-- **Center Marker:** Added green pin marker at the centroid of correct regions for text-to-map questions
+**Map Visual Enhancements (November 22, 2025):**
+- **Center Marker:** Added green pin marker at the centroid of correct regions for text-to-map mode
   - Makes it easier to locate the correct region on the map after answering
   - Uses `getPolygonCentroid()` utility to calculate bounds center from all coordinates
   - Green marker rendered using CSS hue-rotate filter on default Leaflet marker
@@ -133,9 +134,18 @@ Preferred communication style: Simple, everyday language.
   - WineMap component renders all parts of MultiPolygon regions separately
   - Bounds calculation includes all polygon parts for proper auto-fitting
   - Centroid calculated from bounds center of all coordinates (reliable for complex geometries)
-  - Map-to-text questions display all parts of MultiPolygon for identification
-  - Text-to-map feedback shows all parts of correct MultiPolygon answer
+  - Map-to-text mode displays all parts of MultiPolygon for identification
+  - Text-to-map mode feedback shows all parts of correct MultiPolygon answer
   - Note: Interior rings (polygon holes) are not currently rendered but are accounted for in bounds/centroid calculations
+
+**Combined Map Question Type (November 23, 2025):**
+- Consolidated separate 'text-to-map' and 'map-to-text' types into single 'map' type
+- Random display mode selection happens on quiz page load, not in database
+- Eliminates data duplication: single map question can train both click-to-identify and name-the-region skills
+- Schema: `question_type = 'map'` with `region_name`, `region_polygon`, and `acceptedAnswers` fields
+- Backend accepts `displayMode` parameter ('text-to-map' or 'map-to-text') in answer submissions for proper validation
+- Frontend randomly chooses display mode per question using `Math.random()` in useEffect hook
+- All existing map features (MultiPolygon, auto-zoom, centroid markers) work seamlessly in both modes
 
 **Performance Optimizations (November 22, 2025):**
 - **Answer Submission:** Optimized from 3 sequential DB queries to 1 combined JOIN query
