@@ -237,23 +237,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
               category: q.category,
               curriculum: q.curriculum,
             };
-          } else if (q.type === 'text-to-map') {
+          } else if (q.type === 'map') {
             questionData = {
               id: q.id,
               question: q.question,
-              questionType: 'text-to-map' as const,
+              questionType: 'map' as const,
               regionName: q.regionName,
               regionPolygon: q.regionPolygon,
-              category: q.category,
-              curriculum: q.curriculum,
-            };
-          } else if (q.type === 'map-to-text') {
-            questionData = {
-              id: q.id,
-              question: q.question,
-              questionType: 'map-to-text' as const,
-              options: q.acceptedAnswers, // Store accepted answers in options field
-              regionPolygon: q.regionPolygon,
+              options: q.acceptedAnswers, // Store accepted answers in options field for map-to-text mode
               category: q.category,
               curriculum: q.curriculum,
             };
@@ -443,7 +434,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const quizQuestions: QuizQuestion[] = shuffled.map((row) => ({
         id: row.questionId,
         question: row.question,
-        questionType: (row.questionType || 'single') as 'single' | 'multi' | 'text-input' | 'text-to-map' | 'map-to-text',
+        questionType: (row.questionType || 'single') as 'single' | 'multi' | 'text-input' | 'map',
         options: row.options,
         category: row.category ?? undefined,
         curriculum: row.curriculum ?? undefined,
@@ -463,7 +454,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const submission = answerSubmissionSchema.parse(req.body);
-      const { questionId, selectedAnswer, selectedAnswers, textAnswer, mapClick } = submission;
+      const { questionId, selectedAnswer, selectedAnswers, textAnswer, mapClick, displayMode } = submission;
       
       // Get question and review card in a single optimized query
       let questionAndCard = await storage.getQuestionWithReviewCard(userId, questionId);
@@ -508,22 +499,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           accepted.trim().toLowerCase() === normalizedInput
         );
         correctAnswerData = acceptedAnswers;
-      } else if (question.questionType === 'text-to-map') {
-        // Text-to-map: check if clicked point is inside the region polygon
-        if (mapClick && question.regionPolygon) {
-          isCorrect = isPointInPolygon(mapClick, question.regionPolygon);
+      } else if (question.questionType === 'map') {
+        // Map question: check based on displayMode
+        if (displayMode === 'text-to-map') {
+          // Text-to-map mode: check if clicked point is inside the region polygon
+          if (mapClick && question.regionPolygon) {
+            isCorrect = isPointInPolygon(mapClick, question.regionPolygon);
+          }
+        } else if (displayMode === 'map-to-text') {
+          // Map-to-text mode: check if text answer matches any accepted answer (stored in options)
+          const normalizedInput = (textAnswer || '').trim().toLowerCase();
+          const acceptedAnswers = question.options || [];
+          isCorrect = acceptedAnswers.some((accepted: string) => 
+            accepted.trim().toLowerCase() === normalizedInput
+          );
         }
-        correctAnswerData = {
-          regionName: question.regionName || undefined,
-          regionPolygon: question.regionPolygon,
-        };
-      } else if (question.questionType === 'map-to-text') {
-        // Map-to-text: check if text answer matches any accepted answer (stored in options)
-        const normalizedInput = (textAnswer || '').trim().toLowerCase();
-        const acceptedAnswers = question.options || [];
-        isCorrect = acceptedAnswers.some((accepted: string) => 
-          accepted.trim().toLowerCase() === normalizedInput
-        );
         correctAnswerData = {
           regionName: question.regionName || undefined,
           regionPolygon: question.regionPolygon,
