@@ -312,11 +312,11 @@ export default function QuizPage() {
   const progressPercentage = totalQuestions > 0 ? (answeredQuestions / totalQuestions) * 100 : 0;
 
   return (
-    <div className="min-h-screen bg-background py-8 px-4">
-      <div className="max-w-3xl mx-auto space-y-6">
+    <div className="min-h-screen bg-background py-4 px-4">
+      <div className="max-w-3xl mx-auto space-y-4">
         {/* Progress Bar */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-sm">
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-xs md:text-sm">
             <span className="text-muted-foreground">
               Question {currentQuestionNumber} of {totalQuestions}
             </span>
@@ -324,39 +324,12 @@ export default function QuizPage() {
               {Math.round(progressPercentage)}% Complete
             </span>
           </div>
-          <Progress value={progressPercentage} className="h-2" data-testid="progress-quiz" />
+          <Progress value={progressPercentage} className="h-1.5" data-testid="progress-quiz" />
         </div>
 
         {/* Question Card */}
         <Card className="border-card-border">
-          <CardHeader className="space-y-2 md:space-y-4 py-3 md:py-6">
-            <div className="flex items-center justify-between gap-2 md:gap-4 flex-wrap">
-              <div className="flex items-center gap-1 md:gap-2">
-                <Badge variant="secondary" className="shrink-0 text-xs md:text-sm" data-testid="badge-question-number">
-                  #{currentQuestionNumber}
-                </Badge>
-                <Badge 
-                  variant={
-                    currentQuestion.questionType === 'multi' ? 'default' : 
-                    currentQuestion.questionType === 'text-input' || (currentQuestion.questionType === 'map' && mapDisplayMode === 'map-to-text') ? 'secondary' : 
-                    'outline'
-                  }
-                  className="shrink-0 text-xs md:text-sm"
-                  data-testid="badge-question-type"
-                >
-                  {currentQuestion.questionType === 'multi' ? 'Multi-Select' : 
-                   currentQuestion.questionType === 'text-input' ? 'Text Input' : 
-                   currentQuestion.questionType === 'map' && mapDisplayMode === 'text-to-map' ? 'Map Click' : 
-                   currentQuestion.questionType === 'map' && mapDisplayMode === 'map-to-text' ? 'Name the Region' : 
-                   'Single Choice'}
-                </Badge>
-              </div>
-              {currentQuestion.category && (
-                <Badge variant="outline" className="shrink-0 text-xs md:text-sm" data-testid="badge-category">
-                  {currentQuestion.category}
-                </Badge>
-              )}
-            </div>
+          <CardHeader className="space-y-2 md:space-y-3 py-2 md:py-4">
             {currentQuestion.questionType === 'multi' && !isAnswered && (
               <p className="text-xs md:text-sm text-muted-foreground">
                 Select all correct answers (there may be multiple)
@@ -378,8 +351,8 @@ export default function QuizPage() {
               </p>
             )}
           </CardHeader>
-          <CardContent className="space-y-3 md:space-y-6 py-3 md:py-4 px-4 md:px-6">
-            <h2 className="text-lg md:text-3xl font-medium leading-relaxed" data-testid="text-question">
+          <CardContent className="space-y-2 md:space-y-4 py-2 md:py-3 px-4 md:px-6">
+            <h2 className="text-base md:text-2xl font-medium leading-relaxed" data-testid="text-question">
               {currentQuestion.questionType === 'map' && mapDisplayMode === 'map-to-text' 
                 ? `What wine region is highlighted on the map?`
                 : currentQuestion.question
@@ -496,7 +469,7 @@ export default function QuizPage() {
                     disabled={isAnswered}
                     data-testid={`button-answer-${index}`}
                     className={`
-                      relative p-3 md:p-4 rounded-lg border-2 text-left transition-all
+                      relative p-2 md:p-3 rounded-lg border-2 text-left transition-all
                       ${isSelected && !isAnswered ? "border-primary bg-primary/5" : "border-border"}
                       ${showAsCorrect ? "border-green-600 bg-green-50 dark:bg-green-950/40 border-[3px]" : ""}
                       ${showAsIncorrect ? "border-destructive bg-destructive/10 border-[3px]" : ""}
@@ -505,7 +478,7 @@ export default function QuizPage() {
                       disabled:opacity-100
                     `}
                   >
-                    <div className="flex items-start gap-2 md:gap-3">
+                    <div className="flex items-start gap-1 md:gap-2">
                       {isMulti ? (
                         // Checkbox for multi-select
                         <div
@@ -540,23 +513,23 @@ export default function QuizPage() {
                           {String.fromCharCode(65 + index)}
                         </span>
                       )}
-                      <span className={`flex-1 pt-1 ${showAsCorrect || showAsMissed ? "font-medium" : ""}`}>
+                      <span className={`flex-1 pt-0.5 text-sm md:text-base ${showAsCorrect || showAsMissed ? "font-medium" : ""}`}>
                         {option.text}
                       </span>
-                      {showAsCorrect && <CheckCircle2 className="w-6 h-6 text-green-600 shrink-0" />}
-                      {showAsIncorrect && <XCircle className="w-6 h-6 text-destructive shrink-0" />}
-                      {showAsMissed && <CheckCircle2 className="w-6 h-6 text-amber-500 shrink-0" />}
+                      {showAsCorrect && <CheckCircle2 className="w-4 md:w-5 h-4 md:h-5 text-green-600 shrink-0" />}
+                      {showAsIncorrect && <XCircle className="w-4 md:w-5 h-4 md:h-5 text-destructive shrink-0" />}
+                      {showAsMissed && <CheckCircle2 className="w-4 md:w-5 h-4 md:h-5 text-amber-500 shrink-0" />}
                     </div>
                     {showAsCorrect && (
-                      <div className="mt-2 pt-2 border-t border-green-600/20">
-                        <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                      <div className="mt-1 pt-1 border-t border-green-600/20">
+                        <span className="text-xs md:text-sm font-medium text-green-700 dark:text-green-400">
                           ✓ Correct Answer
                         </span>
                       </div>
                     )}
                     {showAsMissed && (
-                      <div className="mt-2 pt-2 border-t border-amber-500/20">
-                        <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                      <div className="mt-1 pt-1 border-t border-amber-500/20">
+                        <span className="text-xs md:text-sm font-medium text-amber-700 dark:text-amber-400">
                           ⚠ You missed this
                         </span>
                       </div>
