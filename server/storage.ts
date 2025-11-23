@@ -39,7 +39,7 @@ export interface IStorage {
   getReviewCardByQuestionId(userId: string, questionId: string): Promise<ReviewCard | undefined>;
   updateReviewCard(id: string, updates: Partial<ReviewCard>): Promise<ReviewCard | undefined>;
   getDueReviewCards(userId: string): Promise<ReviewCard[]>;
-  getDueCardsWithQuestions(userId: string, curricula?: string[]): Promise<Array<{
+  getDueCardsWithQuestions(userId: string, curricula?: string[], limit?: number): Promise<Array<{
     reviewCardId: string;
     questionId: string;
     question: string;
@@ -49,9 +49,11 @@ export interface IStorage {
     curriculum: string | null;
     regionPolygon: any;
     regionName: string | null;
+    nextReviewDate: Date;
   }>>;
   getAllReviewCards(userId: string): Promise<ReviewCard[]>;
   ensureUserReviewCards(userId: string): Promise<void>;
+  getReviewsCompletedToday(userId: string, curricula?: string[]): Promise<number>;
   getReviewCardsWithQuestions(userId: string): Promise<Array<{
     reviewCardId: string;
     questionId: string;
@@ -312,7 +314,7 @@ export class DatabaseStorage implements IStorage {
       );
   }
 
-  async getDueCardsWithQuestions(userId: string, curricula?: string[]): Promise<Array<{
+  async getDueCardsWithQuestions(userId: string, curricula?: string[], limit?: number): Promise<Array<{
     reviewCardId: string;
     questionId: string;
     question: string;
@@ -322,6 +324,7 @@ export class DatabaseStorage implements IStorage {
     curriculum: string | null;
     regionPolygon: any;
     regionName: string | null;
+    nextReviewDate: Date;
   }>> {
     const now = new Date();
     
@@ -337,7 +340,7 @@ export class DatabaseStorage implements IStorage {
       conditions.push(sql`(${sql.join(curriculumConditions, sql` OR `)})`);
     }
     
-    const results = await db
+    let query = db
       .select({
         reviewCardId: reviewCards.id,
         questionId: questions.id,
@@ -348,10 +351,19 @@ export class DatabaseStorage implements IStorage {
         regionPolygon: questions.regionPolygon,
         regionName: questions.regionName,
         curriculum: questions.curriculum,
+        nextReviewDate: reviewCards.nextReviewDate,
       })
       .from(reviewCards)
       .innerJoin(questions, eq(reviewCards.questionId, questions.id))
-      .where(and(...conditions));
+      .where(and(...conditions))
+      .orderBy(reviewCards.nextReviewDate); // Sort by earliest due date first (highest priority)
+    
+    // Apply limit if provided
+    if (limit !== undefined && limit > 0) {
+      query = query.limit(limit) as any;
+    }
+    
+    const results = await query;
     
     return results.map(r => ({
       ...r,
@@ -432,6 +444,44 @@ export class DatabaseStorage implements IStorage {
       ...r,
       options: r.options || [], // Handle nullable options for text-to-map questions
     }));
+  }
+
+  // Get count of reviews completed today
+  async getReviewsCompletedToday(userId: string, curricula?: string[]): Promise<number> {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+    
+    // Build where conditions
+    const conditions = [
+      eq(reviewCards.userId, userId),
+      gte(reviewCards.lastReviewDate, startOfDay),
+      lte(reviewCards.lastReviewDate, endOfDay)
+    ];
+    
+    // If curricula filter provided, join with questions table
+    if (curricula && curricula.length > 0) {
+      const results = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(reviewCards)
+        .innerJoin(questions, eq(reviewCards.questionId, questions.id))
+        .where(and(
+          ...conditions,
+          sql`(${sql.join(curricula.map(c => eq(questions.curriculum, c)), sql` OR `)})`
+        ));
+      
+      return Number(results[0]?.count ?? 0);
+    }
+    
+    // No curricula filter - count directly from review cards
+    const results = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(reviewCards)
+      .where(and(...conditions));
+    
+    return Number(results[0]?.count ?? 0);
   }
 
   // Statistics (now user-specific with curriculum filtering)
