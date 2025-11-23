@@ -380,7 +380,10 @@ export default function QuizPage() {
           </CardHeader>
           <CardContent className="space-y-6">
             <h2 className="text-2xl md:text-3xl font-medium leading-relaxed" data-testid="text-question">
-              {currentQuestion.question}
+              {currentQuestion.questionType === 'map' && mapDisplayMode === 'map-to-text' 
+                ? `What wine region is highlighted on the map?`
+                : currentQuestion.question
+              }
             </h2>
 
             {/* Text Input for text-input questions */}
