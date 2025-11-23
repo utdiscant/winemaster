@@ -366,18 +366,6 @@ export default function QuizPage() {
           </Card>
         )}
 
-        {/* Session Progress Bar */}
-        <div className="space-y-1">
-          <div className="flex items-center justify-between text-xs md:text-sm">
-            <span className="text-muted-foreground">
-              Question {currentQuestionNumber} of {totalQuestions}
-            </span>
-            <span className="font-medium">
-              {Math.round(progressPercentage)}% Complete
-            </span>
-          </div>
-          <Progress value={progressPercentage} className="h-1.5" data-testid="progress-quiz" />
-        </div>
 
         {/* Question Card */}
         <Card className="border-card-border">
