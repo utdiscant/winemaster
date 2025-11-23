@@ -158,3 +158,19 @@ Preferred communication style: Simple, everyday language.
 - **Session Endpoint:** Kept `/api/auth/user` as O(1) user lookup without expensive operations
   - No longer calls `ensureUserReviewCards()` on every page load
 - **Expected Performance:** Answer submission and next question fetch should be 2-3x faster
+
+**Daily Question Limit (November 23, 2025):**
+- Implemented 20-question daily goal to prevent overwhelming users with too many reviews
+- **Progress Tracking:** Uses existing `last_review_date` field to count reviews completed today
+- **Backend Changes:**
+  - Added `getReviewsCompletedToday()` storage method to count reviews from today (respects curriculum filters)
+  - Modified `/api/quiz/due` endpoint to return `{ questions, dailyProgress }` with `completedToday`, `dailyGoal`, and `totalDue`
+  - Updated `getDueCardsWithQuestions()` to sort by `next_review_date` (earliest first = highest priority)
+  - Updated Statistics schema and endpoint to include `completedToday` field
+- **Frontend UI:**
+  - Daily goal card displays "X / 20" progress with progress bar
+  - Green "Goal Complete!" badge appears when 20 questions answered
+  - Congratulatory message encourages continuing with remaining due questions
+  - Users can continue practicing beyond daily goal - no hard limit enforced
+  - Separate session progress bar shows current quiz session progress
+- **Design Philosophy:** Daily goal creates manageable learning chunks while allowing motivated users to continue
