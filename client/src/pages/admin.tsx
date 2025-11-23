@@ -453,8 +453,7 @@ export default function AdminPage() {
         {paginatedQuestions.map((question) => {
           const isMulti = question.questionType === 'multi';
           const isTextInput = question.questionType === 'text-input';
-          const isTextToMap = question.questionType === 'text-to-map';
-          const isMapToText = question.questionType === 'map-to-text';
+          const isMap = question.questionType === 'map';
           const correctSet = new Set(isMulti ? (question.correctAnswers || []) : [question.correctAnswer]);
           
           return (
@@ -466,13 +465,12 @@ export default function AdminPage() {
                       <CardTitle className="text-lg">{question.question}</CardTitle>
                       <Badge variant={
                         isMulti ? "default" : 
-                        isTextInput || isMapToText ? "outline" : 
+                        isTextInput || isMap ? "outline" : 
                         "secondary"
                       } className="shrink-0">
                         {isMulti ? 'Multi-Select' : 
                          isTextInput ? 'Text Input' : 
-                         isTextToMap ? 'Map Click' : 
-                         isMapToText ? 'Name Region' : 
+                         isMap ? 'Map Region' : 
                          'Single Choice'}
                       </Badge>
                     </div>
@@ -493,10 +491,10 @@ export default function AdminPage() {
                       size="icon"
                       onClick={() => setEditingQuestion(question)}
                       data-testid={`button-edit-${question.id}`}
-                      disabled={isMulti || isTextToMap || isMapToText}
+                      disabled={isMulti || isMap}
                       title={
                         isMulti ? "Multi-select editing not yet supported in UI" : 
-                        (isTextToMap || isMapToText) ? "Map-based questions can only be edited via JSON upload" : 
+                        isMap ? "Map-based questions can only be edited via JSON upload" : 
                         "Edit question"
                       }
                     >
@@ -529,20 +527,10 @@ export default function AdminPage() {
                       </div>
                     ))}
                   </div>
-                ) : isTextToMap ? (
+                ) : isMap ? (
                   <div className="space-y-2">
                     <div className="p-3 rounded-lg border bg-green-50 dark:bg-green-950/20 border-green-500">
-                      <p className="text-sm font-medium text-muted-foreground mb-1">Correct Region:</p>
-                      <p className="font-medium">{question.regionName}</p>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Region polygon defined (GeoJSON)
-                      </p>
-                    </div>
-                  </div>
-                ) : isMapToText ? (
-                  <div className="space-y-2">
-                    <div className="p-3 rounded-lg border bg-green-50 dark:bg-green-950/20 border-green-500">
-                      <p className="text-sm font-medium text-muted-foreground mb-1">Primary Region:</p>
+                      <p className="text-sm font-medium text-muted-foreground mb-1">Region Name:</p>
                       <p className="font-medium">{question.regionName}</p>
                       <p className="text-xs text-muted-foreground mt-2">
                         Region polygon defined (GeoJSON)
