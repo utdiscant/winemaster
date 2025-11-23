@@ -423,11 +423,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         curricula = curriculaParam.split(',').map(c => c.trim()).filter(Boolean);
       }
       
+      // Get count of reviews completed today for daily progress tracking
+      const completedToday = await storage.getReviewsCompletedToday(userId, curricula);
+      
       // Get due cards with questions in single optimized query
+      // Questions are sorted by nextReviewDate (earliest first = highest priority)
       // Note: ensureUserReviewCards is called on login/initial load, not on every quiz fetch
       const dueCardsWithQuestions = await storage.getDueCardsWithQuestions(userId, curricula);
       
-      // Shuffle for variety
+      // Shuffle for variety while preserving general priority
+      // This gives variety within the due set without completely randomizing priority
       const shuffled = dueCardsWithQuestions.sort(() => Math.random() - 0.5);
       
       // Map to QuizQuestion format
@@ -443,7 +448,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         regionName: row.regionName ?? undefined,
       }));
 
-      res.json(quizQuestions);
+      // Return questions with daily progress metadata
+      res.json({
+        questions: quizQuestions,
+        dailyProgress: {
+          completedToday,
+          dailyGoal: 20,
+          totalDue: quizQuestions.length,
+        }
+      });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

@@ -12,6 +12,15 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import WineMap from "@/components/WineMap";
 import { getPolygonCentroid, getBoundsForPolygonAndPoint } from "@/utils/geoUtils";
 
+interface QuizResponse {
+  questions: QuizQuestion[];
+  dailyProgress: {
+    completedToday: number;
+    dailyGoal: number;
+    totalDue: number;
+  };
+}
+
 export default function QuizPage() {
   const { toast } = useToast();
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null); // For single-choice
@@ -43,7 +52,7 @@ export default function QuizPage() {
     return `/api/quiz/due?curricula=${selectedCurricula.map(c => encodeURIComponent(c)).join(',')}`;
   };
 
-  const { data: dueQuestions, isLoading: isLoadingQuestions, isFetching, refetch, isError } = useQuery<QuizQuestion[]>({
+  const { data: quizData, isLoading: isLoadingQuestions, isFetching, refetch, isError } = useQuery<QuizResponse>({
     queryKey: ["/api/quiz/due", { curricula: user?.selectedCurricula || [] }],
     queryFn: async () => {
       const response = await fetch(buildQuizQueryUrl(), { credentials: "include" });
@@ -54,6 +63,9 @@ export default function QuizPage() {
     refetchOnMount: 'always', // Always refetch when component mounts to avoid stale cache
     staleTime: 0, // Consider data stale immediately to ensure fresh data
   });
+
+  const dueQuestions = quizData?.questions || [];
+  const dailyProgress = quizData?.dailyProgress;
 
   const isLoading = isLoadingUser || isLoadingQuestions;
 
@@ -311,10 +323,50 @@ export default function QuizPage() {
   const answeredQuestions = isAnswered ? answeredInSession + 1 : answeredInSession;
   const progressPercentage = totalQuestions > 0 ? (answeredQuestions / totalQuestions) * 100 : 0;
 
+  // Calculate daily goal progress
+  const dailyGoalMet = dailyProgress && dailyProgress.completedToday >= dailyProgress.dailyGoal;
+  const dailyProgressPercentage = dailyProgress 
+    ? Math.min((dailyProgress.completedToday / dailyProgress.dailyGoal) * 100, 100) 
+    : 0;
+
   return (
     <div className="min-h-screen bg-background py-4 px-4">
       <div className="max-w-3xl mx-auto space-y-4">
-        {/* Progress Bar */}
+        {/* Daily Goal Progress */}
+        {dailyProgress && (
+          <Card className={`${dailyGoalMet ? 'border-green-600 bg-green-50 dark:bg-green-950/40' : ''}`}>
+            <CardContent className="py-3 px-4">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs md:text-sm">
+                  <span className={`font-medium ${dailyGoalMet ? 'text-green-700 dark:text-green-400' : 'text-muted-foreground'}`}>
+                    Daily Goal: {dailyProgress.completedToday} / {dailyProgress.dailyGoal}
+                  </span>
+                  {dailyGoalMet ? (
+                    <Badge variant="default" className="bg-green-600 hover:bg-green-700" data-testid="badge-daily-goal-met">
+                      ✓ Goal Complete!
+                    </Badge>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      {dailyProgress.dailyGoal - dailyProgress.completedToday} remaining
+                    </span>
+                  )}
+                </div>
+                <Progress 
+                  value={dailyProgressPercentage} 
+                  className="h-1.5" 
+                  data-testid="progress-daily-goal" 
+                />
+                {dailyGoalMet && (
+                  <p className="text-xs text-green-700 dark:text-green-400">
+                    Amazing work! You've completed your daily goal. Feel free to continue practicing with the remaining {dailyProgress.totalDue - dailyProgress.completedToday} due questions.
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Session Progress Bar */}
         <div className="space-y-1">
           <div className="flex items-center justify-between text-xs md:text-sm">
             <span className="text-muted-foreground">
