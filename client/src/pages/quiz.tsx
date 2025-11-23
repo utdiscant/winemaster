@@ -100,7 +100,7 @@ export default function QuizPage() {
   }, [isError, isAdvancing, toast]);
 
   const submitAnswerMutation = useMutation({
-    mutationFn: async (data: { questionId: string; selectedAnswer?: number; selectedAnswers?: number[]; textAnswer?: string; mapClick?: { lat: number; lng: number } }) => {
+    mutationFn: async (data: { questionId: string; selectedAnswer?: number; selectedAnswers?: number[]; textAnswer?: string; mapClick?: { lat: number; lng: number }; displayMode?: 'text-to-map' | 'map-to-text' }) => {
       return await apiRequest("POST", "/api/quiz/answer", data);
     },
     onSuccess: (response) => {
