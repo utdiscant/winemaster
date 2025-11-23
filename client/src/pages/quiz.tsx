@@ -329,10 +329,10 @@ export default function QuizPage() {
 
         {/* Question Card */}
         <Card className="border-card-border">
-          <CardHeader className="space-y-4">
-            <div className="flex items-center justify-between gap-4 flex-wrap">
-              <div className="flex items-center gap-2">
-                <Badge variant="secondary" className="shrink-0" data-testid="badge-question-number">
+          <CardHeader className="space-y-2 md:space-y-4 py-3 md:py-6">
+            <div className="flex items-center justify-between gap-2 md:gap-4 flex-wrap">
+              <div className="flex items-center gap-1 md:gap-2">
+                <Badge variant="secondary" className="shrink-0 text-xs md:text-sm" data-testid="badge-question-number">
                   #{currentQuestionNumber}
                 </Badge>
                 <Badge 
@@ -341,7 +341,7 @@ export default function QuizPage() {
                     currentQuestion.questionType === 'text-input' || (currentQuestion.questionType === 'map' && mapDisplayMode === 'map-to-text') ? 'secondary' : 
                     'outline'
                   }
-                  className="shrink-0"
+                  className="shrink-0 text-xs md:text-sm"
                   data-testid="badge-question-type"
                 >
                   {currentQuestion.questionType === 'multi' ? 'Multi-Select' : 
@@ -352,34 +352,34 @@ export default function QuizPage() {
                 </Badge>
               </div>
               {currentQuestion.category && (
-                <Badge variant="outline" className="shrink-0" data-testid="badge-category">
+                <Badge variant="outline" className="shrink-0 text-xs md:text-sm" data-testid="badge-category">
                   {currentQuestion.category}
                 </Badge>
               )}
             </div>
             {currentQuestion.questionType === 'multi' && !isAnswered && (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs md:text-sm text-muted-foreground">
                 Select all correct answers (there may be multiple)
               </p>
             )}
             {currentQuestion.questionType === 'text-input' && !isAnswered && (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs md:text-sm text-muted-foreground">
                 Type your answer below (not case-sensitive)
               </p>
             )}
             {currentQuestion.questionType === 'map' && mapDisplayMode === 'text-to-map' && !isAnswered && (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs md:text-sm text-muted-foreground">
                 Click on the map to identify the wine region
               </p>
             )}
             {currentQuestion.questionType === 'map' && mapDisplayMode === 'map-to-text' && !isAnswered && (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs md:text-sm text-muted-foreground">
                 Name the highlighted wine region (not case-sensitive)
               </p>
             )}
           </CardHeader>
-          <CardContent className="space-y-6">
-            <h2 className="text-2xl md:text-3xl font-medium leading-relaxed" data-testid="text-question">
+          <CardContent className="space-y-3 md:space-y-6 py-3 md:py-4 px-4 md:px-6">
+            <h2 className="text-lg md:text-3xl font-medium leading-relaxed" data-testid="text-question">
               {currentQuestion.questionType === 'map' && mapDisplayMode === 'map-to-text' 
                 ? `What wine region is highlighted on the map?`
                 : currentQuestion.question
@@ -388,14 +388,14 @@ export default function QuizPage() {
 
             {/* Text Input for text-input questions */}
             {currentQuestion.questionType === 'text-input' ? (
-              <div className="space-y-4">
+              <div className="space-y-2 md:space-y-4">
                 <Input
                   type="text"
                   value={textAnswer}
                   onChange={(e) => setTextAnswer(e.target.value)}
                   placeholder="Type your answer here..."
                   disabled={isAnswered}
-                  className="text-lg"
+                  className="text-sm md:text-base"
                   data-testid="input-text-answer"
                 />
                 {isAnswered && !isCorrect && (
@@ -415,7 +415,7 @@ export default function QuizPage() {
               </div>
             ) : currentQuestion.questionType === 'map' && mapDisplayMode === 'text-to-map' ? (
               /* Map (text-to-map mode): Show map and let user click */
-              <div className="space-y-4">
+              <div className="space-y-2 md:space-y-4">
                 <WineMap
                   key={currentQuestion.id}
                   onMapClick={(lat, lng) => {
@@ -431,7 +431,7 @@ export default function QuizPage() {
                   data-testid="map-text-to-map"
                 />
                 {mapClick && !isAnswered && (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs md:text-sm text-muted-foreground">
                     Selected location: {mapClick.lat.toFixed(4)}, {mapClick.lng.toFixed(4)}
                   </p>
                 )}
@@ -453,7 +453,7 @@ export default function QuizPage() {
               </div>
             ) : currentQuestion.questionType === 'map' && mapDisplayMode === 'map-to-text' ? (
               /* Map (map-to-text mode): Show map with region, let user type name */
-              <div className="space-y-4">
+              <div className="space-y-2 md:space-y-4">
                 <WineMap
                   key={currentQuestion.id}
                   regionPolygon={currentQuestion.regionPolygon}
@@ -465,7 +465,7 @@ export default function QuizPage() {
                   onChange={(e) => setTextAnswer(e.target.value)}
                   placeholder="Type the region name..."
                   disabled={isAnswered}
-                  className="text-lg"
+                  className="text-sm md:text-base"
                   data-testid="input-map-to-text-answer"
                 />
                 {isAnswered && !isCorrect && correctMapData && (
@@ -480,7 +480,7 @@ export default function QuizPage() {
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4">
               {shuffledOptions.map((option, index) => {
                 const isMulti = currentQuestion.questionType === 'multi';
                 const isSelected = isMulti ? selectedAnswers.has(index) : selectedAnswer === index;
@@ -496,7 +496,7 @@ export default function QuizPage() {
                     disabled={isAnswered}
                     data-testid={`button-answer-${index}`}
                     className={`
-                      relative p-4 rounded-lg border-2 text-left transition-all
+                      relative p-3 md:p-4 rounded-lg border-2 text-left transition-all
                       ${isSelected && !isAnswered ? "border-primary bg-primary/5" : "border-border"}
                       ${showAsCorrect ? "border-green-600 bg-green-50 dark:bg-green-950/40 border-[3px]" : ""}
                       ${showAsIncorrect ? "border-destructive bg-destructive/10 border-[3px]" : ""}
@@ -505,7 +505,7 @@ export default function QuizPage() {
                       disabled:opacity-100
                     `}
                   >
-                    <div className="flex items-start gap-3">
+                    <div className="flex items-start gap-2 md:gap-3">
                       {isMulti ? (
                         // Checkbox for multi-select
                         <div
@@ -568,7 +568,7 @@ export default function QuizPage() {
             )}
 
             {/* Action Buttons */}
-            <div className="flex justify-end gap-3 pt-4">
+            <div className="flex justify-end gap-2 md:gap-3 pt-2 md:pt-4">
               {!isAnswered ? (
                 <Button
                   onClick={handleSubmitAnswer}
@@ -579,7 +579,7 @@ export default function QuizPage() {
                     (currentQuestion.questionType === 'map' && mapDisplayMode === 'map-to-text' && textAnswer.trim() === '') ||
                     submitAnswerMutation.isPending
                   }
-                  size="lg"
+                  size="default"
                   data-testid="button-submit-answer"
                 >
                   {submitAnswerMutation.isPending ? "Submitting..." : "Submit Answer"}
@@ -587,7 +587,7 @@ export default function QuizPage() {
               ) : (
                 <Button
                   onClick={handleNextQuestion}
-                  size="lg"
+                  size="default"
                   disabled={isAdvancing}
                   data-testid="button-next-question"
                 >
@@ -601,19 +601,19 @@ export default function QuizPage() {
         {/* Feedback Message */}
         {isAnswered && (
           <Card className={`border-2 ${isCorrect ? "border-green-600 bg-green-50 dark:bg-green-950/40" : "border-amber-600 bg-amber-50 dark:bg-amber-950/40"}`}>
-            <CardContent className="pt-6">
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
+            <CardContent className="pt-3 md:pt-6">
+              <div className="space-y-2 md:space-y-3">
+                <div className="flex items-center gap-2 md:gap-3">
                   {isCorrect ? (
-                    <CheckCircle2 className="w-7 h-7 text-green-600 shrink-0" />
+                    <CheckCircle2 className="w-6 md:w-7 h-6 md:h-7 text-green-600 shrink-0" />
                   ) : (
-                    <XCircle className="w-7 h-7 text-amber-600 shrink-0" />
+                    <XCircle className="w-6 md:w-7 h-6 md:h-7 text-amber-600 shrink-0" />
                   )}
                   <div>
-                    <p className="font-semibold text-lg">
+                    <p className="font-semibold text-base md:text-lg">
                       {isCorrect ? "Correct!" : "Incorrect"}
                     </p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-xs md:text-sm text-muted-foreground">
                       {isCorrect
                         ? "Great job! You got it right."
                         : "The correct answer is highlighted in green above."}
@@ -621,7 +621,7 @@ export default function QuizPage() {
                   </div>
                 </div>
                 {!isCorrect && (
-                  <p className="text-sm text-muted-foreground pl-10">
+                  <p className="text-xs md:text-sm text-muted-foreground pl-8 md:pl-10">
                     This question will be reviewed again soon to help you master it.
                   </p>
                 )}
