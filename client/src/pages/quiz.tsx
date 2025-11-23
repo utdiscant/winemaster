@@ -16,8 +16,9 @@ export default function QuizPage() {
   const { toast } = useToast();
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null); // For single-choice
   const [selectedAnswers, setSelectedAnswers] = useState<Set<number>>(new Set()); // For multi-select
-  const [textAnswer, setTextAnswer] = useState<string>(""); // For text-input and map-to-text
-  const [mapClick, setMapClick] = useState<{ lat: number; lng: number } | null>(null); // For text-to-map
+  const [textAnswer, setTextAnswer] = useState<string>(""); // For text-input and map (map-to-text mode)
+  const [mapClick, setMapClick] = useState<{ lat: number; lng: number } | null>(null); // For map (text-to-map mode)
+  const [mapDisplayMode, setMapDisplayMode] = useState<'text-to-map' | 'map-to-text' | null>(null); // For map questions: randomly chosen display mode
   const [isAnswered, setIsAnswered] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
   const [shuffledOptions, setShuffledOptions] = useState<{ text: string; originalIndex: number }[]>([]);
@@ -106,7 +107,7 @@ export default function QuizPage() {
       if (currentQuestion?.questionType === 'text-input') {
         // For text-input, store the correct text answers
         setCorrectTextAnswers(response.correctAnswer || []);
-      } else if (currentQuestion?.questionType === 'text-to-map' || currentQuestion?.questionType === 'map-to-text') {
+      } else if (currentQuestion?.questionType === 'map') {
         // For map questions, store the correct region data
         setCorrectMapData(response.correctAnswer || null);
       } else {
@@ -155,12 +156,17 @@ export default function QuizPage() {
     return null;
   }, [isAnswered, mapClick, correctMapData, currentQuestion?.id]);
 
-  // Shuffle options when question changes
+  // Shuffle options and randomly choose map display mode when question changes
   useEffect(() => {
     if (currentQuestion) {
-      if (currentQuestion.questionType === 'text-input' || currentQuestion.questionType === 'text-to-map' || currentQuestion.questionType === 'map-to-text') {
-        // No need to shuffle for text-input or map questions
+      if (currentQuestion.questionType === 'text-input') {
+        // No need to shuffle for text-input
         setShuffledOptions([]);
+        setMapDisplayMode(null);
+      } else if (currentQuestion.questionType === 'map') {
+        // For map questions, randomly choose display mode
+        setShuffledOptions([]);
+        setMapDisplayMode(Math.random() < 0.5 ? 'text-to-map' : 'map-to-text');
       } else {
         const options = currentQuestion.options.map((text, index) => ({
           text,
@@ -174,6 +180,7 @@ export default function QuizPage() {
         }
         
         setShuffledOptions(options);
+        setMapDisplayMode(null);
       }
       
       setSelectedAnswer(null);
@@ -210,8 +217,7 @@ export default function QuizPage() {
 
     const isMulti = currentQuestion.questionType === 'multi';
     const isTextInput = currentQuestion.questionType === 'text-input';
-    const isTextToMap = currentQuestion.questionType === 'text-to-map';
-    const isMapToText = currentQuestion.questionType === 'map-to-text';
+    const isMap = currentQuestion.questionType === 'map';
     
     if (isTextInput) {
       // Text-input: submit the text answer
@@ -219,18 +225,20 @@ export default function QuizPage() {
         questionId: currentQuestion.id,
         textAnswer: textAnswer,
       });
-    } else if (isTextToMap) {
-      // Text-to-map: submit the map click
+    } else if (isMap && mapDisplayMode === 'text-to-map') {
+      // Map (text-to-map mode): submit the map click
       if (!mapClick) return;
       submitAnswerMutation.mutate({
         questionId: currentQuestion.id,
         mapClick: mapClick,
+        displayMode: 'text-to-map',
       });
-    } else if (isMapToText) {
-      // Map-to-text: submit the text answer
+    } else if (isMap && mapDisplayMode === 'map-to-text') {
+      // Map (map-to-text mode): submit the text answer
       submitAnswerMutation.mutate({
         questionId: currentQuestion.id,
         textAnswer: textAnswer,
+        displayMode: 'map-to-text',
       });
     } else if (isMulti) {
       // Multi-select: need at least zero selections (empty is allowed)
@@ -330,7 +338,7 @@ export default function QuizPage() {
                 <Badge 
                   variant={
                     currentQuestion.questionType === 'multi' ? 'default' : 
-                    currentQuestion.questionType === 'text-input' || currentQuestion.questionType === 'map-to-text' ? 'secondary' : 
+                    currentQuestion.questionType === 'text-input' || (currentQuestion.questionType === 'map' && mapDisplayMode === 'map-to-text') ? 'secondary' : 
                     'outline'
                   }
                   className="shrink-0"
@@ -338,8 +346,8 @@ export default function QuizPage() {
                 >
                   {currentQuestion.questionType === 'multi' ? 'Multi-Select' : 
                    currentQuestion.questionType === 'text-input' ? 'Text Input' : 
-                   currentQuestion.questionType === 'text-to-map' ? 'Map Click' : 
-                   currentQuestion.questionType === 'map-to-text' ? 'Name the Region' : 
+                   currentQuestion.questionType === 'map' && mapDisplayMode === 'text-to-map' ? 'Map Click' : 
+                   currentQuestion.questionType === 'map' && mapDisplayMode === 'map-to-text' ? 'Name the Region' : 
                    'Single Choice'}
                 </Badge>
               </div>
@@ -359,12 +367,12 @@ export default function QuizPage() {
                 Type your answer below (not case-sensitive)
               </p>
             )}
-            {currentQuestion.questionType === 'text-to-map' && !isAnswered && (
+            {currentQuestion.questionType === 'map' && mapDisplayMode === 'text-to-map' && !isAnswered && (
               <p className="text-sm text-muted-foreground">
                 Click on the map to identify the wine region
               </p>
             )}
-            {currentQuestion.questionType === 'map-to-text' && !isAnswered && (
+            {currentQuestion.questionType === 'map' && mapDisplayMode === 'map-to-text' && !isAnswered && (
               <p className="text-sm text-muted-foreground">
                 Name the highlighted wine region (not case-sensitive)
               </p>
@@ -402,8 +410,8 @@ export default function QuizPage() {
                   </div>
                 )}
               </div>
-            ) : currentQuestion.questionType === 'text-to-map' ? (
-              /* Text-to-map: Show map and let user click */
+            ) : currentQuestion.questionType === 'map' && mapDisplayMode === 'text-to-map' ? (
+              /* Map (text-to-map mode): Show map and let user click */
               <div className="space-y-4">
                 <WineMap
                   key={currentQuestion.id}
@@ -440,8 +448,8 @@ export default function QuizPage() {
                   </div>
                 )}
               </div>
-            ) : currentQuestion.questionType === 'map-to-text' ? (
-              /* Map-to-text: Show map with region, let user type name */
+            ) : currentQuestion.questionType === 'map' && mapDisplayMode === 'map-to-text' ? (
+              /* Map (map-to-text mode): Show map with region, let user type name */
               <div className="space-y-4">
                 <WineMap
                   key={currentQuestion.id}
@@ -564,8 +572,8 @@ export default function QuizPage() {
                   disabled={
                     (currentQuestion.questionType === 'single' && selectedAnswer === null) ||
                     (currentQuestion.questionType === 'text-input' && textAnswer.trim() === '') ||
-                    (currentQuestion.questionType === 'text-to-map' && mapClick === null) ||
-                    (currentQuestion.questionType === 'map-to-text' && textAnswer.trim() === '') ||
+                    (currentQuestion.questionType === 'map' && mapDisplayMode === 'text-to-map' && mapClick === null) ||
+                    (currentQuestion.questionType === 'map' && mapDisplayMode === 'map-to-text' && textAnswer.trim() === '') ||
                     submitAnswerMutation.isPending
                   }
                   size="lg"
