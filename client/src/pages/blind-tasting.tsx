@@ -217,9 +217,10 @@ export default function BlindTasting() {
     toggleEliminateMutation.mutate({ wineId, eliminate: !isChecked });
   };
 
-  const renderClue = (stage: number, targetWine: TastingNote) => {
-    if (stage === 0) {
-      return (
+  const renderAllClues = (stage: number, targetWine: TastingNote) => {
+    return (
+      <div className="space-y-3">
+        {/* Appearance - always shown */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <Eye className="w-4 h-4 text-primary" />
@@ -234,65 +235,73 @@ export default function BlindTasting() {
             )}
           </div>
         </div>
-      );
-    } else if (stage === 1) {
-      return (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Wind className="w-4 h-4 text-primary" />
-            <h3 className="text-sm font-semibold">Nose</h3>
-          </div>
-          <div className="text-xs md:text-sm space-y-1">
-            <p><span className="font-medium">Condition:</span> {targetWine.nose.condition}</p>
-            <p><span className="font-medium">Intensity:</span> {targetWine.nose.intensity}</p>
-            <p><span className="font-medium">Development:</span> {targetWine.nose.development}</p>
-            <div className="space-y-1">
-              <p className="font-medium">Primary Aromas:</p>
-              <div className="flex flex-wrap gap-1">
-                {targetWine.nose.aromas.primary.map((aroma, idx) => (
-                  <Badge key={idx} variant="secondary" className="text-xs">{aroma}</Badge>
-                ))}
+
+        {/* Nose - shown if stage >= 1 */}
+        {stage >= 1 && (
+          <>
+            <Separator />
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Wind className="w-4 h-4 text-primary" />
+                <h3 className="text-sm font-semibold">Nose</h3>
+              </div>
+              <div className="text-xs md:text-sm space-y-1">
+                <p><span className="font-medium">Condition:</span> {targetWine.nose.condition}</p>
+                <p><span className="font-medium">Intensity:</span> {targetWine.nose.intensity}</p>
+                <p><span className="font-medium">Development:</span> {targetWine.nose.development}</p>
+                <div className="space-y-1">
+                  <p className="font-medium">Primary Aromas:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {targetWine.nose.aromas.primary.map((aroma, idx) => (
+                      <Badge key={idx} variant="secondary" className="text-xs">{aroma}</Badge>
+                    ))}
+                  </div>
+                </div>
+                {targetWine.nose.aromas.secondary.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="font-medium">Secondary Aromas:</p>
+                    <div className="flex flex-wrap gap-1">
+                      {targetWine.nose.aromas.secondary.map((aroma, idx) => (
+                        <Badge key={idx} variant="secondary" className="text-xs">{aroma}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-            {targetWine.nose.aromas.secondary.length > 0 && (
-              <div className="space-y-1">
-                <p className="font-medium">Secondary Aromas:</p>
-                <div className="flex flex-wrap gap-1">
-                  {targetWine.nose.aromas.secondary.map((aroma, idx) => (
-                    <Badge key={idx} variant="secondary" className="text-xs">{aroma}</Badge>
-                  ))}
+          </>
+        )}
+
+        {/* Palate - shown if stage >= 2 */}
+        {stage >= 2 && (
+          <>
+            <Separator />
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Droplet className="w-4 h-4 text-primary" />
+                <h3 className="text-sm font-semibold">Palate</h3>
+              </div>
+              <div className="text-xs md:text-sm space-y-1">
+                <p><span className="font-medium">Sweetness:</span> {targetWine.palate.sweetness}</p>
+                <p><span className="font-medium">Acidity:</span> {targetWine.palate.acidity}</p>
+                <p><span className="font-medium">Tannin:</span> {targetWine.palate.tannin}</p>
+                <p><span className="font-medium">Alcohol:</span> {targetWine.palate.alcohol}</p>
+                <p><span className="font-medium">Body:</span> {targetWine.palate.body}</p>
+                <p><span className="font-medium">Finish:</span> {targetWine.palate.finish}</p>
+                <div className="space-y-1">
+                  <p className="font-medium">Primary Flavours:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {targetWine.palate.flavours.primary.map((flavour, idx) => (
+                      <Badge key={idx} variant="secondary" className="text-xs">{flavour}</Badge>
+                    ))}
+                  </div>
                 </div>
               </div>
-            )}
-          </div>
-        </div>
-      );
-    } else {
-      return (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Droplet className="w-4 h-4 text-primary" />
-            <h3 className="text-sm font-semibold">Palate</h3>
-          </div>
-          <div className="text-xs md:text-sm space-y-1">
-            <p><span className="font-medium">Sweetness:</span> {targetWine.palate.sweetness}</p>
-            <p><span className="font-medium">Acidity:</span> {targetWine.palate.acidity}</p>
-            <p><span className="font-medium">Tannin:</span> {targetWine.palate.tannin}</p>
-            <p><span className="font-medium">Alcohol:</span> {targetWine.palate.alcohol}</p>
-            <p><span className="font-medium">Body:</span> {targetWine.palate.body}</p>
-            <p><span className="font-medium">Finish:</span> {targetWine.palate.finish}</p>
-            <div className="space-y-1">
-              <p className="font-medium">Primary Flavours:</p>
-              <div className="flex flex-wrap gap-1">
-                {targetWine.palate.flavours.primary.map((flavour, idx) => (
-                  <Badge key={idx} variant="secondary" className="text-xs">{flavour}</Badge>
-                ))}
-              </div>
             </div>
-          </div>
-        </div>
-      );
-    }
+          </>
+        )}
+      </div>
+    );
   };
 
   if (isLoading) {
@@ -406,7 +415,7 @@ export default function BlindTasting() {
               <CardTitle className="text-sm md:text-base">Current Clue</CardTitle>
             </CardHeader>
             <CardContent className="p-3 md:p-4 pt-0 space-y-3">
-              {renderClue(session.currentClueStage, targetWine)}
+              {renderAllClues(session.currentClueStage, targetWine)}
               
               <Separator />
               
