@@ -75,7 +75,7 @@ export default function BlindTasting() {
 
   const startSessionMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest<SessionData>("/api/blind-tasting/start", "POST");
+      return await apiRequest<SessionData>("POST", "/api/blind-tasting/start");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/blind-tasting/current"] });
@@ -84,7 +84,7 @@ export default function BlindTasting() {
 
   const toggleEliminateMutation = useMutation({
     mutationFn: async ({ wineId, eliminate }: { wineId: string; eliminate: boolean }) => {
-      return await apiRequest<any>("/api/blind-tasting/toggle-eliminate", "POST", { wineId, eliminate });
+      return await apiRequest<any>("POST", "/api/blind-tasting/toggle-eliminate", { wineId, eliminate });
     },
     onSuccess: (data: any) => {
       if (data.success) {
@@ -99,7 +99,7 @@ export default function BlindTasting() {
 
   const advanceCluesMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest("/api/blind-tasting/advance", "POST");
+      return await apiRequest("POST", "/api/blind-tasting/advance");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/blind-tasting/current"] });
@@ -112,7 +112,7 @@ export default function BlindTasting() {
 
   const completeSessionMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest("/api/blind-tasting/complete", "POST");
+      return await apiRequest("POST", "/api/blind-tasting/complete");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/blind-tasting/current"] });
