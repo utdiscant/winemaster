@@ -64,9 +64,32 @@ export const reviewCards = pgTable("review_cards", {
   userQuestionUnique: unique("user_question_unique").on(table.userId, table.questionId),
 }));
 
+// Tasting notes schema - wine profiles for blind tasting simulator
+export const tastingNotes = pgTable("tasting_notes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  grape: text("grape").notNull(),
+  region: text("region").notNull(),
+  appearance: jsonb("appearance").notNull(), // { clarity, intensity, color, other_observations[] }
+  nose: jsonb("nose").notNull(), // { condition, intensity, aromas, development }
+  palate: jsonb("palate").notNull(), // { sweetness, acidity, tannin, alcohol, body, flavour_intensity, flavours, finish }
+  qualityAssessment: jsonb("quality_assessment").notNull(), // { quality_level, notes }
+});
+
+// Blind tasting session schema - tracks user's progress through a blind tasting
+export const blindTastingSessions = pgTable("blind_tasting_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  targetWineId: varchar("target_wine_id").notNull(), // ID of the wine to guess
+  currentClueStage: integer("current_clue_stage").notNull().default(0), // 0=appearance, 1=nose, 2=palate
+  eliminatedWines: text("eliminated_wines").array().default([]), // IDs of wines user has eliminated
+  completed: boolean("completed").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   reviewCards: many(reviewCards),
+  blindTastingSessions: many(blindTastingSessions),
 }));
 
 export const questionsRelations = relations(questions, ({ many }) => ({
@@ -81,6 +104,17 @@ export const reviewCardsRelations = relations(reviewCards, ({ one }) => ({
   question: one(questions, {
     fields: [reviewCards.questionId],
     references: [questions.id],
+  }),
+}));
+
+export const blindTastingSessionsRelations = relations(blindTastingSessions, ({ one }) => ({
+  user: one(users, {
+    fields: [blindTastingSessions.userId],
+    references: [users.id],
+  }),
+  targetWine: one(tastingNotes, {
+    fields: [blindTastingSessions.targetWineId],
+    references: [tastingNotes.id],
   }),
 }));
 
@@ -262,3 +296,11 @@ export const statisticsSchema = z.object({
 });
 
 export type Statistics = z.infer<typeof statisticsSchema>;
+
+// Tasting notes schemas
+export type TastingNote = typeof tastingNotes.$inferSelect;
+export type InsertTastingNote = typeof tastingNotes.$inferInsert;
+
+// Blind tasting session schemas
+export type BlindTastingSession = typeof blindTastingSessions.$inferSelect;
+export type InsertBlindTastingSession = typeof blindTastingSessions.$inferInsert;

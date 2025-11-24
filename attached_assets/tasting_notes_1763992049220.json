@@ -1,0 +1,2821 @@
+{
+	"tasting_notes" : [
+		{
+		  "grape": "Riesling",
+		  "region": "Germany",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "pale",
+		    "color": "lemon",
+		    "other_observations": ["slight green hue"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "medium-plus",
+		    "aromas": {
+		      "primary": [
+		        "lime",
+		        "green apple",
+		        "lemon zest",
+		        "white peach",
+		        "apricot",
+		        "floral (white flowers)",
+		        "slate"
+		      ],
+		      "secondary": [
+		        "lees notes",
+		        "subtle petrol (from bottle age)",
+		        "wet stone"
+		      ],
+		      "tertiary": [
+		        "honey",
+		        "kerosene",
+		        "dried apricot",
+		        "toast"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "high",
+		    "tannin": "none",
+		    "alcohol": "medium",
+		    "body": "light",
+		    "flavour_intensity": "medium-plus",
+		    "flavours": {
+		      "primary": [
+		        "lime",
+		        "green apple",
+		        "lemon",
+		        "white peach"
+		      ],
+		      "secondary": [
+		        "wet stone",
+		        "lees",
+		        "light petrol"
+		      ],
+		      "tertiary": [
+		        "honey",
+		        "dried apricot",
+		        "kerosene"
+		      ]
+		    },
+		    "finish": "long"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "very good",
+		    "notes": "High natural acidity, precision, and purity of fruit with characteristic minerality. Some bottle-aged examples show complex petrol and honeyed notes."
+		  }
+		},
+		{
+		  "grape": "Riesling",
+		  "region": "Germany (Mosel / Rheingau)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "pale",
+		    "color": "lemon",
+		    "other_observations": ["viscous tears"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "medium-plus",
+		    "aromas": {
+		      "primary": [
+		        "ripe peach",
+		        "apricot",
+		        "pear",
+		        "honeysuckle",
+		        "citrus blossom",
+		        "lime",
+		        "green apple"
+		      ],
+		      "secondary": [
+		        "petrol (light)",
+		        "wet stone",
+		        "lees"
+		      ],
+		      "tertiary": [
+		        "honey",
+		        "dried apricot",
+		        "ginger",
+		        "baked apple"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "medium-sweet",
+		    "acidity": "high",
+		    "tannin": "none",
+		    "alcohol": "low",
+		    "body": "medium-minus",
+		    "flavour_intensity": "medium-plus",
+		    "flavours": {
+		      "primary": [
+		        "ripe peach",
+		        "apricot",
+		        "pear",
+		        "lime"
+		      ],
+		      "secondary": [
+		        "wet stone",
+		        "light petrol"
+		      ],
+		      "tertiary": [
+		        "honey",
+		        "dried apricot",
+		        "ginger"
+		      ]
+		    },
+		    "finish": "long"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "very good",
+		    "notes": "Intense ripe fruit balanced by vibrant acidity. Stone and honey notes develop with age, giving complexity while maintaining freshness."
+		  }
+		},
+		{
+		  "grape": "Cabernet Sauvignon",
+		  "region": "France (Bordeaux, Left Bank)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "medium",
+		    "color": "deep ruby",
+		    "other_observations": ["purple highlights in youth"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "medium-plus",
+		    "aromas": {
+		      "primary": [
+		        "blackcurrant (cassis)",
+		        "black cherry",
+		        "plum",
+		        "cedar",
+		        "graphite",
+		        "green bell pepper (pyrazine)"
+		      ],
+		      "secondary": [
+		        "oak",
+		        "toast",
+		        "clove",
+		        "vanilla",
+		        "smoke"
+		      ],
+		      "tertiary": [
+		        "leather",
+		        "tobacco",
+		        "earth",
+		        "dried black fruit",
+		        "cedar box"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "medium-plus",
+		    "tannin": "high",
+		    "alcohol": "medium-plus",
+		    "body": "medium-plus",
+		    "flavour_intensity": "medium-plus",
+		    "flavours": {
+		      "primary": [
+		        "blackcurrant",
+		        "black cherry",
+		        "plum"
+		      ],
+		      "secondary": [
+		        "cedar",
+		        "vanilla",
+		        "clove",
+		        "smoke"
+		      ],
+		      "tertiary": [
+		        "tobacco",
+		        "earth",
+		        "leather"
+		      ]
+		    },
+		    "finish": "long"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "very good",
+		    "notes": "Structured with firm tannins and concentrated black fruit. Oak adds complexity, while age brings tobacco, cedar, and earthy tones typical of quality Bordeaux Cabernet Sauvignon."
+		  }
+		},
+		{
+		  "grape": "Merlot",
+		  "region": "France (Bordeaux, Right Bank)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "medium",
+		    "color": "deep ruby",
+		    "other_observations": ["garnet rim with age"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "medium-plus",
+		    "aromas": {
+		      "primary": [
+		        "plum",
+		        "black cherry",
+		        "blackberry",
+		        "blueberry",
+		        "violet",
+		        "herbal notes"
+		      ],
+		      "secondary": [
+		        "cedar",
+		        "vanilla",
+		        "baking spice",
+		        "chocolate",
+		        "toast"
+		      ],
+		      "tertiary": [
+		        "truffle",
+		        "tobacco",
+		        "dried plum",
+		        "earth",
+		        "cedar box"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "medium",
+		    "tannin": "medium-plus",
+		    "alcohol": "medium-plus",
+		    "body": "medium-plus",
+		    "flavour_intensity": "medium-plus",
+		    "flavours": {
+		      "primary": [
+		        "plum",
+		        "black cherry",
+		        "blackberry"
+		      ],
+		      "secondary": [
+		        "cedar",
+		        "vanilla",
+		        "chocolate",
+		        "baking spice"
+		      ],
+		      "tertiary": [
+		        "truffle",
+		        "tobacco",
+		        "earth"
+		      ]
+		    },
+		    "finish": "long"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "very good to outstanding",
+		    "notes": "Supple, plush fruit profile with polished tannins and rich secondary notes from oak. With age, complex earthy, truffle, and tobacco tones emerge—typical of top Right Bank Merlot (e.g., Saint-Émilion or Pomerol)."
+		  }
+		},
+		{
+		  "grape": "Corvina",
+		  "region": "Italy (Veneto, Valpolicella)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "pale",
+		    "color": "ruby",
+		    "other_observations": ["slight garnet tint with age"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "medium",
+		    "aromas": {
+		      "primary": [
+		        "red cherry",
+		        "sour cherry",
+		        "raspberry",
+		        "red currant",
+		        "herbal notes",
+		        "violet"
+		      ],
+		      "secondary": [
+		        "almond",
+		        "spice",
+		        "subtle oak (if used)",
+		        "dried herbs"
+		      ],
+		      "tertiary": [
+		        "dried cherry",
+		        "leather",
+		        "earth",
+		        "forest floor"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "medium-plus",
+		    "tannin": "low to medium",
+		    "alcohol": "medium",
+		    "body": "light to medium",
+		    "flavour_intensity": "medium",
+		    "flavours": {
+		      "primary": [
+		        "red cherry",
+		        "sour cherry",
+		        "raspberry"
+		      ],
+		      "secondary": [
+		        "almond",
+		        "dried herbs",
+		        "light spice"
+		      ],
+		      "tertiary": [
+		        "dried cherry",
+		        "earth",
+		        "leather"
+		      ]
+		    },
+		    "finish": "medium"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "good",
+		    "notes": "Fresh, vibrant red fruit with lively acidity and gentle tannins. Almond and herbal notes are characteristic; tertiary notes deepen in more serious expressions or with age."
+		  }
+		},
+		{
+		  "grape": "Corvina (Amarone della Valpolicella)",
+		  "region": "Italy (Veneto, Valpolicella Classica)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "deep",
+		    "color": "deep ruby",
+		    "other_observations": ["viscous tears", "garnet tones with age"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "pronounced",
+		    "aromas": {
+		      "primary": [
+		        "dried cherry",
+		        "dried plum",
+		        "black cherry",
+		        "fig",
+		        "raisin",
+		        "blackberry",
+		        "spice",
+		        "violet"
+		      ],
+		      "secondary": [
+		        "oak",
+		        "vanilla",
+		        "clove",
+		        "cocoa",
+		        "coffee",
+		        "sweet spice"
+		      ],
+		      "tertiary": [
+		        "leather",
+		        "tobacco",
+		        "dried fig",
+		        "molasses",
+		        "earth",
+		        "balsamic",
+		        "dark chocolate"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "dry (with rich fruitiness)",
+		    "acidity": "medium",
+		    "tannin": "medium-plus",
+		    "alcohol": "high",
+		    "body": "full",
+		    "flavour_intensity": "pronounced",
+		    "flavours": {
+		      "primary": [
+		        "dried cherry",
+		        "raisin",
+		        "fig",
+		        "plum"
+		      ],
+		      "secondary": [
+		        "cocoa",
+		        "vanilla",
+		        "clove",
+		        "coffee"
+		      ],
+		      "tertiary": [
+		        "tobacco",
+		        "dark chocolate",
+		        "leather",
+		        "molasses"
+		      ]
+		    },
+		    "finish": "long"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "outstanding",
+		    "notes": "Rich, concentrated, and powerful with intense dried-fruit character, high alcohol, and complex oak and tertiary notes. Amarone shows depth, harmony, and exceptional ageing potential."
+		  }
+		},
+		{
+		  "grape": "Corvina (Ripasso della Valpolicella)",
+		  "region": "Italy (Veneto, Valpolicella)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "medium",
+		    "color": "ruby",
+		    "other_observations": ["slight garnet hue with age"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "medium-plus",
+		    "aromas": {
+		      "primary": [
+		        "red cherry",
+		        "black cherry",
+		        "plum",
+		        "dried cherry",
+		        "blackberry",
+		        "spice"
+		      ],
+		      "secondary": [
+		        "cocoa",
+		        "vanilla",
+		        "clove",
+		        "dried herbs",
+		        "almond"
+		      ],
+		      "tertiary": [
+		        "dried fig",
+		        "leather",
+		        "tobacco",
+		        "earth"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "medium",
+		    "tannin": "medium",
+		    "alcohol": "medium-plus",
+		    "body": "medium-plus",
+		    "flavour_intensity": "medium-plus",
+		    "flavours": {
+		      "primary": [
+		        "black cherry",
+		        "red cherry",
+		        "plum"
+		      ],
+		      "secondary": [
+		        "cocoa",
+		        "vanilla",
+		        "clove"
+		      ],
+		      "tertiary": [
+		        "dried fig",
+		        "leather",
+		        "earth"
+		      ]
+		    },
+		    "finish": "medium-plus"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "very good",
+		    "notes": "Shows added depth and richness from the Ripasso method, with dried-fruit notes and gentle spice while retaining freshness and drinkability. A bridge between Valpolicella Classico and Amarone."
+		  }
+		},
+		{
+		  "grape": "Gamay",
+		  "region": "France (Beaujolais)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "pale",
+		    "color": "ruby",
+		    "other_observations": ["purple tint in youth"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "medium",
+		    "aromas": {
+		      "primary": [
+		        "raspberry",
+		        "red cherry",
+		        "strawberry",
+		        "cranberry",
+		        "violet",
+		        "peony",
+		        "banana (from semi-carbonic maceration)",
+		        "bubblegum (light)"
+		      ],
+		      "secondary": [
+		        "spice",
+		        "subtle oak (rare)",
+		        "clove",
+		        "savoury notes"
+		      ],
+		      "tertiary": [
+		        "earth",
+		        "dried strawberry",
+		        "forest floor"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "medium-plus",
+		    "tannin": "low",
+		    "alcohol": "medium",
+		    "body": "light to medium",
+		    "flavour_intensity": "medium",
+		    "flavours": {
+		      "primary": [
+		        "raspberry",
+		        "red cherry",
+		        "strawberry"
+		      ],
+		      "secondary": [
+		        "spice",
+		        "light clove"
+		      ],
+		      "tertiary": [
+		        "dried strawberry",
+		        "earth"
+		      ]
+		    },
+		    "finish": "medium"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "good to very good",
+		    "notes": "Fresh, juicy red fruit with lively acidity and low tannin. Floral and carbonic notes common; top crus show additional depth, spice, and subtle earthiness."
+		  }
+		},
+		{
+		  "grape": "Gamay",
+		  "region": "France (Beaujolais – Cru)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "medium",
+		    "color": "ruby",
+		    "other_observations": ["slight garnet rim with bottle age"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "medium-plus",
+		    "aromas": {
+		      "primary": [
+		        "black cherry",
+		        "raspberry",
+		        "red plum",
+		        "violet",
+		        "peony",
+		        "cranberry"
+		      ],
+		      "secondary": [
+		        "spice",
+		        "subtle oak (if used)",
+		        "clove",
+		        "wet stone",
+		        "herbal notes"
+		      ],
+		      "tertiary": [
+		        "forest floor",
+		        "dried cherry",
+		        "earth",
+		        "mushroom"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "medium-plus",
+		    "tannin": "medium",
+		    "alcohol": "medium",
+		    "body": "medium",
+		    "flavour_intensity": "medium-plus",
+		    "flavours": {
+		      "primary": [
+		        "black cherry",
+		        "raspberry",
+		        "red plum"
+		      ],
+		      "secondary": [
+		        "spice",
+		        "wet stone",
+		        "light clove"
+		      ],
+		      "tertiary": [
+		        "forest floor",
+		        "earth",
+		        "dried cherry"
+		      ]
+		    },
+		    "finish": "long"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "very good",
+		    "notes": "More depth, complexity, and structure than basic Beaujolais. Darker fruit, mineral notes, and subtle spice show terroir expression. Some Crus age well, developing earthy, savoury complexity."
+		  }
+		},
+		{
+		  "grape": "Gewurztraminer",
+		  "region": "France (Alsace)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "medium",
+		    "color": "gold",
+		    "other_observations": ["viscous tears from higher alcohol/oiliness"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "pronounced",
+		    "aromas": {
+		      "primary": [
+		        "lychee",
+		        "rose",
+		        "honeysuckle",
+		        "peach",
+		        "apricot",
+		        "tangerine",
+		        "tropical fruit",
+		        "ginger",
+		        "spice"
+		      ],
+		      "secondary": [
+		        "lees",
+		        "light spice",
+		        "floral perfume"
+		      ],
+		      "tertiary": [
+		        "honey",
+		        "dried apricot",
+		        "candied citrus peel",
+		        "exotic spice"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "off-dry (can be dry to medium-sweet depending on producer)",
+		    "acidity": "low to medium",
+		    "tannin": "none",
+		    "alcohol": "medium-plus to high",
+		    "body": "medium-plus to full",
+		    "flavour_intensity": "pronounced",
+		    "flavours": {
+		      "primary": [
+		        "lychee",
+		        "rose",
+		        "peach",
+		        "apricot"
+		      ],
+		      "secondary": [
+		        "ginger",
+		        "light spice",
+		        "perfumed notes"
+		      ],
+		      "tertiary": [
+		        "honey",
+		        "dried apricot",
+		        "candied citrus"
+		      ]
+		    },
+		    "finish": "long"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "very good",
+		    "notes": "Highly aromatic, opulent, and exotic with intense floral and stone-fruit character. Lower acidity but rich texture; complex spicy and honeyed notes with age."
+		  }
+		},
+		{
+		  "grape": "Malbec",
+		  "region": "Argentina (Mendoza / Uco Valley)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "deep",
+		    "color": "deep purple",
+		    "other_observations": ["staining tears"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "medium-plus to pronounced",
+		    "aromas": {
+		      "primary": [
+		        "black plum",
+		        "blackberry",
+		        "blueberry",
+		        "black cherry",
+		        "violet",
+		        "dried herbs"
+		      ],
+		      "secondary": [
+		        "oak",
+		        "vanilla",
+		        "clove",
+		        "cocoa",
+		        "sweet spice",
+		        "smoke"
+		      ],
+		      "tertiary": [
+		        "leather",
+		        "tobacco",
+		        "dried black fruit",
+		        "earth"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "medium",
+		    "tannin": "medium-plus",
+		    "alcohol": "high",
+		    "body": "full",
+		    "flavour_intensity": "medium-plus to pronounced",
+		    "flavours": {
+		      "primary": [
+		        "black plum",
+		        "blackberry",
+		        "blueberry"
+		      ],
+		      "secondary": [
+		        "vanilla",
+		        "cocoa",
+		        "clove",
+		        "sweet spice"
+		      ],
+		      "tertiary": [
+		        "leather",
+		        "earth",
+		        "dried black fruit"
+		      ]
+		    },
+		    "finish": "long"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "very good",
+		    "notes": "Rich, ripe dark fruit with plush tannins and high alcohol. Oak adds spice and chocolate notes; top regions like Uco Valley bring floral aromas and fresher acidity."
+		  }
+		},
+		{
+		  "grape": "Malbec",
+		  "region": "France (Cahors)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "deep",
+		    "color": "deep ruby to purple",
+		    "other_observations": ["nearly opaque", "garnet rim with age"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "medium-plus",
+		    "aromas": {
+		      "primary": [
+		        "black plum",
+		        "blackberry",
+		        "black cherry",
+		        "violet",
+		        "damson",
+		        "herbal notes"
+		      ],
+		      "secondary": [
+		        "oak",
+		        "cedar",
+		        "clove",
+		        "smoke",
+		        "savoury spice"
+		      ],
+		      "tertiary": [
+		        "forest floor",
+		        "leather",
+		        "tobacco",
+		        "earth",
+		        "dried black fruit"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "medium-plus",
+		    "tannin": "high",
+		    "alcohol": "medium-plus",
+		    "body": "full",
+		    "flavour_intensity": "medium-plus",
+		    "flavours": {
+		      "primary": [
+		        "black plum",
+		        "blackberry",
+		        "black cherry"
+		      ],
+		      "secondary": [
+		        "cedar",
+		        "clove",
+		        "smoke"
+		      ],
+		      "tertiary": [
+		        "leather",
+		        "tobacco",
+		        "earth"
+		      ]
+		    },
+		    "finish": "long"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "very good",
+		    "notes": "More structured and tannic than Argentinian Malbec, with darker fruit, pronounced earthiness, and savory complexity. Excellent ageing potential, especially from top terroirs ('Causses')."
+		  }
+		},
+		{
+		  "grape": "Nebbiolo",
+		  "region": "Italy (Piedmont – Langhe, Barolo/Barbaresco)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "pale to medium",
+		    "color": "garnet",
+		    "other_observations": ["orange rim even in youth"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "pronounced",
+		    "aromas": {
+		      "primary": [
+		        "red cherry",
+		        "red raspberry",
+		        "rose",
+		        "violet",
+		        "strawberry",
+		        "red plum",
+		        "tar"
+		      ],
+		      "secondary": [
+		        "oak",
+		        "spice",
+		        "licorice",
+		        "tobacco leaf",
+		        "herbal notes"
+		      ],
+		      "tertiary": [
+		        "truffle",
+		        "forest floor",
+		        "dried rose",
+		        "leather",
+		        "dried cherry",
+		        "earth"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "high",
+		    "tannin": "high",
+		    "alcohol": "medium-plus",
+		    "body": "medium",
+		    "flavour_intensity": "pronounced",
+		    "flavours": {
+		      "primary": [
+		        "red cherry",
+		        "raspberry",
+		        "red plum"
+		      ],
+		      "secondary": [
+		        "licorice",
+		        "tobacco",
+		        "spice"
+		      ],
+		      "tertiary": [
+		        "truffle",
+		        "dried rose",
+		        "earth",
+		        "leather"
+		      ]
+		    },
+		    "finish": "long"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "very good to outstanding",
+		    "notes": "Aromatic, complex, and highly structured with firm tannins and bright acidity. Floral and red-fruit core supported by tar, spice, and earthy tertiaries. Exceptional ageing potential."
+		  }
+		},
+		{
+		  "grape": "Pinot Noir",
+		  "region": "Bourgogne (Burgundy)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "pale",
+		    "color": "ruby",
+		    "other_observations": []
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "medium-minus",
+		    "aromas": {
+		      "primary": [
+		        "red cherry",
+		        "cranberry",
+		        "raspberry",
+		        "strawberry",
+		        "floral (violet)",
+		        "red currant"
+		      ],
+		      "secondary": [
+		        "subtle oak",
+		        "spice",
+		        "toast",
+		        "smoke"
+		      ],
+		      "tertiary": [
+		        "earth",
+		        "mushroom",
+		        "forest floor",
+		        "leather"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "medium-plus",
+		    "tannin": "medium",
+		    "alcohol": "medium",
+		    "body": "medium-minus",
+		    "flavour_intensity": "medium",
+		    "flavours": {
+		      "primary": [
+		        "red cherry",
+		        "raspberry",
+		        "cranberry",
+		        "strawberry"
+		      ],
+		      "secondary": [
+		        "subtle oak",
+		        "clove",
+		        "toast",
+		        "smoke"
+		      ],
+		      "tertiary": [
+		        "earth",
+		        "mushroom",
+		        "forest floor"
+		      ]
+		    },
+		    "finish": "medium"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "good",
+		    "notes": "Typically well-balanced with bright acidity and delicate fruit; some examples show complexity from oak and development."
+		  },
+		  "readiness_for_drinking": {
+		    "status": "drink_now_or_short_term_aging",
+		    "notes": "Good Bourgogne-level Pinot Noir is enjoyable young but can develop earthy notes with a few years of bottle age."
+		  }
+		},
+		{
+		  "grape": "Sangiovese",
+		  "region": "Italy (Tuscany)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "medium",
+		    "color": "ruby",
+		    "other_observations": ["garnet rim with age"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "medium-plus",
+		    "aromas": {
+		      "primary": [
+		        "red cherry",
+		        "sour cherry",
+		        "red plum",
+		        "violet",
+		        "dried herbs",
+		        "tomato leaf"
+		      ],
+		      "secondary": [
+		        "oak",
+		        "clove",
+		        "vanilla",
+		        "cedar",
+		        "balsamic hints"
+		      ],
+		      "tertiary": [
+		        "dried cherry",
+		        "leather",
+		        "earth",
+		        "tobacco",
+		        "forest floor"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "high",
+		    "tannin": "medium-plus",
+		    "alcohol": "medium-plus",
+		    "body": "medium",
+		    "flavour_intensity": "medium-plus",
+		    "flavours": {
+		      "primary": [
+		        "red cherry",
+		        "sour cherry",
+		        "red plum"
+		      ],
+		      "secondary": [
+		        "clove",
+		        "cedar",
+		        "dried herbs"
+		      ],
+		      "tertiary": [
+		        "leather",
+		        "earth",
+		        "dried cherry"
+		      ]
+		    },
+		    "finish": "long"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "very good",
+		    "notes": "Bright acidity and firm tannins define Sangiovese. Red-cherry purity with herbal and balsamic notes; develops earthy, leathery complexity with age. Excellent food wine and highly expressive of terroir."
+		  }
+		},
+		{
+		  "grape": "Syrah",
+		  "region": "France (Northern Rhône)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "deep",
+		    "color": "deep ruby",
+		    "other_observations": ["purple highlights"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "pronounced",
+		    "aromas": {
+		      "primary": [
+		        "blackberry",
+		        "blackcurrant",
+		        "black cherry",
+		        "violet",
+		        "olive",
+		        "pepper (black pepper)",
+		        "smoked meat"
+		      ],
+		      "secondary": [
+		        "oak",
+		        "clove",
+		        "vanilla",
+		        "smoke",
+		        "spice"
+		      ],
+		      "tertiary": [
+		        "leather",
+		        "earth",
+		        "dried blackberry",
+		        "game",
+		        "bacon fat"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "medium-plus",
+		    "tannin": "medium-plus",
+		    "alcohol": "medium-plus",
+		    "body": "medium-plus",
+		    "flavour_intensity": "pronounced",
+		    "flavours": {
+		      "primary": [
+		        "blackberry",
+		        "black cherry",
+		        "blackcurrant"
+		      ],
+		      "secondary": [
+		        "pepper",
+		        "smoke",
+		        "olive",
+		        "spice"
+		      ],
+		      "tertiary": [
+		        "leather",
+		        "earth",
+		        "game"
+		      ]
+		    },
+		    "finish": "long"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "very good to outstanding",
+		    "notes": "Complex, spice-driven, and savoury with intense dark fruit, pepper, and meaty notes. Structured but elegant; top examples age beautifully with gamey and earthy tertiary development."
+		  }
+		},
+		{
+		  "grape": "Viognier",
+		  "region": "France (Northern Rhône – Condrieu)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "medium",
+		    "color": "deep lemon to gold",
+		    "other_observations": ["viscous tears, typical of higher alcohol and low acidity"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "pronounced",
+		    "aromas": {
+		      "primary": [
+		        "apricot",
+		        "peach",
+		        "nectarine",
+		        "tangerine",
+		        "honeysuckle",
+		        "floral perfume",
+		        "pear",
+		        "mango"
+		      ],
+		      "secondary": [
+		        "spice",
+		        "gentle oak",
+		        "vanilla",
+		        "almond",
+		        "lees notes"
+		      ],
+		      "tertiary": [
+		        "honey",
+		        "dried apricot",
+		        "candied citrus peel",
+		        "waxy notes"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "low to medium",
+		    "tannin": "none",
+		    "alcohol": "medium-plus to high",
+		    "body": "medium-plus",
+		    "flavour_intensity": "pronounced",
+		    "flavours": {
+		      "primary": [
+		        "apricot",
+		        "peach",
+		        "nectarine"
+		      ],
+		      "secondary": [
+		        "vanilla",
+		        "spice",
+		        "almond"
+		      ],
+		      "tertiary": [
+		        "honey",
+		        "dried apricot",
+		        "candied citrus"
+		      ]
+		    },
+		    "finish": "long"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "very good",
+		    "notes": "Aromatic, lush, and expressive with ripe stone fruit, floral perfume, and rich texture. Low acidity balanced by concentration and aromatic intensity. Condrieu examples can be profound and age gracefully."
+		  }
+		},
+		{
+		  "grape": "Albariño",
+		  "region": "Spain (Rías Baixas, Galicia)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "pale",
+		    "color": "lemon",
+		    "other_observations": ["slight green hue", "light pétillance in some young wines"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "medium-plus",
+		    "aromas": {
+		      "primary": [
+		        "lime",
+		        "lemon zest",
+		        "grapefruit",
+		        "green apple",
+		        "white peach",
+		        "apricot",
+		        "saline notes",
+		        "white flowers"
+		      ],
+		      "secondary": [
+		        "lees",
+		        "wet stone",
+		        "subtle herbal notes"
+		      ],
+		      "tertiary": [
+		        "honeycomb",
+		        "dried citrus peel",
+		        "almond"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "high",
+		    "tannin": "none",
+		    "alcohol": "medium",
+		    "body": "light to medium",
+		    "flavour_intensity": "medium-plus",
+		    "flavours": {
+		      "primary": [
+		        "lime",
+		        "grapefruit",
+		        "green apple",
+		        "white peach"
+		      ],
+		      "secondary": [
+		        "saline",
+		        "wet stone",
+		        "lees"
+		      ],
+		      "tertiary": [
+		        "honeycomb",
+		        "almond",
+		        "dried citrus"
+		      ]
+		    },
+		    "finish": "medium-plus"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "very good",
+		    "notes": "Bright, refreshing, and aromatic with zesty citrus, stone fruit, and a distinct saline-mineral character from coastal vineyards. Crisp acidity and purity make it highly food-friendly."
+		  }
+		},
+		{
+		  "grape": "Barbera",
+		  "region": "Italy (Piedmont – Barbera d'Asti / Barbera d'Alba)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "medium",
+		    "color": "deep ruby",
+		    "other_observations": ["purple highlights in youth"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "medium-plus",
+		    "aromas": {
+		      "primary": [
+		        "red cherry",
+		        "black cherry",
+		        "plum",
+		        "raspberry",
+		        "violet",
+		        "herbal notes"
+		      ],
+		      "secondary": [
+		        "vanilla",
+		        "clove",
+		        "cedar",
+		        "baking spice",
+		        "subtle oak (depending on style)"
+		      ],
+		      "tertiary": [
+		        "dried cherry",
+		        "earth",
+		        "tobacco",
+		        "leather"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "high",
+		    "tannin": "low to medium",
+		    "alcohol": "medium-plus",
+		    "body": "medium",
+		    "flavour_intensity": "medium-plus",
+		    "flavours": {
+		      "primary": [
+		        "red cherry",
+		        "black cherry",
+		        "plum"
+		      ],
+		      "secondary": [
+		        "vanilla",
+		        "clove",
+		        "cedar"
+		      ],
+		      "tertiary": [
+		        "dried cherry",
+		        "earth",
+		        "leather"
+		      ]
+		    },
+		    "finish": "medium-plus"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "very good",
+		    "notes": "Bright acidity defines Barbera. Juicy red and black cherry fruit with moderate tannins, plus spice and oak depending on winemaking. More structured wines from Asti can show depth and age gracefully."
+		  }
+		},
+		{
+		  "grape": "Chardonnay",
+		  "region": "France (Burgundy)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "pale to medium",
+		    "color": "lemon",
+		    "other_observations": ["green reflections in cooler-climate styles", "gold highlights in oak-aged versions"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "medium-plus",
+		    "aromas": {
+		      "primary": [
+		        "lemon",
+		        "green apple",
+		        "pear",
+		        "white peach",
+		        "floral notes",
+		        "wet stone"
+		      ],
+		      "secondary": [
+		        "butter",
+		        "toast",
+		        "vanilla",
+		        "hazelnut",
+		        "cream",
+		        "lees"
+		      ],
+		      "tertiary": [
+		        "honey",
+		        "almond",
+		        "dried citrus peel",
+		        "smoke"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "medium-plus",
+		    "tannin": "none",
+		    "alcohol": "medium",
+		    "body": "medium",
+		    "flavour_intensity": "medium-plus",
+		    "flavours": {
+		      "primary": [
+		        "lemon",
+		        "green apple",
+		        "white peach"
+		      ],
+		      "secondary": [
+		        "butter",
+		        "vanilla",
+		        "hazelnut",
+		        "cream"
+		      ],
+		      "tertiary": [
+		        "honey",
+		        "almond",
+		        "dried citrus"
+		      ]
+		    },
+		    "finish": "long"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "very good",
+		    "notes": "Elegant, balanced, and expressive with vibrant acidity and layers of citrus, stone fruit, and mineral notes. Oak influence ranges from subtle to pronounced in Côte de Beaune styles, adding depth and complexity."
+		  }
+		},
+		{
+		  "grape": "Grenache",
+		  "region": "France (Southern Rhône)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "medium",
+		    "color": "ruby",
+		    "other_observations": ["slight garnet hue with age", "lighter rim due to low anthocyanins"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "medium-plus to pronounced",
+		    "aromas": {
+		      "primary": [
+		        "strawberry",
+		        "raspberry",
+		        "red cherry",
+		        "red plum",
+		        "white pepper",
+		        "garrigue (thyme, rosemary, lavender)",
+		        "pomegranate"
+		      ],
+		      "secondary": [
+		        "spice",
+		        "subtle oak",
+		        "herbal notes",
+		        "dried herbs",
+		        "baking spice"
+		      ],
+		      "tertiary": [
+		        "dried strawberry",
+		        "leather",
+		        "earth",
+		        "fig",
+		        "dried rosemary"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "medium",
+		    "tannin": "medium",
+		    "alcohol": "high",
+		    "body": "medium-plus",
+		    "flavour_intensity": "medium-plus",
+		    "flavours": {
+		      "primary": [
+		        "strawberry",
+		        "raspberry",
+		        "red cherry"
+		      ],
+		      "secondary": [
+		        "white pepper",
+		        "garrigue herbs",
+		        "spice"
+		      ],
+		      "tertiary": [
+		        "dried strawberry",
+		        "earth",
+		        "leather"
+		      ]
+		    },
+		    "finish": "long"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "very good",
+		    "notes": "Warm, ripe red fruit with characteristic garrigue herbs and spice. High alcohol balanced by richness and depth. Top expressions (e.g., Châteauneuf-du-Pape) show complexity, texture, and excellent ageing potential."
+		  }
+		},
+		{
+		  "grape": "Tempranillo",
+		  "region": "Spain (Rioja / Ribera del Duero)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "medium to deep",
+		    "color": "ruby",
+		    "other_observations": ["garnet rim with age"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "medium-plus",
+		    "aromas": {
+		      "primary": [
+		        "red cherry",
+		        "strawberry",
+		        "red plum",
+		        "blackberry",
+		        "fig",
+		        "dried herbs"
+		      ],
+		      "secondary": [
+		        "vanilla",
+		        "coconut",
+		        "dill",
+		        "cedar",
+		        "spice",
+		        "toast"
+		      ],
+		      "tertiary": [
+		        "leather",
+		        "tobacco",
+		        "dried fig",
+		        "earth",
+		        "forest floor"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "medium",
+		    "tannin": "medium to medium-plus",
+		    "alcohol": "medium-plus",
+		    "body": "medium-plus",
+		    "flavour_intensity": "medium-plus",
+		    "flavours": {
+		      "primary": [
+		        "red cherry",
+		        "strawberry",
+		        "red plum"
+		      ],
+		      "secondary": [
+		        "vanilla",
+		        "coconut",
+		        "cedar",
+		        "spice"
+		      ],
+		      "tertiary": [
+		        "leather",
+		        "tobacco",
+		        "earth"
+		      ]
+		    },
+		    "finish": "long"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "very good",
+		    "notes": "Tempranillo combines ripe red fruit with distinctive oak notes (especially American oak) and develops savoury leather, earth, and tobacco complexity with age. Ribera del Duero styles are darker and more powerful; Rioja can be more elegant and aromatic."
+		  }
+		},
+		{
+		  "grape": "Zinfandel",
+		  "region": "USA (California)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "deep",
+		    "color": "deep ruby to purple",
+		    "other_observations": ["viscous tears from higher alcohol", "slight garnet rim with age"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "pronounced",
+		    "aromas": {
+		      "primary": [
+		        "blackberry",
+		        "black cherry",
+		        "blueberry",
+		        "raspberry jam",
+		        "plum",
+		        "bramble",
+		        "black pepper",
+		        "sweet spice"
+		      ],
+		      "secondary": [
+		        "vanilla",
+		        "cinnamon",
+		        "cocoa",
+		        "smoke",
+		        "oak",
+		        "dried herbs"
+		      ],
+		      "tertiary": [
+		        "raisins",
+		        "fig",
+		        "dried blackberry",
+		        "tobacco",
+		        "earth"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "dry (with ripe, jammy fruit)",
+		    "acidity": "medium",
+		    "tannin": "medium",
+		    "alcohol": "high",
+		    "body": "full",
+		    "flavour_intensity": "pronounced",
+		    "flavours": {
+		      "primary": [
+		        "blackberry",
+		        "black cherry",
+		        "raspberry jam"
+		      ],
+		      "secondary": [
+		        "vanilla",
+		        "cinnamon",
+		        "cocoa",
+		        "smoke"
+		      ],
+		      "tertiary": [
+		        "fig",
+		        "raisin",
+		        "earth"
+		      ]
+		    },
+		    "finish": "long"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "very good",
+		    "notes": "Bold, ripe, and expressive with jammy dark fruit, high alcohol, and spice. Oak contributes vanilla and cocoa, while ageing brings dried-fruit complexity. Distinctive, powerful, and deeply Californian in style."
+		  }
+		},
+		{
+		  "grape": "Sauvignon Blanc",
+		  "region": "France (Loire – Sancerre / Pouilly-Fumé)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "pale",
+		    "color": "lemon",
+		    "other_observations": ["green glints"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "medium-plus",
+		    "aromas": {
+		      "primary": [
+		        "gooseberry",
+		        "grapefruit",
+		        "lime",
+		        "green apple",
+		        "cut grass",
+		        "nettle",
+		        "green bell pepper",
+		        "flint"
+		      ],
+		      "secondary": [
+		        "wet stone",
+		        "lees"
+		      ],
+		      "tertiary": [
+		        "smoke",
+		        "dried herbs"
+		      ]
+		    },
+		    "development": "youthful"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "high",
+		    "tannin": "none",
+		    "alcohol": "medium",
+		    "body": "light to medium",
+		    "flavour_intensity": "medium-plus",
+		    "flavours": {
+		      "primary": [
+		        "grapefruit",
+		        "gooseberry",
+		        "lime"
+		      ],
+		      "secondary": [
+		        "flint",
+		        "wet stone"
+		      ],
+		      "tertiary": [
+		        "dried herbs"
+		      ]
+		    },
+		    "finish": "long"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "very good",
+		    "notes": "Lean, high-acid, mineral-driven Sauvignon Blanc with classic Loire green aromatics and flinty precision."
+		  }
+		},
+		{
+		  "grape": "Sauvignon Blanc",
+		  "region": "New Zealand (Marlborough)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "pale",
+		    "color": "lemon",
+		    "other_observations": ["green reflections"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "pronounced",
+		    "aromas": {
+		      "primary": [
+		        "gooseberry",
+		        "passionfruit",
+		        "grapefruit",
+		        "lime",
+		        "kiwi",
+		        "capsicum",
+		        "asparagus"
+		      ],
+		      "secondary": [
+		        "grass",
+		        "herbal notes"
+		      ],
+		      "tertiary": []
+		    },
+		    "development": "youthful"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "high",
+		    "tannin": "none",
+		    "alcohol": "medium",
+		    "body": "light to medium",
+		    "flavour_intensity": "pronounced",
+		    "flavours": {
+		      "primary": [
+		        "gooseberry",
+		        "passionfruit",
+		        "lime"
+		      ],
+		      "secondary": [
+		        "grass",
+		        "herbal notes"
+		      ],
+		      "tertiary": []
+		    },
+		    "finish": "medium-plus"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "very good",
+		    "notes": "Extremely aromatic and distinctive; tropical fruit, citrus, and green vegetal notes are unmistakable."
+		  }
+		},
+		{
+		  "grape": "Riesling",
+		  "region": "Australia (Clare Valley / Eden Valley)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "pale",
+		    "color": "lemon",
+		    "other_observations": ["green hue"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "medium-plus to pronounced",
+		    "aromas": {
+		      "primary": [
+		        "lime",
+		        "lemon",
+		        "green apple",
+		        "jasmine"
+		      ],
+		      "secondary": [
+		        "petrol",
+		        "wet stone"
+		      ],
+		      "tertiary": [
+		        "honey",
+		        "toast"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "high",
+		    "tannin": "none",
+		    "alcohol": "medium",
+		    "body": "light",
+		    "flavour_intensity": "pronounced",
+		    "flavours": {
+		      "primary": [
+		        "lime",
+		        "green apple"
+		      ],
+		      "secondary": [
+		        "petrol",
+		        "wet stone"
+		      ],
+		      "tertiary": [
+		        "honey"
+		      ]
+		    },
+		    "finish": "long"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "very good to outstanding",
+		    "notes": "Austere and precise with piercing acidity and signature lime/petrol character."
+		  }
+		},
+		{
+		  "grape": "Chenin Blanc",
+		  "region": "France (Loire – Vouvray)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "medium",
+		    "color": "lemon-gold",
+		    "other_observations": []
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "medium-plus",
+		    "aromas": {
+		      "primary": [
+		        "apple",
+		        "pear",
+		        "quince",
+		        "honeydew",
+		        "honeysuckle"
+		      ],
+		      "secondary": [
+		        "lanolin",
+		        "wool",
+		        "lees"
+		      ],
+		      "tertiary": [
+		        "honey",
+		        "dried apple",
+		        "almond"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "off-dry",
+		    "acidity": "high",
+		    "tannin": "none",
+		    "alcohol": "medium",
+		    "body": "medium",
+		    "flavour_intensity": "medium-plus",
+		    "flavours": {
+		      "primary": [
+		        "apple",
+		        "pear"
+		      ],
+		      "secondary": [
+		        "lanolin",
+		        "wool"
+		      ],
+		      "tertiary": [
+		        "honey",
+		        "almond"
+		      ]
+		    },
+		    "finish": "long"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "very good",
+		    "notes": "Classic orchard fruit, high acidity, and lanolin notes; capable of ageing superbly."
+		  }
+		},
+		{
+		  "grape": "Grüner Veltliner",
+		  "region": "Austria (Wachau / Kamptal / Kremstal)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "pale",
+		    "color": "lemon",
+		    "other_observations": []
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "medium-plus",
+		    "aromas": {
+		      "primary": [
+		        "lime",
+		        "green apple",
+		        "white pepper",
+		        "lentils",
+		        "herbs"
+		      ],
+		      "secondary": [
+		        "wet stone",
+		        "lees"
+		      ],
+		      "tertiary": [
+		        "honey",
+		        "dried herbs"
+		      ]
+		    },
+		    "development": "youthful"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "medium-plus",
+		    "tannin": "none",
+		    "alcohol": "medium",
+		    "body": "medium",
+		    "flavour_intensity": "medium-plus",
+		    "flavours": {
+		      "primary": [
+		        "lime",
+		        "white pepper"
+		      ],
+		      "secondary": [
+		        "wet stone",
+		        "herbs"
+		      ],
+		      "tertiary": [
+		        "dried herbs"
+		      ]
+		    },
+		    "finish": "medium-plus"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "very good",
+		    "notes": "Peppery, herbal, high-acid white with strong terroir expression and versatility."
+		  }
+		},
+		{
+		  "grape": "Cabernet Sauvignon",
+		  "region": "USA (California – Napa Valley)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "deep",
+		    "color": "deep ruby",
+		    "other_observations": ["staining tears"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "pronounced",
+		    "aromas": {
+		      "primary": [
+		        "blackcurrant",
+		        "black cherry",
+		        "plum",
+		        "blueberry"
+		      ],
+		      "secondary": [
+		        "vanilla",
+		        "coconut",
+		        "baking spice",
+		        "cedar",
+		        "chocolate"
+		      ],
+		      "tertiary": [
+		        "leather",
+		        "tobacco",
+		        "earth",
+		        "dried plum"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "medium",
+		    "tannin": "high",
+		    "alcohol": "high",
+		    "body": "full",
+		    "flavour_intensity": "pronounced",
+		    "flavours": {
+		      "primary": [
+		        "blackcurrant",
+		        "black cherry"
+		      ],
+		      "secondary": [
+		        "vanilla",
+		        "cedar",
+		        "chocolate"
+		      ],
+		      "tertiary": [
+		        "leather",
+		        "tobacco"
+		      ]
+		    },
+		    "finish": "long"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "very good to outstanding",
+		    "notes": "Rich, opulent, oak-driven Cabernet with ripe dark fruit, plush tannins, and high alcohol."
+		  }
+		},
+		{
+		  "grape": "Shiraz",
+		  "region": "Australia (Barossa Valley)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "deep",
+		    "color": "deep purple",
+		    "other_observations": ["staining tears"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "pronounced",
+		    "aromas": {
+		      "primary": [
+		        "blackberry",
+		        "blueberry",
+		        "plum",
+		        "black cherry",
+		        "eucalyptus",
+		        "black pepper"
+		      ],
+		      "secondary": [
+		        "vanilla",
+		        "coconut",
+		        "chocolate",
+		        "smoke",
+		        "spice"
+		      ],
+		      "tertiary": [
+		        "leather",
+		        "earth",
+		        "dried blackberry"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "medium",
+		    "tannin": "medium-plus",
+		    "alcohol": "high",
+		    "body": "full",
+		    "flavour_intensity": "pronounced",
+		    "flavours": {
+		      "primary": [
+		        "blackberry",
+		        "plum"
+		      ],
+		      "secondary": [
+		        "vanilla",
+		        "chocolate"
+		      ],
+		      "tertiary": [
+		        "leather"
+		      ]
+		    },
+		    "finish": "long"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "very good",
+		    "notes": "Ripe, powerful, and distinctive with eucalyptus, chocolate, and intense dark fruit."
+		  }
+		},
+		{
+		  "grape": "Cabernet Franc",
+		  "region": "France (Loire – Chinon / Bourgueil)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "medium",
+		    "color": "ruby",
+		    "other_observations": ["garnet rim with age"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "medium-plus",
+		    "aromas": {
+		      "primary": [
+		        "red cherry",
+		        "raspberry",
+		        "red currant",
+		        "green bell pepper",
+		        "graphite",
+		        "herbs"
+		      ],
+		      "secondary": [
+		        "cedar",
+		        "spice",
+		        "earth"
+		      ],
+		      "tertiary": [
+		        "dried herbs",
+		        "tobacco",
+		        "forest floor"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "medium-plus",
+		    "tannin": "medium",
+		    "alcohol": "medium",
+		    "body": "medium",
+		    "flavour_intensity": "medium-plus",
+		    "flavours": {
+		      "primary": [
+		        "red cherry",
+		        "raspberry"
+		      ],
+		      "secondary": [
+		        "herbs",
+		        "graphite"
+		      ],
+		      "tertiary": [
+		        "tobacco"
+		      ]
+		    },
+		    "finish": "medium-plus"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "very good",
+		    "notes": "Fresh, herbal, and peppery with red fruit and graphite; classic Loire profile."
+		  }
+		},
+		{
+		  "grape": "Mourvèdre",
+		  "region": "France (Provence – Bandol)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "deep",
+		    "color": "deep ruby",
+		    "other_observations": ["garnet with age"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "pronounced",
+		    "aromas": {
+		      "primary": [
+		        "blackberry",
+		        "black plum",
+		        "blueberry",
+		        "black pepper",
+		        "wild herbs",
+		        "gamey notes"
+		      ],
+		      "secondary": [
+		        "smoke",
+		        "cedar",
+		        "spice",
+		        "oak"
+		      ],
+		      "tertiary": [
+		        "leather",
+		        "animal notes",
+		        "earth",
+		        "dried fruit"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "medium-plus",
+		    "tannin": "high",
+		    "alcohol": "high",
+		    "body": "full",
+		    "flavour_intensity": "pronounced",
+		    "flavours": {
+		      "primary": [
+		        "blackberry",
+		        "black plum"
+		      ],
+		      "secondary": [
+		        "pepper",
+		        "smoke"
+		      ],
+		      "tertiary": [
+		        "leather",
+		        "earth"
+		      ]
+		    },
+		    "finish": "long"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "very good to outstanding",
+		    "notes": "Deeply structured, savoury, and powerful with game, herbs, and dark fruit. A benchmark blind-tasting profile."
+		  }
+		},
+		{
+		  "grape": "Chardonnay",
+		  "region": "USA (California – Napa / Sonoma)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "medium",
+		    "color": "lemon-gold",
+		    "other_observations": ["viscous tears from oak/MLF"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "medium-plus to pronounced",
+		    "aromas": {
+		      "primary": [
+		        "ripe peach",
+		        "yellow apple",
+		        "pineapple",
+		        "mango",
+		        "lemon curd"
+		      ],
+		      "secondary": [
+		        "butter",
+		        "vanilla",
+		        "toast",
+		        "baking spice",
+		        "cream",
+		        "oak"
+		      ],
+		      "tertiary": [
+		        "hazelnut",
+		        "honey",
+		        "almond"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "medium",
+		    "tannin": "none",
+		    "alcohol": "medium-plus to high",
+		    "body": "medium-plus to full",
+		    "flavour_intensity": "medium-plus",
+		    "flavours": {
+		      "primary": [
+		        "peach",
+		        "pineapple",
+		        "lemon curd"
+		      ],
+		      "secondary": [
+		        "vanilla",
+		        "butter",
+		        "oak"
+		      ],
+		      "tertiary": [
+		        "hazelnut",
+		        "honey"
+		      ]
+		    },
+		    "finish": "long"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "very good",
+		    "notes": "Ripe, rich, and oaked with tropical fruit and creamy MLF notes; classic Californian style."
+		  }
+		},
+		{
+		  "grape": "Chardonnay",
+		  "region": "Australia (Yarra Valley / Margaret River)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "pale to medium",
+		    "color": "lemon",
+		    "other_observations": ["slight green reflections"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "medium-plus",
+		    "aromas": {
+		      "primary": [
+		        "lemon",
+		        "grapefruit",
+		        "white peach",
+		        "nectarine"
+		      ],
+		      "secondary": [
+		        "flint",
+		        "smoke",
+		        "light toast",
+		        "subtle vanilla",
+		        "lees"
+		      ],
+		      "tertiary": [
+		        "hazelnut",
+		        "dried citrus"
+		      ]
+		    },
+		    "development": "youthful to developing"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "medium-plus",
+		    "tannin": "none",
+		    "alcohol": "medium",
+		    "body": "medium",
+		    "flavour_intensity": "medium-plus",
+		    "flavours": {
+		      "primary": [
+		        "lemon",
+		        "white peach"
+		      ],
+		      "secondary": [
+		        "flint",
+		        "smoke",
+		        "lees"
+		      ],
+		      "tertiary": [
+		        "hazelnut"
+		      ]
+		    },
+		    "finish": "long"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "very good",
+		    "notes": "Modern style with bright citrus, minerality, and subtle oak; often reductive/smoky."
+		  }
+		},
+		{
+		  "grape": "Pinot Noir",
+		  "region": "USA (Oregon / Sonoma Coast)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "pale to medium",
+		    "color": "ruby",
+		    "other_observations": ["slight blueish tint"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "medium-plus",
+		    "aromas": {
+		      "primary": [
+		        "cranberry",
+		        "red cherry",
+		        "raspberry",
+		        "pomegranate",
+		        "rose",
+		        "cola"
+		      ],
+		      "secondary": [
+		        "vanilla",
+		        "baking spice",
+		        "smoke"
+		      ],
+		      "tertiary": [
+		        "dried rose",
+		        "earth",
+		        "forest floor"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "medium-plus",
+		    "tannin": "low",
+		    "alcohol": "medium-plus",
+		    "body": "medium",
+		    "flavour_intensity": "medium-plus",
+		    "flavours": {
+		      "primary": [
+		        "red cherry",
+		        "raspberry"
+		      ],
+		      "secondary": [
+		        "vanilla",
+		        "baking spice"
+		      ],
+		      "tertiary": [
+		        "earth",
+		        "dried rose"
+		      ]
+		    },
+		    "finish": "medium-plus"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "very good",
+		    "notes": "Sweet red fruit, spice, and soft tannins typical of West Coast Pinot; richer than Burgundy."
+		  }
+		},
+		{
+		  "grape": "Torrontés",
+		  "region": "Argentina (Salta – Cafayate)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "pale",
+		    "color": "lemon",
+		    "other_observations": ["green reflections"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "pronounced",
+		    "aromas": {
+		      "primary": [
+		        "grapefruit",
+		        "orange blossom",
+		        "rose",
+		        "lychee",
+		        "white peach",
+		        "musky perfume"
+		      ],
+		      "secondary": [
+		        "herbal notes"
+		      ],
+		      "tertiary": []
+		    },
+		    "development": "youthful"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "medium-plus",
+		    "tannin": "none",
+		    "alcohol": "medium",
+		    "body": "light to medium",
+		    "flavour_intensity": "pronounced",
+		    "flavours": {
+		      "primary": [
+		        "grapefruit",
+		        "lychee",
+		        "white peach"
+		      ],
+		      "secondary": [
+		        "rose",
+		        "herbal notes"
+		      ],
+		      "tertiary": []
+		    },
+		    "finish": "medium-plus"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "good to very good",
+		    "notes": "Highly aromatic with floral and citrus notes; easily confused with Gewürztraminer but always drier/crisper."
+		  }
+		},
+		{
+		  "grape": "Verdejo",
+		  "region": "Spain (Rueda)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "pale",
+		    "color": "lemon",
+		    "other_observations": ["slight green hue"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "medium-plus",
+		    "aromas": {
+		      "primary": [
+		        "lime",
+		        "green apple",
+		        "grapefruit",
+		        "fennel",
+		        "herbs"
+		      ],
+		      "secondary": [
+		        "light lees",
+		        "bitter almond"
+		      ],
+		      "tertiary": [
+		        "hay",
+		        "dried citrus peel"
+		      ]
+		    },
+		    "development": "youthful"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "medium-plus",
+		    "tannin": "none",
+		    "alcohol": "medium",
+		    "body": "medium",
+		    "flavour_intensity": "medium-plus",
+		    "flavours": {
+		      "primary": [
+		        "lime",
+		        "green apple"
+		      ],
+		      "secondary": [
+		        "fennel",
+		        "bitter almond"
+		      ],
+		      "tertiary": [
+		        "dried citrus"
+		      ]
+		    },
+		    "finish": "medium-plus"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "good to very good",
+		    "notes": "Citrus-herbal white with a distinctive bitter almond finish; often mistaken for Loire Sauvignon Blanc."
+		  }
+		},
+		{
+		  "grape": "Pinotage",
+		  "region": "South Africa (Stellenbosch / Swartland)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "deep",
+		    "color": "deep ruby",
+		    "other_observations": []
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "medium-plus to pronounced",
+		    "aromas": {
+		      "primary": [
+		        "blackberry",
+		        "black plum",
+		        "raspberry",
+		        "blueberry"
+		      ],
+		      "secondary": [
+		        "smoke",
+		        "tar",
+		        "rubber",
+		        "coffee",
+		        "chocolate"
+		      ],
+		      "tertiary": [
+		        "earth",
+		        "leather",
+		        "dried black fruit"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "medium",
+		    "tannin": "medium-plus",
+		    "alcohol": "medium-plus",
+		    "body": "full",
+		    "flavour_intensity": "medium-plus to pronounced",
+		    "flavours": {
+		      "primary": [
+		        "blackberry",
+		        "plum"
+		      ],
+		      "secondary": [
+		        "smoke",
+		        "coffee",
+		        "rubber"
+		      ],
+		      "tertiary": [
+		        "earth"
+		      ]
+		    },
+		    "finish": "medium-plus"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "good to very good",
+		    "notes": "Distinctive smoky and coffee notes with dark fruit; unmistakable blind tasting signature."
+		  }
+		},
+		{
+		  "grape": "Sémillon",
+		  "region": "Australia (Hunter Valley)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "pale",
+		    "color": "lemon",
+		    "other_observations": ["very light color even with age"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "medium",
+		    "aromas": {
+		      "primary": [
+		        "lemon",
+		        "lime",
+		        "green apple"
+		      ],
+		      "secondary": [
+		        "lanolin",
+		        "wool",
+		        "toast (with age)"
+		      ],
+		      "tertiary": [
+		        "honey",
+		        "toasted nuts"
+		      ]
+		    },
+		    "development": "developing to fully developed"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "high",
+		    "tannin": "none",
+		    "alcohol": "low",
+		    "body": "light",
+		    "flavour_intensity": "medium-plus",
+		    "flavours": {
+		      "primary": [
+		        "lemon",
+		        "lime"
+		      ],
+		      "secondary": [
+		        "lanolin",
+		        "toast"
+		      ],
+		      "tertiary": [
+		        "honey"
+		      ]
+		    },
+		    "finish": "long"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "very good to outstanding",
+		    "notes": "Iconic Hunter style: low alcohol, high acidity, and dramatic ageing into toast and honey."
+		  }
+		},
+		{
+		  "grape": "Petite Sirah",
+		  "region": "USA (California)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "deep to opaque",
+		    "color": "deep purple-black",
+		    "other_observations": ["heavy staining tears"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "pronounced",
+		    "aromas": {
+		      "primary": [
+		        "blackberry",
+		        "blueberry",
+		        "plum",
+		        "black pepper"
+		      ],
+		      "secondary": [
+		        "vanilla",
+		        "cocoa",
+		        "smoke"
+		      ],
+		      "tertiary": [
+		        "earth",
+		        "leather",
+		        "dried black fruit"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "medium",
+		    "tannin": "high",
+		    "alcohol": "high",
+		    "body": "full",
+		    "flavour_intensity": "pronounced",
+		    "flavours": {
+		      "primary": [
+		        "blackberry",
+		        "blueberry"
+		      ],
+		      "secondary": [
+		        "vanilla",
+		        "cocoa"
+		      ],
+		      "tertiary": [
+		        "earth"
+		      ]
+		    },
+		    "finish": "long"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "good to very good",
+		    "notes": "Dense, tannic, deeply colored wine with black fruit and heavy structure; often a blind tasting trap."
+		  }
+		},
+		{
+		  "grape": "Carmenère",
+		  "region": "Chile (Colchagua / Maipo)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "deep",
+		    "color": "deep ruby",
+		    "other_observations": ["purple hue"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "medium-plus",
+		    "aromas": {
+		      "primary": [
+		        "blackberry",
+		        "black plum",
+		        "raspberry",
+		        "green bell pepper",
+		        "green peppercorn",
+		        "herbs"
+		      ],
+		      "secondary": [
+		        "smoke",
+		        "cedar",
+		        "cocoa",
+		        "spice"
+		      ],
+		      "tertiary": [
+		        "earth",
+		        "tobacco",
+		        "dried herbs"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "medium",
+		    "tannin": "medium",
+		    "alcohol": "medium-plus",
+		    "body": "medium-plus",
+		    "flavour_intensity": "medium-plus",
+		    "flavours": {
+		      "primary": [
+		        "blackberry",
+		        "plum"
+		      ],
+		      "secondary": [
+		        "green peppercorn",
+		        "cedar"
+		      ],
+		      "tertiary": [
+		        "earth",
+		        "dried herbs"
+		      ]
+		    },
+		    "finish": "medium-plus"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "good to very good",
+		    "notes": "Distinctive green peppercorn and herbal character with dark fruit; a key Chilean signature."
+		  }
+		},
+		{
+		  "grape": "Poulsard",
+		  "region": "France (Jura)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "pale",
+		    "color": "pale ruby",
+		    "other_observations": ["almost translucent", "orange rim"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "medium",
+		    "aromas": {
+		      "primary": [
+		        "red cherry",
+		        "raspberry",
+		        "cranberry",
+		        "strawberry",
+		        "rose",
+		        "herbal notes"
+		      ],
+		      "secondary": [
+		        "spice",
+		        "subtle lees",
+		        "light earthy notes"
+		      ],
+		      "tertiary": [
+		        "dried strawberry",
+		        "forest floor",
+		        "mushroom"
+		      ]
+		    },
+		    "development": "youthful to developing"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "medium-plus",
+		    "tannin": "low",
+		    "alcohol": "medium",
+		    "body": "light",
+		    "flavour_intensity": "medium",
+		    "flavours": {
+		      "primary": [
+		        "raspberry",
+		        "cranberry",
+		        "red cherry"
+		      ],
+		      "secondary": [
+		        "herbal notes",
+		        "light spice"
+		      ],
+		      "tertiary": [
+		        "dried strawberry",
+		        "earth"
+		      ]
+		    },
+		    "finish": "medium"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "good to very good",
+		    "notes": "Highly pale and delicate with fresh red fruit and light earthy notes. A unique Jura signature that is easily recognizable in blind tastings."
+		  }
+		},
+		{
+		  "grape": "Savagnin",
+		  "region": "France (Jura)",
+		  "appearance": {
+		    "clarity": "clear",
+		    "intensity": "medium",
+		    "color": "lemon-gold",
+		    "other_observations": ["green reflections"]
+		  },
+		  "nose": {
+		    "condition": "clean",
+		    "intensity": "medium-plus",
+		    "aromas": {
+		      "primary": [
+		        "lemon",
+		        "green apple",
+		        "pear",
+		        "white flowers"
+		      ],
+		      "secondary": [
+		        "almond",
+		        "fresh nuts",
+		        "lees",
+		        "wet stone"
+		      ],
+		      "tertiary": [
+		        "honey",
+		        "dried apple",
+		        "hazelnut"
+		      ]
+		    },
+		    "development": "developing"
+		  },
+		  "palate": {
+		    "sweetness": "dry",
+		    "acidity": "high",
+		    "tannin": "none",
+		    "alcohol": "medium",
+		    "body": "medium",
+		    "flavour_intensity": "medium-plus",
+		    "flavours": {
+		      "primary": [
+		        "lemon",
+		        "pear"
+		      ],
+		      "secondary": [
+		        "almond",
+		        "wet stone"
+		      ],
+		      "tertiary": [
+		        "hazelnut",
+		        "honey"
+		      ]
+		    },
+		    "finish": "long"
+		  },
+		  "quality_assessment": {
+		    "quality_level": "very good",
+		    "notes": "High-acid, mineral-driven, slightly nutty white with a distinct Jura almond note. Ouillé style is precise and linear; can evolve into complex nutty, honeyed expressions."
+		  }
+	}
+	]
+}
