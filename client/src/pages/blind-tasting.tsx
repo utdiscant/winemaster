@@ -68,7 +68,6 @@ interface SessionData {
 
 export default function BlindTasting() {
   const { toast } = useToast();
-  const [checkedWines, setCheckedWines] = useState<Set<string>>(new Set());
 
   const { data: sessionData, isLoading } = useQuery<SessionData>({
     queryKey: ["/api/blind-tasting/current"],
@@ -83,21 +82,15 @@ export default function BlindTasting() {
     },
   });
 
-  const eliminateMutation = useMutation({
-    mutationFn: async (wineId: string) => {
-      return await apiRequest<any>("/api/blind-tasting/eliminate", "POST", { wineId });
+  const toggleEliminateMutation = useMutation({
+    mutationFn: async ({ wineId, eliminate }: { wineId: string; eliminate: boolean }) => {
+      return await apiRequest<any>("/api/blind-tasting/toggle-eliminate", "POST", { wineId, eliminate });
     },
     onSuccess: (data: any) => {
       if (data.success) {
         toast({
-          title: "Wine Eliminated",
-          description: data.reason,
-        });
-      } else {
-        toast({
-          title: "Cannot Eliminate",
-          description: data.reason,
-          variant: "destructive",
+          title: data.action === "eliminated" ? "Wine Eliminated" : "Wine Restored",
+          description: data.wine,
         });
       }
       queryClient.invalidateQueries({ queryKey: ["/api/blind-tasting/current"] });
@@ -131,20 +124,15 @@ export default function BlindTasting() {
   });
 
   const handleStartSession = () => {
-    setCheckedWines(new Set());
     startSessionMutation.mutate();
   };
 
-  const handleWineToggle = (wineId: string, checked: boolean) => {
-    const newChecked = new Set(checkedWines);
-    if (!checked) {
-      newChecked.add(wineId);
-      // Wine is being unchecked (eliminated)
-      eliminateMutation.mutate(wineId);
-    } else {
-      newChecked.delete(wineId);
-    }
-    setCheckedWines(newChecked);
+  const handleWineToggle = (wineId: string, checked: boolean | "indeterminate") => {
+    // Normalize indeterminate state to boolean
+    const isChecked = checked === true;
+    
+    // Toggle elimination: unchecked = eliminate, checked = restore
+    toggleEliminateMutation.mutate({ wineId, eliminate: !isChecked });
   };
 
   const renderClue = (stage: number, targetWine: TastingNote) => {
@@ -383,14 +371,15 @@ export default function BlindTasting() {
             <CardHeader className="p-3 md:p-4">
               <CardTitle className="text-sm md:text-base">Wine Options</CardTitle>
               <CardDescription className="text-xs">
-                Uncheck wines to eliminate them
+                Keep wines checked if they could match the clues. Uncheck to eliminate.
               </CardDescription>
             </CardHeader>
             <CardContent className="p-3 md:p-4 pt-0">
               <div className="space-y-2 max-h-[500px] overflow-y-auto">
                 {allWines.map((wine) => {
                   const isEliminated = session.eliminatedWines.includes(wine.id);
-                  const isChecked = !isEliminated && !checkedWines.has(wine.id);
+                  // Wine is checked (kept) if it's NOT eliminated
+                  const isChecked = !isEliminated;
                   
                   return (
                     <div
@@ -403,9 +392,9 @@ export default function BlindTasting() {
                       <Checkbox
                         id={wine.id}
                         checked={isChecked}
-                        disabled={isEliminated || eliminateMutation.isPending}
+                        disabled={toggleEliminateMutation.isPending}
                         onCheckedChange={(checked) => 
-                          handleWineToggle(wine.id, checked as boolean)
+                          handleWineToggle(wine.id, checked)
                         }
                         data-testid={`checkbox-wine-${wine.id}`}
                       />

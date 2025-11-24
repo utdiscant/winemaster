@@ -693,17 +693,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Eliminate a wine (check if it can be eliminated based on current clue)
-  app.post("/api/blind-tasting/eliminate", isAuthenticated, async (req: any, res) => {
+  // Toggle wine elimination (eliminate or un-eliminate)
+  app.post("/api/blind-tasting/toggle-eliminate", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user?.claims?.sub;
       if (!userId) {
         return res.status(401).json({ error: "User not authenticated" });
       }
 
-      const { wineId } = req.body;
-      if (!wineId) {
-        return res.status(400).json({ error: "Wine ID is required" });
+      const { wineId, eliminate } = req.body;
+      if (!wineId || typeof eliminate !== 'boolean') {
+        return res.status(400).json({ error: "Wine ID and eliminate boolean are required" });
       }
 
       const session = await storage.getCurrentBlindTastingSession(userId);
@@ -711,46 +711,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "No active session found" });
       }
 
-      // Get the target wine and the wine being eliminated
-      const targetWine = await storage.getTastingNote(session.targetWineId);
-      const eliminatedWine = await storage.getTastingNote(wineId);
-      
-      if (!targetWine || !eliminatedWine) {
+      const wine = await storage.getTastingNote(wineId);
+      if (!wine) {
         return res.status(404).json({ error: "Wine not found" });
       }
 
-      // Check if this wine can be eliminated based on current clue stage
-      let canEliminate = false;
-      let reason = "";
-
-      // If trying to eliminate the target wine, that's wrong
-      if (wineId === session.targetWineId) {
-        canEliminate = false;
-        reason = "This is the target wine! You cannot eliminate it.";
+      let updatedSession;
+      if (eliminate) {
+        updatedSession = await storage.eliminateWine(session.id, wineId);
       } else {
-        // Check based on current clue stage
-        // For now, we'll allow any elimination and provide feedback
-        // In a more sophisticated version, you'd validate based on appearance/nose/palate
-        canEliminate = true;
-        reason = `Correctly eliminated ${eliminatedWine.grape} from ${eliminatedWine.region}`;
+        updatedSession = await storage.unEliminateWine(session.id, wineId);
       }
 
-      if (canEliminate) {
-        const updatedSession = await storage.eliminateWine(session.id, wineId);
-        res.json({
-          success: true,
-          reason,
-          session: updatedSession,
-        });
-      } else {
-        res.json({
-          success: false,
-          reason,
-        });
-      }
+      res.json({
+        success: true,
+        session: updatedSession,
+        action: eliminate ? "eliminated" : "restored",
+        wine: `${wine.grape} from ${wine.region}`,
+      });
     } catch (error) {
-      console.error("Error eliminating wine:", error);
-      res.status(500).json({ error: "Failed to eliminate wine" });
+      console.error("Error toggling wine elimination:", error);
+      res.status(500).json({ error: "Failed to toggle wine elimination" });
     }
   });
 
@@ -791,6 +772,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!session) {
         return res.status(404).json({ error: "No active session found" });
       }
+
+      // Validate completion by checking eliminated wines
+      const eliminatedWines = session.eliminatedWines || [];
+      
+      // First, ensure target wine was not eliminated
+      if (eliminatedWines.includes(session.targetWineId)) {
+        const correctWine = await storage.getTastingNote(session.targetWineId);
+        return res.status(400).json({ 
+          error: `Incorrect! You eliminated the target wine: ${correctWine?.grape} from ${correctWine?.region}`,
+          correctWine
+        });
+      }
+
+      // Get all wines to count remaining
+      const allWines = await storage.getAllTastingNotes();
+      const remainingCount = allWines.length - eliminatedWines.length;
+
+      // Validate that exactly one wine remains
+      if (remainingCount !== 1) {
+        return res.status(400).json({ 
+          error: `Cannot complete: You must eliminate all wines except the target. ${remainingCount} wines remaining.`,
+          remainingCount
+        });
+      }
+
+      // If we get here, exactly one wine remains and it's not in the eliminated list,
+      // which means it must be the target wine (since target is not eliminated)
 
       const updatedSession = await storage.completeBlindTastingSession(session.id);
       res.json({ session: updatedSession });

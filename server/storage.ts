@@ -86,6 +86,7 @@ export interface IStorage {
   getCurrentBlindTastingSession(userId: string): Promise<BlindTastingSession | undefined>;
   updateBlindTastingSession(sessionId: string, updates: Partial<BlindTastingSession>): Promise<BlindTastingSession | undefined>;
   eliminateWine(sessionId: string, wineId: string): Promise<BlindTastingSession | undefined>;
+  unEliminateWine(sessionId: string, wineId: string): Promise<BlindTastingSession | undefined>;
   advanceClue(sessionId: string): Promise<BlindTastingSession | undefined>;
   completeBlindTastingSession(sessionId: string): Promise<BlindTastingSession | undefined>;
 }
@@ -625,11 +626,21 @@ export class DatabaseStorage implements IStorage {
     const session = await this.getBlindTastingSession(sessionId);
     if (!session) return undefined;
 
-    const eliminatedWines = session.eliminatedWines || [];
-    if (!eliminatedWines.includes(wineId)) {
-      eliminatedWines.push(wineId);
-    }
+    // Create new array to avoid mutation
+    const currentEliminated = session.eliminatedWines || [];
+    const eliminatedWines = currentEliminated.includes(wineId)
+      ? currentEliminated
+      : [...currentEliminated, wineId];
 
+    return await this.updateBlindTastingSession(sessionId, { eliminatedWines });
+  }
+
+  async unEliminateWine(sessionId: string, wineId: string): Promise<BlindTastingSession | undefined> {
+    const session = await this.getBlindTastingSession(sessionId);
+    if (!session) return undefined;
+
+    // Create new array without the wine ID
+    const eliminatedWines = (session.eliminatedWines || []).filter(id => id !== wineId);
     return await this.updateBlindTastingSession(sessionId, { eliminatedWines });
   }
 
