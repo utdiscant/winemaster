@@ -204,18 +204,8 @@ export default function BlindTasting() {
     },
   });
 
-  const handleStartSession = async () => {
+  const handleStartSession = () => {
     setShowHint(false);
-    
-    // If there's an active session, complete it first
-    if (sessionData?.session && !sessionData.session.isCompleted) {
-      try {
-        await completeSessionMutation.mutateAsync();
-      } catch (error) {
-        // If completion fails, still try to start a new session
-      }
-    }
-    
     startSessionMutation.mutate();
   };
 

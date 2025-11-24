@@ -628,18 +628,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "User not authenticated" });
       }
 
-      // Check if there's already an active session
+      // Check if there's already an active session and delete it to ensure a fresh start
       const existingSession = await storage.getCurrentBlindTastingSession(userId);
       if (existingSession) {
-        // Return existing session instead of creating new one
-        const targetWine = await storage.getTastingNote(existingSession.targetWineId);
-        const allWines = await storage.getAllTastingNotes();
-        
-        return res.json({
-          session: existingSession,
-          targetWine,
-          allWines,
-        });
+        await storage.deleteBlindTastingSession(existingSession.id);
       }
 
       // Get all tasting notes

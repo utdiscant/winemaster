@@ -89,6 +89,7 @@ export interface IStorage {
   unEliminateWine(sessionId: string, wineId: string): Promise<BlindTastingSession | undefined>;
   advanceClue(sessionId: string): Promise<BlindTastingSession | undefined>;
   completeBlindTastingSession(sessionId: string): Promise<BlindTastingSession | undefined>;
+  deleteBlindTastingSession(sessionId: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -654,6 +655,14 @@ export class DatabaseStorage implements IStorage {
 
   async completeBlindTastingSession(sessionId: string): Promise<BlindTastingSession | undefined> {
     return await this.updateBlindTastingSession(sessionId, { completed: true });
+  }
+
+  async deleteBlindTastingSession(sessionId: string): Promise<boolean> {
+    const result = await db
+      .delete(blindTastingSessions)
+      .where(eq(blindTastingSessions.id, sessionId))
+      .returning();
+    return result.length > 0;
   }
 }
 
