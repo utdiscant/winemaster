@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Wine, Eye, Wind, Droplet, CheckCircle2, XCircle, ChevronRight } from "lucide-react";
+import { Wine, Eye, Wind, Droplet, CheckCircle2, XCircle, ChevronRight, Lightbulb } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -66,8 +66,75 @@ interface SessionData {
   allWines?: TastingNote[];
 }
 
+// Helper function to determine if a wine is red or white based on appearance color
+function isRedWine(wine: TastingNote): boolean {
+  const color = wine.appearance.color.toLowerCase();
+  const redIndicators = ["red", "ruby", "garnet", "brick", "tawny", "brown"];
+  return redIndicators.some(indicator => color.includes(indicator));
+}
+
+// Helper function to get a hint for the user
+function getHint(
+  allWines: TastingNote[],
+  eliminatedWines: string[],
+  targetWine: TastingNote,
+  currentClueStage: number
+): { wine: TastingNote; reason: string } | null {
+  const activeWines = allWines.filter(w => !eliminatedWines.includes(w.id) && w.id !== targetWine.id);
+  if (activeWines.length === 0) return null;
+
+  // Find a wine that differs in an obvious way from the current clue
+  const hints: Array<{ wine: TastingNote; reason: string }> = [];
+
+  for (const wine of activeWines) {
+    if (currentClueStage === 0) {
+      // Appearance stage - check for color differences
+      if (isRedWine(wine) !== isRedWine(targetWine)) {
+        hints.push({
+          wine,
+          reason: `has ${isRedWine(wine) ? "red" : "white"} appearance, but target is ${isRedWine(targetWine) ? "red" : "white"}`,
+        });
+      } else if (wine.appearance.color !== targetWine.appearance.color) {
+        hints.push({
+          wine,
+          reason: `has different color (${wine.appearance.color} vs ${targetWine.appearance.color})`,
+        });
+      }
+    } else if (currentClueStage === 1) {
+      // Nose stage - check for different primary aromas
+      const wineAromas = new Set(wine.nose.aromas.primary);
+      const targetAromas = new Set(targetWine.nose.aromas.primary);
+      const hasCommon = Array.from(wineAromas).some(a => targetAromas.has(a));
+
+      if (!hasCommon && wine.nose.aromas.primary.length > 0) {
+        hints.push({
+          wine,
+          reason: `has aromas (${wine.nose.aromas.primary[0]}) not in target wine`,
+        });
+      }
+    } else {
+      // Palate stage - check for different acidity or tannin
+      if (wine.palate.acidity !== targetWine.palate.acidity) {
+        hints.push({
+          wine,
+          reason: `has ${wine.palate.acidity} acidity, target has ${targetWine.palate.acidity}`,
+        });
+      } else if (wine.palate.tannin !== targetWine.palate.tannin) {
+        hints.push({
+          wine,
+          reason: `has ${wine.palate.tannin} tannin, target has ${targetWine.palate.tannin}`,
+        });
+      }
+    }
+  }
+
+  // Return a random hint from the collected hints
+  return hints.length > 0 ? hints[Math.floor(Math.random() * hints.length)] : null;
+}
+
 export default function BlindTasting() {
   const { toast } = useToast();
+  const [showHint, setShowHint] = useState(false);
 
   const { data: sessionData, isLoading } = useQuery<SessionData>({
     queryKey: ["/api/blind-tasting/current"],
@@ -99,6 +166,11 @@ export default function BlindTasting() {
 
   const advanceCluesMutation = useMutation({
     mutationFn: async () => {
+      // Check if the correct wine has been eliminated
+      if (sessionData?.session && sessionData?.targetWine && 
+          sessionData.session.eliminatedWines.includes(sessionData.targetWine.id)) {
+        throw new Error("CORRECT_WINE_ELIMINATED");
+      }
       return await apiRequest("POST", "/api/blind-tasting/advance");
     },
     onSuccess: () => {
@@ -107,6 +179,15 @@ export default function BlindTasting() {
         title: "Next Clue Revealed",
         description: "Use the new information to eliminate more wines",
       });
+    },
+    onError: (error: any) => {
+      if (error.message === "CORRECT_WINE_ELIMINATED") {
+        toast({
+          title: "Oops! You eliminated the correct wine!",
+          description: "Restore it and try again.",
+          variant: "destructive",
+        });
+      }
     },
   });
 
@@ -124,6 +205,7 @@ export default function BlindTasting() {
   });
 
   const handleStartSession = () => {
+    setShowHint(false);
     startSessionMutation.mutate();
   };
 
@@ -373,8 +455,70 @@ export default function BlindTasting() {
               <CardDescription className="text-xs">
                 Keep wines checked if they could match the clues. Uncheck to eliminate.
               </CardDescription>
+              {/* Bulk eliminate buttons */}
+              <div className="flex gap-1 mt-3 flex-wrap">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const redWines = allWines.filter(w => isRedWine(w) && !session.eliminatedWines.includes(w.id));
+                    redWines.forEach(wine => {
+                      toggleEliminateMutation.mutate({ wineId: wine.id, eliminate: true });
+                    });
+                  }}
+                  disabled={toggleEliminateMutation.isPending}
+                  className="text-xs"
+                  data-testid="button-eliminate-reds"
+                >
+                  Eliminate All Reds
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const whiteWines = allWines.filter(w => !isRedWine(w) && !session.eliminatedWines.includes(w.id));
+                    whiteWines.forEach(wine => {
+                      toggleEliminateMutation.mutate({ wineId: wine.id, eliminate: true });
+                    });
+                  }}
+                  disabled={toggleEliminateMutation.isPending}
+                  className="text-xs"
+                  data-testid="button-eliminate-whites"
+                >
+                  Eliminate All Whites
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowHint(!showHint)}
+                  className="text-xs gap-1"
+                  data-testid="button-hint"
+                >
+                  <Lightbulb className="w-3 h-3" />
+                  Hint
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="p-3 md:p-4 pt-0">
+              {/* Hint display */}
+              {showHint && session && (
+                <div className="mb-3 p-2 bg-primary/10 rounded-md border border-primary/20">
+                  {(() => {
+                    const hint = getHint(allWines, session.eliminatedWines, targetWine, session.currentClueStage);
+                    if (hint) {
+                      return (
+                        <div className="text-xs space-y-1">
+                          <p className="font-medium">Hint:</p>
+                          <p>
+                            Consider eliminating <span className="font-semibold">{hint.wine.grape}</span> ({hint.wine.region}) — it {hint.reason}.
+                          </p>
+                        </div>
+                      );
+                    }
+                    return <p className="text-xs text-muted-foreground">No hints available yet!</p>;
+                  })()}
+                </div>
+              )}
               <div className="space-y-2 max-h-[500px] overflow-y-auto">
                 {allWines.map((wine) => {
                   const isEliminated = session.eliminatedWines.includes(wine.id);
