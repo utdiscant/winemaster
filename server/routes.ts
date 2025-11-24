@@ -618,6 +618,188 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== Blind Tasting Endpoints =====
+  
+  // Start a new blind tasting session
+  app.post("/api/blind-tasting/start", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+
+      // Check if there's already an active session
+      const existingSession = await storage.getCurrentBlindTastingSession(userId);
+      if (existingSession) {
+        // Return existing session instead of creating new one
+        const targetWine = await storage.getTastingNote(existingSession.targetWineId);
+        const allWines = await storage.getAllTastingNotes();
+        
+        return res.json({
+          session: existingSession,
+          targetWine,
+          allWines,
+        });
+      }
+
+      // Get all tasting notes
+      const allWines = await storage.getAllTastingNotes();
+      if (allWines.length === 0) {
+        return res.status(500).json({ error: "No tasting notes available" });
+      }
+
+      // Randomly select a target wine
+      const randomIndex = Math.floor(Math.random() * allWines.length);
+      const targetWine = allWines[randomIndex];
+
+      // Create new session
+      const session = await storage.createBlindTastingSession(userId, targetWine.id);
+
+      res.json({
+        session,
+        targetWine,
+        allWines,
+      });
+    } catch (error) {
+      console.error("Error starting blind tasting:", error);
+      res.status(500).json({ error: "Failed to start blind tasting session" });
+    }
+  });
+
+  // Get current blind tasting session
+  app.get("/api/blind-tasting/current", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+
+      const session = await storage.getCurrentBlindTastingSession(userId);
+      if (!session) {
+        return res.json({ session: null });
+      }
+
+      const targetWine = await storage.getTastingNote(session.targetWineId);
+      const allWines = await storage.getAllTastingNotes();
+
+      res.json({
+        session,
+        targetWine,
+        allWines,
+      });
+    } catch (error) {
+      console.error("Error getting current blind tasting:", error);
+      res.status(500).json({ error: "Failed to get current session" });
+    }
+  });
+
+  // Eliminate a wine (check if it can be eliminated based on current clue)
+  app.post("/api/blind-tasting/eliminate", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+
+      const { wineId } = req.body;
+      if (!wineId) {
+        return res.status(400).json({ error: "Wine ID is required" });
+      }
+
+      const session = await storage.getCurrentBlindTastingSession(userId);
+      if (!session) {
+        return res.status(404).json({ error: "No active session found" });
+      }
+
+      // Get the target wine and the wine being eliminated
+      const targetWine = await storage.getTastingNote(session.targetWineId);
+      const eliminatedWine = await storage.getTastingNote(wineId);
+      
+      if (!targetWine || !eliminatedWine) {
+        return res.status(404).json({ error: "Wine not found" });
+      }
+
+      // Check if this wine can be eliminated based on current clue stage
+      let canEliminate = false;
+      let reason = "";
+
+      // If trying to eliminate the target wine, that's wrong
+      if (wineId === session.targetWineId) {
+        canEliminate = false;
+        reason = "This is the target wine! You cannot eliminate it.";
+      } else {
+        // Check based on current clue stage
+        // For now, we'll allow any elimination and provide feedback
+        // In a more sophisticated version, you'd validate based on appearance/nose/palate
+        canEliminate = true;
+        reason = `Correctly eliminated ${eliminatedWine.grape} from ${eliminatedWine.region}`;
+      }
+
+      if (canEliminate) {
+        const updatedSession = await storage.eliminateWine(session.id, wineId);
+        res.json({
+          success: true,
+          reason,
+          session: updatedSession,
+        });
+      } else {
+        res.json({
+          success: false,
+          reason,
+        });
+      }
+    } catch (error) {
+      console.error("Error eliminating wine:", error);
+      res.status(500).json({ error: "Failed to eliminate wine" });
+    }
+  });
+
+  // Advance to next clue
+  app.post("/api/blind-tasting/advance", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+
+      const session = await storage.getCurrentBlindTastingSession(userId);
+      if (!session) {
+        return res.status(404).json({ error: "No active session found" });
+      }
+
+      if (session.currentClueStage >= 2) {
+        return res.status(400).json({ error: "Already at final clue" });
+      }
+
+      const updatedSession = await storage.advanceClue(session.id);
+      res.json({ session: updatedSession });
+    } catch (error) {
+      console.error("Error advancing clue:", error);
+      res.status(500).json({ error: "Failed to advance clue" });
+    }
+  });
+
+  // Complete blind tasting session
+  app.post("/api/blind-tasting/complete", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+
+      const session = await storage.getCurrentBlindTastingSession(userId);
+      if (!session) {
+        return res.status(404).json({ error: "No active session found" });
+      }
+
+      const updatedSession = await storage.completeBlindTastingSession(session.id);
+      res.json({ session: updatedSession });
+    } catch (error) {
+      console.error("Error completing blind tasting:", error);
+      res.status(500).json({ error: "Failed to complete session" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
