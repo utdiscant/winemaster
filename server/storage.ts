@@ -6,9 +6,14 @@ import {
   type Statistics,
   type User,
   type UpsertUser,
+  type TastingNote,
+  type BlindTastingSession,
+  type InsertBlindTastingSession,
   questions,
   reviewCards,
   users,
+  tastingNotes,
+  blindTastingSessions,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, lte, gte, sql } from "drizzle-orm";
@@ -72,6 +77,17 @@ export interface IStorage {
   
   // Statistics (now user-specific)
   getStatistics(userId: string, curricula?: string[]): Promise<Statistics>;
+  
+  // Blind tasting methods
+  getAllTastingNotes(): Promise<TastingNote[]>;
+  getTastingNote(id: string): Promise<TastingNote | undefined>;
+  createBlindTastingSession(userId: string, targetWineId: string): Promise<BlindTastingSession>;
+  getBlindTastingSession(sessionId: string): Promise<BlindTastingSession | undefined>;
+  getCurrentBlindTastingSession(userId: string): Promise<BlindTastingSession | undefined>;
+  updateBlindTastingSession(sessionId: string, updates: Partial<BlindTastingSession>): Promise<BlindTastingSession | undefined>;
+  eliminateWine(sessionId: string, wineId: string): Promise<BlindTastingSession | undefined>;
+  advanceClue(sessionId: string): Promise<BlindTastingSession | undefined>;
+  completeBlindTastingSession(sessionId: string): Promise<BlindTastingSession | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -546,6 +562,87 @@ export class DatabaseStorage implements IStorage {
       averageEaseFactor,
       totalReviews,
     };
+  }
+
+  // Blind tasting methods
+  async getAllTastingNotes(): Promise<TastingNote[]> {
+    return await db.select().from(tastingNotes);
+  }
+
+  async getTastingNote(id: string): Promise<TastingNote | undefined> {
+    const [note] = await db.select().from(tastingNotes).where(eq(tastingNotes.id, id));
+    return note;
+  }
+
+  async createBlindTastingSession(userId: string, targetWineId: string): Promise<BlindTastingSession> {
+    const [session] = await db
+      .insert(blindTastingSessions)
+      .values({
+        userId,
+        targetWineId,
+        currentClueStage: 0,
+        eliminatedWines: [],
+        completed: false,
+      })
+      .returning();
+    return session;
+  }
+
+  async getBlindTastingSession(sessionId: string): Promise<BlindTastingSession | undefined> {
+    const [session] = await db
+      .select()
+      .from(blindTastingSessions)
+      .where(eq(blindTastingSessions.id, sessionId));
+    return session;
+  }
+
+  async getCurrentBlindTastingSession(userId: string): Promise<BlindTastingSession | undefined> {
+    const [session] = await db
+      .select()
+      .from(blindTastingSessions)
+      .where(and(
+        eq(blindTastingSessions.userId, userId),
+        eq(blindTastingSessions.completed, false)
+      ))
+      .orderBy(sql`${blindTastingSessions.createdAt} DESC`)
+      .limit(1);
+    return session;
+  }
+
+  async updateBlindTastingSession(
+    sessionId: string,
+    updates: Partial<BlindTastingSession>
+  ): Promise<BlindTastingSession | undefined> {
+    const [session] = await db
+      .update(blindTastingSessions)
+      .set(updates)
+      .where(eq(blindTastingSessions.id, sessionId))
+      .returning();
+    return session;
+  }
+
+  async eliminateWine(sessionId: string, wineId: string): Promise<BlindTastingSession | undefined> {
+    const session = await this.getBlindTastingSession(sessionId);
+    if (!session) return undefined;
+
+    const eliminatedWines = session.eliminatedWines || [];
+    if (!eliminatedWines.includes(wineId)) {
+      eliminatedWines.push(wineId);
+    }
+
+    return await this.updateBlindTastingSession(sessionId, { eliminatedWines });
+  }
+
+  async advanceClue(sessionId: string): Promise<BlindTastingSession | undefined> {
+    const session = await this.getBlindTastingSession(sessionId);
+    if (!session) return undefined;
+
+    const nextStage = Math.min(session.currentClueStage + 1, 2);
+    return await this.updateBlindTastingSession(sessionId, { currentClueStage: nextStage });
+  }
+
+  async completeBlindTastingSession(sessionId: string): Promise<BlindTastingSession | undefined> {
+    return await this.updateBlindTastingSession(sessionId, { completed: true });
   }
 }
 
