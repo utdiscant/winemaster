@@ -15,13 +15,16 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// User storage table for Replit Auth
+// User storage table
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar("email").unique(),
+  email: varchar("email").unique().notNull(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
+  passwordHash: varchar("password_hash", { length: 255 }), // Nullable for OAuth users
+  authProvider: varchar("auth_provider", { length: 20 }).notNull().default('local'), // 'google' | 'local'
+  emailVerified: boolean("email_verified").notNull().default(false),
   isAdmin: boolean("is_admin").notNull().default(false), // Admin role for question management
   selectedCurricula: text("selected_curricula").array(), // User's selected curricula for quiz filtering
   createdAt: timestamp("created_at").defaultNow(),
@@ -304,3 +307,19 @@ export type InsertTastingNote = typeof tastingNotes.$inferInsert;
 // Blind tasting session schemas
 export type BlindTastingSession = typeof blindTastingSessions.$inferSelect;
 export type InsertBlindTastingSession = typeof blindTastingSessions.$inferInsert;
+
+// Authentication schemas
+export const signupSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  firstName: z.string().min(1, "First name is required").optional(),
+  lastName: z.string().min(1, "Last name is required").optional(),
+});
+
+export const loginSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(1, "Password is required"),
+});
+
+export type SignupInput = z.infer<typeof signupSchema>;
+export type LoginInput = z.infer<typeof loginSchema>;

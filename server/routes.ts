@@ -8,7 +8,8 @@ import {
   type QuizQuestion,
   insertQuestionSchema,
 } from "@shared/schema";
-import { setupAuth, isAuthenticated, isAdmin } from "./replitAuth";
+import { setupAuth, isAuthenticated, isAdmin } from "./auth";
+import type { User } from "@shared/schema";
 import { z } from "zod";
 import { isPointInPolygon } from "./utils/geoUtils";
 
@@ -16,112 +17,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication
   await setupAuth(app);
 
-  // Dev-only: Quick admin login for testing
-  if (process.env.NODE_ENV === 'development') {
-    app.get('/api/dev/login-admin', async (req: any, res) => {
-      try {
-        const testAdminId = 'dev-admin-user';
-        const testAdmin = {
-          id: testAdminId,
-          email: 'admin@winemaster.dev',
-          name: 'Test Admin',
-          isAdmin: true,
-        };
-
-        // Create or update test admin user
-        await storage.upsertUser({
-          id: testAdminId,
-          email: testAdmin.email,
-          firstName: 'Test',
-          lastName: 'Admin',
-          isAdmin: true,
-        });
-
-        // Ensure admin has review cards
-        await storage.ensureUserReviewCards(testAdminId);
-
-        // Create a session matching the OAuth flow structure
-        const devUser = {
-          claims: {
-            sub: testAdminId,
-            email: testAdmin.email,
-            first_name: 'Test',
-            last_name: 'Admin',
-          },
-          // Add expires_at far in the future so isAuthenticated middleware accepts it
-          expires_at: Math.floor(Date.now() / 1000) + (365 * 24 * 60 * 60), // 1 year
-        };
-        
-        req.login(devUser, (err: any) => {
-          if (err) {
-            console.error("Dev login error:", err);
-            return res.status(500).json({ error: "Failed to create dev session" });
-          }
-          res.redirect('/');
-        });
-      } catch (error) {
-        console.error("Dev admin login error:", error);
-        res.status(500).json({ error: "Failed to login as dev admin" });
-      }
-    });
-
-    app.get('/api/dev/login-user', async (req: any, res) => {
-      try {
-        const testUserId = 'dev-regular-user';
-        const testUser = {
-          id: testUserId,
-          email: 'user@winemaster.dev',
-          name: 'Test User',
-          isAdmin: false,
-        };
-
-        // Create or update test user
-        await storage.upsertUser({
-          id: testUserId,
-          email: testUser.email,
-          firstName: 'Test',
-          lastName: 'User',
-          isAdmin: false,
-        });
-
-        // Ensure user has review cards
-        await storage.ensureUserReviewCards(testUserId);
-
-        // Create a session matching the OAuth flow structure
-        const devUser = {
-          claims: {
-            sub: testUserId,
-            email: testUser.email,
-            first_name: 'Test',
-            last_name: 'User',
-          },
-          // Add expires_at far in the future so isAuthenticated middleware accepts it
-          expires_at: Math.floor(Date.now() / 1000) + (365 * 24 * 60 * 60), // 1 year
-        };
-        
-        req.login(devUser, (err: any) => {
-          if (err) {
-            console.error("Dev login error:", err);
-            return res.status(500).json({ error: "Failed to create dev session" });
-          }
-          res.redirect('/');
-        });
-      } catch (error) {
-        console.error("Dev user login error:", error);
-        res.status(500).json({ error: "Failed to login as dev user" });
-      }
-    });
-  }
-
   // Auth routes
   // Public session endpoint - doesn't require auth, returns user if logged in or null
   app.get('/api/auth/user', async (req: any, res) => {
     try {
-      if (!req.isAuthenticated() || !req.user?.claims?.sub) {
+      if (!req.isAuthenticated() || !req.user?.id) {
         return res.json(null);
       }
-      
-      const userId = req.user.claims.sub;
+
+      const userId = (req.user as User).id;
       const user = await storage.getUser(userId);
       res.json(user);
     } catch (error) {
@@ -133,7 +37,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update user curriculum preferences
   app.patch('/api/user/curricula', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.user as User).id;
       
       // Validate request body
       const curriculaSchema = z.object({
@@ -174,7 +78,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/users/:id', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const userIdToDelete = req.params.id;
-      const currentUserId = req.user.claims.sub;
+      const currentUserId = (req.user as User).id;
       
       // Prevent deleting the currently logged-in user
       if (userIdToDelete === currentUserId) {
@@ -414,7 +318,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get due questions for quiz (user-specific)
   app.get("/api/quiz/due", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.user as User).id;
       
       // Parse curricula parameter (can be comma-separated string or array)
       let curricula: string[] | undefined;
@@ -465,7 +369,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Submit answer and update SM-2 (user-specific)
   app.post("/api/quiz/answer", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.user as User).id;
       const submission = answerSubmissionSchema.parse(req.body);
       const { questionId, selectedAnswer, selectedAnswers, textAnswer, mapClick, displayMode } = submission;
       
@@ -577,7 +481,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get statistics (user-specific, respects curriculum preferences)
   app.get("/api/statistics", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.user as User).id;
       
       // Ensure user has review cards for all questions
       await storage.ensureUserReviewCards(userId);
@@ -596,7 +500,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get review cards with questions for progress details (respects curriculum preferences)
   app.get("/api/progress/cards", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.user as User).id;
       
       // Ensure user has review cards for all questions
       await storage.ensureUserReviewCards(userId);
@@ -623,7 +527,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Start a new blind tasting session
   app.post("/api/blind-tasting/start", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = (req.user as User)?.id;
       if (!userId) {
         return res.status(401).json({ error: "User not authenticated" });
       }
@@ -661,7 +565,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get current blind tasting session
   app.get("/api/blind-tasting/current", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = (req.user as User)?.id;
       if (!userId) {
         return res.status(401).json({ error: "User not authenticated" });
       }
@@ -688,7 +592,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Toggle wine elimination (eliminate or un-eliminate)
   app.post("/api/blind-tasting/toggle-eliminate", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = (req.user as User)?.id;
       if (!userId) {
         return res.status(401).json({ error: "User not authenticated" });
       }
@@ -730,7 +634,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Advance to next clue
   app.post("/api/blind-tasting/advance", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = (req.user as User)?.id;
       if (!userId) {
         return res.status(401).json({ error: "User not authenticated" });
       }
@@ -755,7 +659,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Complete blind tasting session
   app.post("/api/blind-tasting/complete", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = (req.user as User)?.id;
       if (!userId) {
         return res.status(401).json({ error: "User not authenticated" });
       }

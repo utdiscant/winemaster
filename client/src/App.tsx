@@ -9,6 +9,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Wine, BarChart3, Upload, Settings, LogOut, User, Users, Menu, FlaskConical } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/landing";
+import AuthPage from "@/pages/auth";
 import QuizPage from "@/pages/quiz";
 import ProgressPage from "@/pages/progress";
 import ProfilePage from "@/pages/profile";
@@ -55,9 +56,10 @@ function Navigation() {
         <Button
           variant="ghost"
           className="gap-2 w-full justify-start"
-          onClick={() => {
+          onClick={async () => {
             setOpen(false);
-            window.location.href = "/api/logout";
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = "/";
           }}
           data-testid="button-logout"
         >
@@ -116,7 +118,13 @@ function Router() {
   }
 
   if (!isAuthenticated) {
-    return <Landing />;
+    return (
+      <Switch>
+        <Route path="/auth" component={AuthPage} />
+        <Route path="/" component={Landing} />
+        <Route component={Landing} />
+      </Switch>
+    );
   }
 
   return (

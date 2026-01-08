@@ -31,7 +31,7 @@ export default function Landing() {
               <div className="flex gap-3">
                 <Button
                   size="lg"
-                  onClick={() => window.location.href = "/api/login"}
+                  onClick={() => window.location.href = "/auth"}
                   className="text-lg px-8"
                   data-testid="button-get-started"
                 >
@@ -40,7 +40,7 @@ export default function Landing() {
                 <Button
                   size="lg"
                   variant="outline"
-                  onClick={() => window.location.href = "/api/login"}
+                  onClick={() => window.location.href = "/auth"}
                   className="text-lg px-8"
                   data-testid="button-login"
                 >
@@ -167,7 +167,7 @@ export default function Landing() {
             <Button
               size="lg"
               variant="outline"
-              onClick={() => window.location.href = "/api/login"}
+              onClick={() => window.location.href = "/auth"}
               data-testid="button-login-bottom"
             >
               Start Learning Now

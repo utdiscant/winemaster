@@ -38,6 +38,9 @@ In your Railway project dashboard:
 NODE_ENV=production
 PORT=5000
 SESSION_SECRET=<generate-a-random-secret-key>
+GOOGLE_CLIENT_ID=<your-google-oauth-client-id>
+GOOGLE_CLIENT_SECRET=<your-google-oauth-client-secret>
+APP_URL=https://your-app.up.railway.app
 ```
 
 **To generate a secure SESSION_SECRET**, run this locally:
@@ -45,11 +48,18 @@ SESSION_SECRET=<generate-a-random-secret-key>
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-**Optional** (only if you're using Replit OAuth):
-```
-REPL_ID=your-repl-id
-ISSUER_URL=https://replit.com/oidc
-```
+**To set up Google OAuth:**
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select an existing one
+3. Go to "APIs & Services" → "Credentials"
+4. Click "Create Credentials" → "OAuth 2.0 Client ID"
+5. Configure the OAuth consent screen if prompted
+6. Set application type to "Web application"
+7. Add authorized redirect URIs:
+   - For production: `https://your-app.up.railway.app/api/auth/google/callback`
+   - For local dev: `http://localhost:5000/api/auth/google/callback`
+8. Click "Create" and copy the Client ID and Client Secret
+9. Paste them into the Railway environment variables
 
 ### 4. Push Database Schema
 
