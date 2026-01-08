@@ -6,7 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Wine, BarChart3, Upload, Settings, LogOut, User, Users, Menu, FlaskConical } from "lucide-react";
+import { Wine, BarChart3, Upload, Settings, LogOut, User, Users, Menu } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/landing";
 import AuthPage from "@/pages/auth";
@@ -16,7 +16,6 @@ import ProfilePage from "@/pages/profile";
 import UploadPage from "@/pages/upload";
 import AdminPage from "@/pages/admin";
 import UsersPage from "@/pages/users";
-import BlindTastingPage from "@/pages/blind-tasting";
 import NotFound from "@/pages/not-found";
 
 function Navigation() {
@@ -26,7 +25,6 @@ function Navigation() {
 
   const navItems = [
     { path: "/", icon: Wine, label: "Learn" },
-    { path: "/blind-tasting", icon: FlaskConical, label: "Blind Tasting" },
     { path: "/progress", icon: BarChart3, label: "Progress" },
     { path: "/profile", icon: User, label: "Profile" },
     ...(isAdmin ? [{ path: "/upload", icon: Upload, label: "Upload" }] : []),
@@ -132,7 +130,6 @@ function Router() {
       <Navigation />
       <Switch>
         <Route path="/" component={QuizPage} />
-        <Route path="/blind-tasting" component={BlindTastingPage} />
         <Route path="/progress" component={ProgressPage} />
         <Route path="/profile" component={ProfilePage} />
         {isAdmin && <Route path="/upload" component={UploadPage} />}

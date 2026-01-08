@@ -1,5 +1,5 @@
 import { useEffect, useRef, useMemo } from 'react';
-import L from 'leaflet';
+import L, { type LatLngExpression } from 'leaflet';
 import { MapContainer, TileLayer, Polygon, useMapEvents, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { normalizeGeoJSONCoordinates } from '@/utils/geoUtils';
@@ -266,11 +266,11 @@ export default function WineMap({
         {centerMarker && <CenterMarker location={centerMarker} />}
         
         {/* Display question regions (for map-to-text) - supports MultiPolygon */}
-        {questionRegions.map((polygon, idx) => 
+        {questionRegions.map((polygon, idx) =>
           polygon.length >= 3 ? (
             <Polygon
               key={`question-${idx}`}
-              positions={polygon}
+              positions={polygon as LatLngExpression[]}
               pathOptions={{
                 color: '#7c2d12', // burgundy
                 fillColor: '#dc2626',
@@ -282,11 +282,11 @@ export default function WineMap({
         )}
         
         {/* Display correct regions (feedback) - supports MultiPolygon */}
-        {showCorrectRegion && correctRegions.map((polygon, idx) => 
+        {showCorrectRegion && correctRegions.map((polygon, idx) =>
           polygon.length >= 3 ? (
             <Polygon
               key={`correct-${idx}`}
-              positions={polygon}
+              positions={polygon as LatLngExpression[]}
               pathOptions={{
                 color: '#15803d', // green
                 fillColor: '#22c55e',

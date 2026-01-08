@@ -3,6 +3,33 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
+
+    // Try to parse JSON error response with validation details
+    try {
+      const errorData = JSON.parse(text);
+      if (errorData.details && Array.isArray(errorData.details)) {
+        // Format validation errors in a readable way
+        const errorMessages = errorData.details
+          .slice(0, 10) // Limit to first 10 errors
+          .map((detail: any) => `Question ${detail.path}: ${detail.message}`)
+          .join('\n');
+
+        const remainingCount = errorData.details.length - 10;
+        const suffix = remainingCount > 0
+          ? `\n...and ${remainingCount} more validation errors`
+          : '';
+
+        throw new Error(`Validation failed:\n${errorMessages}${suffix}`);
+      } else if (errorData.error) {
+        throw new Error(errorData.error);
+      }
+    } catch (e) {
+      // If not JSON or parsing failed, use original text
+      if (e instanceof Error && e.message.startsWith('Validation failed:')) {
+        throw e; // Re-throw our formatted error
+      }
+    }
+
     throw new Error(`${res.status}: ${text}`);
   }
 }

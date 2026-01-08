@@ -65,25 +65,78 @@ export default function UploadPage() {
       const json = JSON.parse(pastedJson);
       // If JSON is an array, wrap it in { questions: array }
       let data = Array.isArray(json) ? { questions: json } : json;
-      
+
       // Normalize questionType to type for backend compatibility
       if (data.questions) {
-        data.questions = data.questions.map((q: any) => {
+        data.questions = data.questions.map((q: any, index: number) => {
           const normalized = { ...q };
+
           // Accept both 'type' and 'questionType' fields
           if (q.questionType && !q.type) {
             normalized.type = q.questionType;
             delete normalized.questionType;
           }
+
+          // Set default type to 'single' if not specified
+          if (!normalized.type) {
+            normalized.type = 'single';
+          }
+
+          // For map and text-input questions: normalize 'options' to 'acceptedAnswers' if needed
+          if ((normalized.type === 'map' || normalized.type === 'text-input') && !normalized.acceptedAnswers && normalized.options) {
+            normalized.acceptedAnswers = normalized.options;
+            delete normalized.options;
+          }
+
+          // Basic validation to catch common issues early
+          const qType = normalized.type;
+
+          const questionPreview = normalized.question ?
+            normalized.question.substring(0, 50) + (normalized.question.length > 50 ? '...' : '') :
+            'No question text';
+
+          if (qType === 'single') {
+            if (!normalized.options || normalized.options.length !== 4) {
+              throw new Error(`Question ${index + 1} ("${questionPreview}"): Single-choice questions must have exactly 4 options. Found: ${normalized.options?.length || 0} options`);
+            }
+            if (normalized.correctAnswer === undefined || normalized.correctAnswer < 0 || normalized.correctAnswer > 3) {
+              throw new Error(`Question ${index + 1} ("${questionPreview}"): Single-choice questions must have correctAnswer (0-3). Found: ${normalized.correctAnswer}`);
+            }
+          } else if (qType === 'multi') {
+            if (!normalized.options || normalized.options.length !== 6) {
+              throw new Error(`Question ${index + 1} ("${questionPreview}"): Multi-select questions must have exactly 6 options. Found: ${normalized.options?.length || 0} options`);
+            }
+            if (!Array.isArray(normalized.correctAnswers)) {
+              throw new Error(`Question ${index + 1} ("${questionPreview}"): Multi-select questions must have correctAnswers array`);
+            }
+          } else if (qType === 'text-input') {
+            if (!normalized.acceptedAnswers || !Array.isArray(normalized.acceptedAnswers) || normalized.acceptedAnswers.length === 0) {
+              throw new Error(`Question ${index + 1} ("${questionPreview}"): Text-input questions must have acceptedAnswers array with at least 1 answer`);
+            }
+          } else if (qType === 'map') {
+            if (!normalized.regionName) {
+              throw new Error(`Question ${index + 1} ("${questionPreview}"): Map questions must have regionName field`);
+            }
+            if (!normalized.regionPolygon) {
+              throw new Error(`Question ${index + 1} ("${questionPreview}"): Map questions must have regionPolygon field (GeoJSON)`);
+            }
+            if (!normalized.acceptedAnswers || !Array.isArray(normalized.acceptedAnswers) || normalized.acceptedAnswers.length === 0) {
+              throw new Error(`Question ${index + 1} ("${questionPreview}"): Map questions must have acceptedAnswers array with at least 1 answer`);
+            }
+          } else {
+            throw new Error(`Question ${index + 1} ("${questionPreview}"): Unknown question type "${qType}". Must be 'single', 'multi', 'text-input', or 'map'`);
+          }
+
           return normalized;
         });
       }
-      
+
       setUploadedData(data);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "The pasted content is not valid JSON.";
       toast({
         title: "Invalid JSON",
-        description: "The pasted content is not valid JSON.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -155,7 +208,7 @@ Example:
       "type": "map",
       "regionName": "Bordeaux",
       "regionPolygon": {"type":"Polygon","coordinates":[[[-1.0,45.0],[-0.5,45.0],[-0.5,44.5],[-1.0,44.5],[-1.0,45.0]]]},
-      "acceptedAnswers": ["Bordeaux"],
+      "options": ["Bordeaux"],
       "category": "French Regions"
     }
   ]
@@ -343,7 +396,7 @@ Example:
           [-0.5, 44.5], [-1.0, 44.5], [-1.0, 45.0]
         ]]
       },
-      "acceptedAnswers": ["Bordeaux"],
+      "options": ["Bordeaux"],
       "category": "French Regions",
       "curriculum": "WSET2"
     }
@@ -361,8 +414,8 @@ Example:
                   <li><strong>ID field (optional):</strong> Unique identifier for upsert - if provided and exists, updates question and clears all user progress; if not provided, auto-generates new ID</li>
                   <li><strong>Single Choice:</strong> 4 options, correctAnswer is index (0-3)</li>
                   <li><strong>Multi-Select:</strong> 6 options, correctAnswers is array of indices (0-5)</li>
-                  <li><strong>Text Input:</strong> acceptedAnswers is array of valid text answers (case-insensitive matching)</li>
-                  <li><strong>Map:</strong> regionName (primary name), regionPolygon (GeoJSON Polygon), acceptedAnswers (region names for text matching) - randomly displays as either click-on-map or name-the-region during quiz</li>
+                  <li><strong>Text Input:</strong> acceptedAnswers (or options) is array of valid text answers (case-insensitive matching)</li>
+                  <li><strong>Map:</strong> regionName (primary name), regionPolygon (GeoJSON Polygon), options or acceptedAnswers (region names for text matching) - randomly displays as either click-on-map or name-the-region during quiz</li>
                   <li>Type defaults to "single" if not specified</li>
                   <li>Multi-select can have 0-6 correct answers</li>
                   <li>Text input and map answers are matched case-insensitively with trimming</li>
