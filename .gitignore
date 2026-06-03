@@ -7,3 +7,6 @@ vite.config.ts.*
 .env
 .env.local
 .env.production
+
+# Build-host CA bundle, copied in only for sandboxed Docker builds — not for VCS
+proxy-ca.crt

@@ -8,9 +8,17 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
+// Enable SSL only when the database actually requires it — driven by the
+// connection string (sslmode=require) or PGSSL=true. Fly's internal Postgres
+// network does not use SSL, whereas hosted providers like Neon do. (Previously
+// SSL was forced whenever NODE_ENV=production, which breaks Fly's internal DB.)
+const requiresSsl =
+  process.env.PGSSL === 'true' ||
+  /[?&]sslmode=require/i.test(process.env.DATABASE_URL ?? '');
+
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  ssl: requiresSsl ? { rejectUnauthorized: false } : false,
 });
 
 export const db = drizzle(pool, { schema });

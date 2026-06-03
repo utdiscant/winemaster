@@ -2,7 +2,9 @@
 nixPkgs = ['nodejs_20']
 
 [phases.install]
-cmds = ['npm install']
+# --include=dev keeps build tools (vite, esbuild) even when NODE_ENV=production,
+# which otherwise causes npm to omit devDependencies and break the build.
+cmds = ['npm ci --include=dev']
 
 [phases.build]
 cmds = ['npm run build']

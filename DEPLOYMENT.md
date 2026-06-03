@@ -43,6 +43,13 @@ GOOGLE_CLIENT_SECRET=<your-google-oauth-client-secret>
 APP_URL=https://your-app.up.railway.app
 ```
 
+**Which of these are actually required:**
+- `DATABASE_URL` — provided automatically once you add the PostgreSQL plugin (step 2). Don't set it by hand.
+- `SESSION_SECRET` — **required.** The server won't start without it.
+- `PORT` — optional. Railway injects this automatically and the app reads it; you don't need to set `5000`.
+- `NODE_ENV` — optional. The `start` script already runs in production mode.
+- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `APP_URL` — **optional.** Only needed for Google sign-in. Email/password signup works without them.
+
 **To generate a secure SESSION_SECRET**, run this locally:
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
@@ -87,9 +94,14 @@ Alternatively, you can add a post-build script to do this automatically. Add to 
 ### 5. Deploy
 
 Railway will automatically:
-- Install dependencies (`npm install`)
+- Install dependencies (`npm ci --include=dev`)
 - Build your application (`npm run build`)
 - Start your server (`npm start`)
+
+> **Note:** the build command uses `--include=dev` on purpose. Build tools
+> (`vite`, `esbuild`) live in `devDependencies`, and `npm` omits those when
+> `NODE_ENV=production` is set. Without the flag the build would fail with
+> `vite: not found`. This is already wired up in `railway.json` / `nixpacks.toml`.
 
 Watch the deployment logs in the Railway dashboard.
 
@@ -114,11 +126,19 @@ Railway automatically deploys when you push to your GitHub repository's main bra
 - Check the build logs in Railway dashboard
 - Ensure all dependencies are in `package.json`
 - Verify `npm run build` works locally
+- `vite: not found` / `esbuild: not found` → the build is omitting
+  `devDependencies`. Make sure the build command uses `npm ci --include=dev`
+  (it does by default here) and avoid overriding it with a plain `npm install`.
 
 ### Database Connection Issues
 - Verify `DATABASE_URL` is set correctly
-- Ensure database schema is pushed (`npm run db:push`)
-- Check that `@neondatabase/serverless` package is installed
+- **Ensure the schema is pushed** (`npm run db:push`). The app does **not**
+  auto-create tables — until you run this once, the site loads but signup/login
+  return 500s because the `users`/`sessions` tables don't exist yet.
+- The app connects with the `pg` driver and enables SSL in production
+  (`rejectUnauthorized: false`). If Railway's internal connection rejects SSL,
+  use the connection string Railway provides as-is, or append `?sslmode=disable`
+  for the internal host.
 
 ### Application Won't Start
 - Check that `PORT` environment variable is set

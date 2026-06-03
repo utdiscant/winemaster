@@ -1,0 +1,27 @@
+app = "winemaster"
+primary_region = "ams"
+
+[build]
+
+# Runs on Fly's network before each release (no local tunnel needed), so the
+# DB schema — including the `sessions` table the session store requires — is
+# created/updated automatically on deploy.
+[deploy]
+  release_command = "npm run db:push"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "8080"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
