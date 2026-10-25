@@ -41,7 +41,7 @@ export const questions = sqliteTable("questions", {
 });
 
 // SM-2 state per user per question. A question the user has never answered has no row and counts as
-// new and due.
+// new and due. A question marked as known is never due.
 export const reviewCards = sqliteTable("review_cards", {
   userId: text("user_id").notNull(),
   questionId: text("question_id").notNull(),
@@ -50,6 +50,8 @@ export const reviewCards = sqliteTable("review_cards", {
   repetitions: integer("repetitions").notNull(), // Successful reviews in a row
   nextReviewDate: integer("next_review_date", { mode: "timestamp_ms" }).notNull(),
   lastReviewDate: integer("last_review_date", { mode: "timestamp_ms" }).notNull(),
+  // Set when the user says they know this question and don't need to review it again
+  knownAt: integer("known_at", { mode: "timestamp_ms" }),
 }, (table) => [
   primaryKey({ columns: [table.userId, table.questionId] }),
   index("review_cards_question_idx").on(table.questionId),
@@ -182,6 +184,7 @@ export type Statistics = {
   completedToday: number;
   averageEaseFactor: number;
   totalReviews: number;
+  knownQuestions: number; // Marked as known by the user; also counted as mastered
 };
 
 // A question with the user's progress on it, for the progress page
@@ -198,6 +201,14 @@ export type ProgressCard = {
   interval: number;
   nextReviewDate: string;
   easeFactor: number;
+  known: boolean;
+};
+
+// A category with how many of its questions there are and how many are due
+export type CategorySummary = {
+  category: string;
+  total: number;
+  due: number;
 };
 
 // Authentication

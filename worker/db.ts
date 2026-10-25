@@ -1,9 +1,10 @@
-import { and, eq, isNull, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, lte, or, sql, type SQL } from "drizzle-orm";
 import {
   questions,
   reviewCards,
   sessions,
   users,
+  type CategorySummary,
   type InsertQuestion,
   type ProgressCard,
   type Question,
@@ -25,6 +26,12 @@ function curriculumFilter(curricula?: string[]): SQL | undefined {
   if (!curricula || curricula.length === 0) return undefined;
   return sql`EXISTS (SELECT 1 FROM json_each(${questions.curricula}) WHERE value IN (SELECT value FROM json_each(${JSON.stringify(curricula)})))`;
 }
+
+// Questions the user has never answered, or whose review is due and that they haven't marked as known
+const isDue = () => or(
+  isNull(reviewCards.userId),
+  and(isNull(reviewCards.knownAt), lte(reviewCards.nextReviewDate, new Date())),
+);
 
 // Every question (optionally only some curricula) with this user's review card, if they have one
 function questionsWithCards(db: Db, userId: string, curricula?: string[], extra?: SQL) {
@@ -158,14 +165,51 @@ export async function upsertQuestions(
 
 // ===== Quiz =====
 
-export async function getDueQuestions(db: Db, userId: string, curricula?: string[]): Promise<Question[]> {
+export async function getDueQuestions(
+  db: Db,
+  userId: string,
+  curricula?: string[],
+  category?: string,
+): Promise<Question[]> {
   const rows = await questionsWithCards(
     db,
     userId,
     curricula,
-    or(isNull(reviewCards.nextReviewDate), lte(reviewCards.nextReviewDate, new Date())),
+    and(isDue(), category ? eq(questions.category, category) : undefined),
   );
   return rows.map((row) => row.question);
+}
+
+// Each category (optionally only some curricula) with its number of questions and how many are due
+export async function getCategorySummaries(db: Db, userId: string, curricula?: string[]): Promise<CategorySummary[]> {
+  const rows = await db
+    .select({
+      category: questions.category,
+      total: sql<number>`count(*)`,
+      due: sql<number>`sum(CASE WHEN ${isDue()} THEN 1 ELSE 0 END)`,
+    })
+    .from(questions)
+    .leftJoin(reviewCards, and(eq(reviewCards.questionId, questions.id), eq(reviewCards.userId, userId)))
+    .where(and(curriculumFilter(curricula), isNotNull(questions.category)))
+    .groupBy(questions.category)
+    .orderBy(questions.category);
+  return rows.map((row) => ({ category: row.category!, total: row.total, due: row.due ?? 0 }));
+}
+
+// Marks a question as known (never due again) or puts it back into review, due now
+export async function setKnown(db: Db, userId: string, questionId: string, known: boolean) {
+  const now = new Date();
+  if (known) {
+    await db
+      .insert(reviewCards)
+      .values({ userId, questionId, ...NEW_CARD, nextReviewDate: now, lastReviewDate: now, knownAt: now })
+      .onConflictDoUpdate({ target: [reviewCards.userId, reviewCards.questionId], set: { knownAt: now } });
+  } else {
+    await db
+      .update(reviewCards)
+      .set({ knownAt: null, nextReviewDate: now })
+      .where(and(eq(reviewCards.userId, userId), eq(reviewCards.questionId, questionId)));
+  }
 }
 
 export async function getQuestionWithCard(db: Db, userId: string, questionId: string) {
@@ -173,7 +217,8 @@ export async function getQuestionWithCard(db: Db, userId: string, questionId: st
   return row;
 }
 
-export async function saveReviewCard(db: Db, card: ReviewCard) {
+// Saves the SM-2 result of an answer. Leaves the "known" mark alone.
+export async function saveReviewCard(db: Db, card: Omit<ReviewCard, "knownAt">) {
   const { userId: _, questionId: __, ...progress } = card;
   await db
     .insert(reviewCards)
@@ -216,6 +261,7 @@ export async function getProgressCards(db: Db, userId: string, curricula?: strin
     interval: card?.interval ?? NEW_CARD.interval,
     easeFactor: card?.easeFactor ?? NEW_CARD.easeFactor,
     nextReviewDate: (card?.nextReviewDate ?? now).toISOString(),
+    known: !!card?.knownAt,
   }));
 }
 
@@ -227,18 +273,20 @@ export async function getStatistics(db: Db, userId: string, curricula?: string[]
   const now = Date.now();
   const weekFromNow = now + 7 * DAY_MS;
   const due = (card: ProgressCard) => Date.parse(card.nextReviewDate);
+  const inReview = cards.filter((c) => !c.known);
 
   return {
     totalQuestions: cards.length,
-    masteredQuestions: cards.filter((c) => c.repetitions >= 3 && c.interval >= 21).length,
-    learningQuestions: cards.filter((c) => c.repetitions > 0 && c.repetitions < 3).length,
-    newQuestions: cards.filter((c) => c.repetitions === 0).length,
-    dueToday: cards.filter((c) => due(c) <= now).length,
-    dueThisWeek: cards.filter((c) => due(c) >= now && due(c) <= weekFromNow).length,
+    masteredQuestions: cards.filter((c) => c.known || (c.repetitions >= 3 && c.interval >= 21)).length,
+    learningQuestions: inReview.filter((c) => c.repetitions > 0 && c.repetitions < 3).length,
+    newQuestions: inReview.filter((c) => c.repetitions === 0).length,
+    dueToday: inReview.filter((c) => due(c) <= now).length,
+    dueThisWeek: inReview.filter((c) => due(c) >= now && due(c) <= weekFromNow).length,
     completedToday,
     averageEaseFactor: cards.length > 0
       ? cards.reduce((sum, c) => sum + c.easeFactor, 0) / cards.length
       : NEW_CARD.easeFactor,
     totalReviews: cards.reduce((sum, c) => sum + c.repetitions, 0),
+    knownQuestions: cards.length - inReview.length,
   };
 }

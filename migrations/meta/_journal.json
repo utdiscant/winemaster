@@ -15,6 +15,13 @@
       "when": 1792957781573,
       "tag": "0001_curricula",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1792960074783,
+      "tag": "0002_known",
+      "breakpoints": true
     }
   ]
 }

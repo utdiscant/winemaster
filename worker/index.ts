@@ -34,12 +34,14 @@ import {
   deleteQuestion,
   deleteUser,
   getAllCurricula,
+  getCategorySummaries,
   getDueQuestions,
   getProgressCards,
   getQuestionWithCard,
   getStatistics,
   NEW_CARD,
   saveReviewCard,
+  setKnown,
   upsertQuestions,
 } from "./db";
 
@@ -147,13 +149,17 @@ api.get("/curricula", requireUser, async (c) => c.json(await getAllCurricula(c.v
 
 // ===== Quiz =====
 
-// Questions due for review, in random order, plus how far the user is towards today's goal
+const curriculaParam = (value?: string) => value?.split(",").map((s) => s.trim()).filter(Boolean);
+
+// Questions due for review (optionally one category only), in random order, plus how far the user is
+// towards today's goal
 api.get("/quiz/due", requireUser, async (c) => {
-  const curricula = c.req.query("curricula")?.split(",").map((s) => s.trim()).filter(Boolean);
+  const curricula = curriculaParam(c.req.query("curricula"));
+  const category = c.req.query("category") || undefined;
   const db = c.var.db;
   const userId = c.var.user.id;
   const [due, completedToday] = await Promise.all([
-    getDueQuestions(db, userId, curricula),
+    getDueQuestions(db, userId, curricula, category),
     countCompletedToday(db, userId, curricula),
   ]);
 
@@ -178,6 +184,20 @@ api.get("/quiz/due", requireUser, async (c) => {
     questions: quizQuestions,
     dailyProgress: { completedToday, dailyGoal: DAILY_GOAL, totalDue: quizQuestions.length },
   });
+});
+
+// The categories the user can train on, with how many questions are due in each
+api.get("/quiz/categories", requireUser, async (c) =>
+  c.json(await getCategorySummaries(c.var.db, c.var.user.id, curriculaParam(c.req.query("curricula")))));
+
+// Mark a question as known (it won't come up for review again) or put it back into review
+api.put("/quiz/known/:questionId", requireUser, async (c) => {
+  const { known } = z.object({ known: z.boolean() }).parse(await c.req.json());
+  const questionId = c.req.param("questionId");
+  const [question] = await c.var.db.select({ id: questions.id }).from(questions).where(eq(questions.id, questionId));
+  if (!question) return c.json({ error: "Question not found" }, 404);
+  await setKnown(c.var.db, c.var.user.id, questionId, known);
+  return c.json({ success: true, known });
 });
 
 const matchesAcceptedAnswer = (answer: string | undefined, accepted: string[] | null) => {
