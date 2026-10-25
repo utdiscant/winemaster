@@ -169,7 +169,7 @@ api.get("/quiz/due", requireUser, async (c) => {
     questionType: q.questionType,
     options: q.options ?? [],
     category: q.category ?? undefined,
-    curriculum: q.curriculum ?? undefined,
+    curricula: q.curricula ?? undefined,
     regionPolygon: q.regionPolygon ?? undefined,
     regionName: q.regionName ?? undefined,
   }));
@@ -270,12 +270,12 @@ api.delete("/users/:id", requireAdmin, async (c) => {
   return c.json({ success: true, message: "User deleted successfully" });
 });
 
-// Upload questions from JSON. Questions with an existing id are updated (resetting everyone's
-// progress on them); the rest are created.
+// Upload questions from JSON. Questions with an existing id are updated, the rest are created.
 api.post("/questions/upload", requireAdmin, async (c) => {
   const { questions: uploaded } = jsonUploadSchema.parse(await c.req.json());
   const rows: InsertQuestion[] = uploaded.map((q) => {
-    const common = { id: q.id ?? crypto.randomUUID(), question: q.question, category: q.category, curriculum: q.curriculum };
+    const curricula = q.curricula ?? (q.curriculum ? [q.curriculum] : undefined);
+    const common = { id: q.id ?? crypto.randomUUID(), question: q.question, category: q.category, curricula };
     switch (q.type) {
       case "multi":
         return { ...common, questionType: "multi", options: q.options, correctAnswers: q.correctAnswers };
@@ -294,8 +294,8 @@ api.post("/questions/upload", requireAdmin, async (c) => {
     }
   });
 
-  const { created, updated } = await upsertQuestions(c.var.db, rows);
-  return c.json({ success: true, created, updated, total: created + updated });
+  const { created, updated, progressReset } = await upsertQuestions(c.var.db, rows);
+  return c.json({ success: true, created, updated, progressReset, total: created + updated });
 });
 
 api.get("/questions", requireAdmin, async (c) => c.json(await c.var.db.select().from(questions)));

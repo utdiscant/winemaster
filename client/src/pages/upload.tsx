@@ -14,7 +14,7 @@ export default function UploadPage() {
   const [uploadedData, setUploadedData] = useState<JsonUpload | null>(null);
   const [pastedJson, setPastedJson] = useState<string>("");
 
-  const uploadMutation = useMutation<{ success: boolean; created: number; updated: number; total: number }, Error, JsonUpload>({
+  const uploadMutation = useMutation<{ success: boolean; created: number; updated: number; progressReset: number; total: number }, Error, JsonUpload>({
     mutationFn: async (data: JsonUpload) => {
       return await apiRequest("POST", "/api/questions/upload", data);
     },
@@ -24,7 +24,10 @@ export default function UploadPage() {
         parts.push(`${response.created} created`);
       }
       if (response.updated > 0) {
-        parts.push(`${response.updated} updated (progress cleared)`);
+        parts.push(`${response.updated} updated`);
+      }
+      if (response.progressReset > 0) {
+        parts.push(`progress cleared on ${response.progressReset} changed ${response.progressReset === 1 ? 'question' : 'questions'}`);
       }
       const description = parts.length > 0 
         ? parts.join(', ') + ` - ${response.total} total`
@@ -186,7 +189,7 @@ Example:
       "options": ["Piedmont, Italy", "Tuscany, Italy", "Bordeaux, France", "Rioja, Spain"],
       "correctAnswer": 0,
       "category": "Italian Wines",
-      "curriculum": "WSET2"
+      "curricula": ["WSET2", "WSET3"]
     },
     {
       "question": "Which are red grape varieties?",
@@ -194,14 +197,14 @@ Example:
       "options": ["Cabernet Sauvignon", "Chardonnay", "Merlot", "Riesling", "Pinot Noir", "Sauvignon Blanc"],
       "correctAnswers": [0, 2, 4],
       "category": "Grape Varieties",
-      "curriculum": "WSET2"
+      "curricula": ["WSET2", "WSET3"]
     },
     {
       "question": "What is the primary grape variety used in Champagne?",
       "type": "text-input",
       "acceptedAnswers": ["Chardonnay", "Pinot Noir", "Pinot Meunier"],
       "category": "French Wines",
-      "curriculum": "WSET2"
+      "curricula": ["WSET2", "WSET3"]
     },
     {
       "question": "Identify the Bordeaux region",
@@ -364,7 +367,7 @@ Example:
                   "Bordeaux, France", "Rioja, Spain"],
       "correctAnswer": 0,
       "category": "Italian Wines",
-      "curriculum": "WSET2"
+      "curricula": ["WSET2", "WSET3"]
     },
     {
       "id": "red-grapes-001",
@@ -374,7 +377,7 @@ Example:
                   "Merlot", "Riesling", "Pinot Noir", "Sauvignon Blanc"],
       "correctAnswers": [0, 2, 4],
       "category": "Grape Varieties",
-      "curriculum": "WSET2"
+      "curricula": ["WSET2", "WSET3"]
     },
     {
       "id": "champagne-grapes-001",
@@ -382,7 +385,7 @@ Example:
       "type": "text-input",
       "acceptedAnswers": ["Chardonnay", "Pinot Noir", "Pinot Meunier"],
       "category": "French Wines",
-      "curriculum": "WSET2"
+      "curricula": ["WSET2", "WSET3"]
     },
     {
       "id": "bordeaux-map-001",
@@ -398,7 +401,7 @@ Example:
       },
       "options": ["Bordeaux"],
       "category": "French Regions",
-      "curriculum": "WSET2"
+      "curricula": ["WSET2", "WSET3"]
     }
   ]
 }`}
@@ -420,7 +423,7 @@ Example:
                   <li>Multi-select can have 0-6 correct answers</li>
                   <li>Text input and map answers are matched case-insensitively with trimming</li>
                   <li>Map question regionPolygon must be valid GeoJSON Polygon or MultiPolygon format with coordinates in [longitude, latitude] order</li>
-                  <li>Category and curriculum fields are optional for all types</li>
+                  <li>Category and curricula (a list, e.g. ["WSET2", "WSET3"]) are optional for all types</li>
                   <li>Curriculum examples: "WSET1", "WSET2", "WSET3", etc.</li>
                 </ul>
               </div>

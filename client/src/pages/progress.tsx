@@ -17,7 +17,7 @@ interface QuestionCard {
   correctAnswers: number[] | null;
   questionType: string;
   category: string | null;
-  curriculum: string | null;
+  curricula: string[] | null;
   repetitions: number;
   interval: number;
   nextReviewDate: string;
@@ -173,11 +173,11 @@ export default function ProgressPage() {
               {card.category}
             </Badge>
           )}
-          {card.curriculum && (
-            <Badge variant="secondary" className="text-xs">
-              {card.curriculum}
+          {card.curricula?.map((curriculum) => (
+            <Badge key={curriculum} variant="secondary" className="text-xs">
+              {curriculum}
             </Badge>
-          )}
+          ))}
           <Badge variant="secondary" className="text-xs">
             {card.questionType === 'multi' ? 'Multi-Select' : 'Single Choice'}
           </Badge>

@@ -77,7 +77,7 @@ export default function AdminPage() {
     if (!questions) return [];
     const uniqueCurriculums = new Set<string>();
     questions.forEach(q => {
-      if (q.curriculum) uniqueCurriculums.add(q.curriculum);
+      q.curricula?.forEach(c => uniqueCurriculums.add(c));
     });
     return Array.from(uniqueCurriculums).sort();
   }, [questions]);
@@ -93,7 +93,7 @@ export default function AdminPage() {
         (q.options && q.options.some(opt => opt.toLowerCase().includes(searchQuery.toLowerCase())));
       
       const matchesCategory = categoryFilter === "all" || q.category === categoryFilter;
-      const matchesCurriculum = curriculumFilter === "all" || q.curriculum === curriculumFilter;
+      const matchesCurriculum = curriculumFilter === "all" || (q.curricula ?? []).includes(curriculumFilter);
       
       return matchesSearch && matchesCategory && matchesCurriculum;
     });
@@ -294,7 +294,7 @@ export default function AdminPage() {
           question: q.question,
           type: q.questionType,
           ...(q.category && { category: q.category }),
-          ...(q.curriculum && { curriculum: q.curriculum }),
+          ...(q.curricula?.length && { curricula: q.curricula }),
         };
 
         if (q.questionType === 'text-input') {
@@ -478,11 +478,11 @@ export default function AdminPage() {
                       {question.category && (
                         <span>Category: {question.category}</span>
                       )}
-                      {question.curriculum && (
+                      {question.curricula?.length ? (
                         <span data-testid={`text-curriculum-${question.id}`}>
-                          Curriculum: {question.curriculum}
+                          Curriculum: {question.curricula.join(", ")}
                         </span>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                   <div className="flex gap-2">

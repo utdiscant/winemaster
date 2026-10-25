@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, eq, isNull, lte, or, sql, type SQL } from "drizzle-orm";
 import {
   questions,
   reviewCards,
@@ -20,8 +20,10 @@ export const NEW_CARD = { easeFactor: 2.5, interval: 0, repetitions: 0 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+// Questions tagged with at least one of these curricula
 function curriculumFilter(curricula?: string[]): SQL | undefined {
-  return curricula && curricula.length > 0 ? inArray(questions.curriculum, curricula) : undefined;
+  if (!curricula || curricula.length === 0) return undefined;
+  return sql`EXISTS (SELECT 1 FROM json_each(${questions.curricula}) WHERE value IN (SELECT value FROM json_each(${JSON.stringify(curricula)})))`;
 }
 
 // Every question (optionally only some curricula) with this user's review card, if they have one
@@ -47,12 +49,10 @@ export async function deleteUser(db: Db, userId: string): Promise<boolean> {
 // ===== Questions =====
 
 export async function getAllCurricula(db: Db): Promise<string[]> {
-  const rows = await db
-    .selectDistinct({ curriculum: questions.curriculum })
-    .from(questions)
-    .where(sql`${questions.curriculum} IS NOT NULL`)
-    .orderBy(questions.curriculum);
-  return rows.map((r) => r.curriculum!);
+  const rows = await db.all<{ curriculum: string }>(
+    sql`SELECT DISTINCT c.value AS curriculum FROM questions, json_each(questions.curricula) c ORDER BY c.value`,
+  );
+  return rows.map((r) => r.curriculum);
 }
 
 export async function deleteQuestion(db: Db, id: string): Promise<boolean> {
@@ -71,15 +71,14 @@ export async function deleteAllQuestions(db: Db): Promise<number> {
   return deleted.length;
 }
 
-// Creates or updates questions in a few statements, however many there are. Updating a question
-// resets everyone's progress on it.
-export async function upsertQuestions(db: Db, rows: InsertQuestion[]): Promise<{ created: number; updated: number }> {
+// Creates or updates questions in a few statements, however many there are. If an update changes
+// what a question asks or accepts, everyone's progress on it is reset; a change of category or
+// curricula alone keeps progress.
+export async function upsertQuestions(
+  db: Db,
+  rows: InsertQuestion[],
+): Promise<{ created: number; updated: number; progressReset: number }> {
   const ids = rows.map((row) => row.id);
-
-  const existing = await db.all<{ id: string }>(
-    sql`SELECT id FROM questions WHERE id IN (SELECT value FROM json_each(${JSON.stringify(ids)}))`,
-  );
-  const existingIds = existing.map((row) => row.id);
 
   // Split into JSON arrays that each fit in one bound value
   const chunks: string[] = [];
@@ -99,8 +98,32 @@ export async function upsertQuestions(db: Db, rows: InsertQuestion[]): Promise<{
 
   // Raw D1 statements: drizzle's batch only takes its own query builders
   const d1 = db.$client;
+
+  const existing = await d1
+    .prepare("SELECT id FROM questions WHERE id IN (SELECT value FROM json_each(?))")
+    .bind(JSON.stringify(ids))
+    .all<{ id: string }>();
+
+  // Existing questions whose content changes. JSON columns go through json() so formatting
+  // differences don't count as changes.
+  const findChanged = d1.prepare(`
+    SELECT q.id FROM questions q JOIN json_each(?) u ON q.id = json_extract(u.value, '$.id')
+    WHERE q.question IS NOT json_extract(u.value, '$.question')
+      OR q.question_type IS NOT coalesce(json_extract(u.value, '$.questionType'), 'single')
+      OR json(q.options) IS NOT json(json_extract(u.value, '$.options'))
+      OR q.correct_answer IS NOT json_extract(u.value, '$.correctAnswer')
+      OR json(q.correct_answers) IS NOT json(json_extract(u.value, '$.correctAnswers'))
+      OR json(q.region_polygon) IS NOT json(json_extract(u.value, '$.regionPolygon'))
+      OR q.region_name IS NOT json_extract(u.value, '$.regionName')
+  `);
+  const changedIds = new Set<string>();
+  for (const chunk of chunks) {
+    const { results } = await findChanged.bind(chunk).all<{ id: string }>();
+    for (const { id } of results) changedIds.add(id);
+  }
+
   const upsert = d1.prepare(`
-    INSERT INTO questions (id, question, question_type, options, correct_answer, correct_answers, region_polygon, region_name, category, curriculum)
+    INSERT INTO questions (id, question, question_type, options, correct_answer, correct_answers, region_polygon, region_name, category, curricula)
     SELECT
       json_extract(value, '$.id'),
       json_extract(value, '$.question'),
@@ -111,7 +134,7 @@ export async function upsertQuestions(db: Db, rows: InsertQuestion[]): Promise<{
       json_extract(value, '$.regionPolygon'),
       json_extract(value, '$.regionName'),
       json_extract(value, '$.category'),
-      json_extract(value, '$.curriculum')
+      json_extract(value, '$.curricula')
     FROM json_each(?) WHERE true
     ON CONFLICT(id) DO UPDATE SET
       question = excluded.question,
@@ -122,15 +145,15 @@ export async function upsertQuestions(db: Db, rows: InsertQuestion[]): Promise<{
       region_polygon = excluded.region_polygon,
       region_name = excluded.region_name,
       category = excluded.category,
-      curriculum = excluded.curriculum
+      curricula = excluded.curricula
   `);
   const resetProgress = d1
     .prepare("DELETE FROM review_cards WHERE question_id IN (SELECT value FROM json_each(?))")
-    .bind(JSON.stringify(existingIds));
+    .bind(JSON.stringify([...changedIds]));
   await d1.batch([resetProgress, ...chunks.map((chunk) => upsert.bind(chunk))]);
 
-  const updated = new Set(existingIds).size;
-  return { created: new Set(ids).size - updated, updated };
+  const updated = new Set(existing.results.map((row) => row.id)).size;
+  return { created: new Set(ids).size - updated, updated, progressReset: changedIds.size };
 }
 
 // ===== Quiz =====
@@ -188,7 +211,7 @@ export async function getProgressCards(db: Db, userId: string, curricula?: strin
     correctAnswers: q.correctAnswers,
     questionType: q.questionType,
     category: q.category,
-    curriculum: q.curriculum,
+    curricula: q.curricula,
     repetitions: card?.repetitions ?? NEW_CARD.repetitions,
     interval: card?.interval ?? NEW_CARD.interval,
     easeFactor: card?.easeFactor ?? NEW_CARD.easeFactor,

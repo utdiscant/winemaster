@@ -37,7 +37,7 @@ export const questions = sqliteTable("questions", {
   regionPolygon: text("region_polygon", { mode: "json" }).$type<unknown>(),
   regionName: text("region_name"),
   category: text("category"),
-  curriculum: text("curriculum"),
+  curricula: text("curricula", { mode: "json" }).$type<string[]>(), // e.g. ["WSET2", "WSET3"]
 });
 
 // SM-2 state per user per question. A question the user has never answered has no row and counts as
@@ -67,7 +67,8 @@ export type UserRow = typeof users.$inferSelect;
 export type User = Omit<UserRow, "passwordHash">;
 
 // JSON upload: questions without an id are created; with an id they are created or, if the id
-// exists, updated (which resets everyone's progress on that question)
+// exists, updated. Changing what a question asks or accepts resets everyone's progress on it;
+// changing only its category or curricula does not.
 const singleChoiceQuestionSchema = z.object({
   id: z.string().optional(),
   question: z.string().min(1, "Question cannot be empty"),
@@ -75,7 +76,8 @@ const singleChoiceQuestionSchema = z.object({
   options: z.array(z.string()).length(4, "Single-choice questions must have exactly 4 options"),
   correctAnswer: z.number().int().min(0).max(3, "Correct answer must be between 0 and 3"),
   category: z.string().optional(),
-  curriculum: z.string().optional(),
+  curriculum: z.string().optional(), // One curriculum (older files)
+  curricula: z.array(z.string()).optional(), // One or more, e.g. ["WSET2", "WSET3"]
 });
 
 const multiSelectQuestionSchema = z.object({
@@ -85,7 +87,8 @@ const multiSelectQuestionSchema = z.object({
   options: z.array(z.string()).length(6, "Multi-select questions must have exactly 6 options"),
   correctAnswers: z.array(z.number().int().min(0).max(5)).max(6, "Multi-select can have 0-6 correct answers"),
   category: z.string().optional(),
-  curriculum: z.string().optional(),
+  curriculum: z.string().optional(), // One curriculum (older files)
+  curricula: z.array(z.string()).optional(), // One or more, e.g. ["WSET2", "WSET3"]
 });
 
 const textInputQuestionSchema = z.object({
@@ -94,7 +97,8 @@ const textInputQuestionSchema = z.object({
   type: z.literal('text-input'),
   acceptedAnswers: z.array(z.string()).min(1, "Text-input questions must have at least 1 accepted answer"),
   category: z.string().optional(),
-  curriculum: z.string().optional(),
+  curriculum: z.string().optional(), // One curriculum (older files)
+  curricula: z.array(z.string()).optional(), // One or more, e.g. ["WSET2", "WSET3"]
 });
 
 const mapQuestionSchema = z.object({
@@ -105,7 +109,8 @@ const mapQuestionSchema = z.object({
   regionPolygon: z.any().refine((polygon) => polygon != null, "Region polygon is required"), // GeoJSON
   acceptedAnswers: z.array(z.string()).min(1, "Map questions must have at least 1 accepted answer"),
   category: z.string().optional(),
-  curriculum: z.string().optional(),
+  curriculum: z.string().optional(), // One curriculum (older files)
+  curricula: z.array(z.string()).optional(), // One or more, e.g. ["WSET2", "WSET3"]
 });
 
 export const jsonUploadSchema = z.object({
@@ -129,7 +134,7 @@ export const questionUpdateSchema = z.object({
   correctAnswer: z.number().int().min(0).max(5).nullable(),
   correctAnswers: z.array(z.number().int().min(0).max(5)).nullable(),
   category: z.string().nullable(),
-  curriculum: z.string().nullable(),
+  curricula: z.array(z.string()).nullable(),
 }).partial();
 
 // Answer submission: exactly one of
@@ -164,7 +169,7 @@ export type QuizQuestion = {
   regionPolygon?: unknown;
   regionName?: string;
   category?: string;
-  curriculum?: string;
+  curricula?: string[];
 };
 
 export type Statistics = {
@@ -188,7 +193,7 @@ export type ProgressCard = {
   correctAnswers: number[] | null;
   questionType: QuestionType;
   category: string | null;
-  curriculum: string | null;
+  curricula: string[] | null;
   repetitions: number;
   interval: number;
   nextReviewDate: string;
