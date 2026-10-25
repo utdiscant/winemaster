@@ -10,7 +10,6 @@ import { useLocation } from "wouter";
 import type { Statistics } from "@shared/schema";
 
 interface QuestionCard {
-  reviewCardId: string;
   questionId: string;
   question: string;
   options: string[];
@@ -21,7 +20,7 @@ interface QuestionCard {
   curriculum: string | null;
   repetitions: number;
   interval: number;
-  nextReviewDate: Date;
+  nextReviewDate: string;
   easeFactor: number;
 }
 
@@ -395,7 +394,7 @@ export default function ProgressPage() {
                   {dueQuestions.length > 0 ? (
                     <div className="space-y-3">
                       {dueQuestions.map(card => (
-                        <QuestionListItem key={card.reviewCardId} card={card} />
+                        <QuestionListItem key={card.questionId} card={card} />
                       ))}
                     </div>
                   ) : (
@@ -409,7 +408,7 @@ export default function ProgressPage() {
                   {newQuestions.length > 0 ? (
                     <div className="space-y-3">
                       {newQuestions.map(card => (
-                        <QuestionListItem key={card.reviewCardId} card={card} />
+                        <QuestionListItem key={card.questionId} card={card} />
                       ))}
                     </div>
                   ) : (
@@ -423,7 +422,7 @@ export default function ProgressPage() {
                   {learningQuestions.length > 0 ? (
                     <div className="space-y-3">
                       {learningQuestions.map(card => (
-                        <QuestionListItem key={card.reviewCardId} card={card} />
+                        <QuestionListItem key={card.questionId} card={card} />
                       ))}
                     </div>
                   ) : (
@@ -437,7 +436,7 @@ export default function ProgressPage() {
                   {masteredQuestions.length > 0 ? (
                     <div className="space-y-3">
                       {masteredQuestions.map(card => (
-                        <QuestionListItem key={card.reviewCardId} card={card} />
+                        <QuestionListItem key={card.questionId} card={card} />
                       ))}
                     </div>
                   ) : (

@@ -1,8 +1,11 @@
+import { useLocation } from "wouter";
 import { Wine, GraduationCap, Brain, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 export default function Landing() {
+  const [, setLocation] = useLocation();
+
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
@@ -31,7 +34,7 @@ export default function Landing() {
               <div className="flex gap-3">
                 <Button
                   size="lg"
-                  onClick={() => window.location.href = "/auth"}
+                  onClick={() => setLocation("/auth")}
                   className="text-lg px-8"
                   data-testid="button-get-started"
                 >
@@ -40,38 +43,13 @@ export default function Landing() {
                 <Button
                   size="lg"
                   variant="outline"
-                  onClick={() => window.location.href = "/auth"}
+                  onClick={() => setLocation("/auth")}
                   className="text-lg px-8"
                   data-testid="button-login"
                 >
                   Login
                 </Button>
               </div>
-
-              {/* Dev-only quick login buttons */}
-              {import.meta.env.DEV && (
-                <div className="flex flex-col items-center gap-2 mt-4 p-4 bg-muted/50 rounded-lg border border-dashed border-primary/30">
-                  <p className="text-xs text-muted-foreground font-mono">DEV MODE - Quick Login</p>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => window.location.href = "/api/dev/login-admin"}
-                      data-testid="button-dev-login-admin"
-                    >
-                      Login as Admin
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => window.location.href = "/api/dev/login-user"}
-                      data-testid="button-dev-login-user"
-                    >
-                      Login as User
-                    </Button>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -122,7 +100,7 @@ export default function Landing() {
               </div>
               <div>
                 <h4 className="text-lg font-semibold mb-2">Sign In</h4>
-                <p className="text-muted-foreground">Log in with Google or email to start your wine education journey</p>
+                <p className="text-muted-foreground">Create an account with your email to start your wine education journey</p>
               </div>
             </div>
 
@@ -167,7 +145,7 @@ export default function Landing() {
             <Button
               size="lg"
               variant="outline"
-              onClick={() => window.location.href = "/auth"}
+              onClick={() => setLocation("/auth")}
               data-testid="button-login-bottom"
             >
               Start Learning Now

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Switch, Route, Link, useLocation } from "wouter";
-import { queryClient } from "./lib/queryClient";
+import { Router, Switch, Route, Link, useLocation } from "wouter";
+import { queryClient, apiRequest } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -56,8 +56,9 @@ function Navigation() {
           className="gap-2 w-full justify-start"
           onClick={async () => {
             setOpen(false);
-            await fetch('/api/auth/logout', { method: 'POST' });
-            window.location.href = "/";
+            await apiRequest("POST", "/api/auth/logout");
+            // Full reload so no cached data from this account survives
+            window.location.href = import.meta.env.BASE_URL;
           }}
           data-testid="button-logout"
         >
@@ -101,7 +102,7 @@ function Navigation() {
   );
 }
 
-function Router() {
+function AppRoutes() {
   const { isAuthenticated, isLoading, isAdmin } = useAuth();
 
   if (isLoading) {
@@ -146,7 +147,10 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <div className="min-h-screen bg-background">
-          <Router />
+          {/* Paths are relative to where the app is served, e.g. /wset-training */}
+          <Router base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+            <AppRoutes />
+          </Router>
         </div>
         <Toaster />
       </TooltipProvider>

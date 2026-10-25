@@ -1,0 +1,34 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "wset-training",
+  "main": "./worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  // The app lives under vinblinder.dk/wset-training. The rest of vinblinder.dk is the wine-guessr
+  // Worker (a custom domain); these routes run in front of it for this path only.
+  "routes": [
+    { "pattern": "vinblinder.dk/wset-training*", "zone_name": "vinblinder.dk" },
+    { "pattern": "www.vinblinder.dk/wset-training*", "zone_name": "vinblinder.dk" }
+  ],
+  "workers_dev": false,
+  // Vite builds into dist/wset-training, so files are served under /wset-training/. Anything that
+  // isn't a file (API calls, app pages like /wset-training/progress) goes to the Worker.
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "none",
+    "run_worker_first": ["/wset-training/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "wset-training",
+      "database_id": "89fdb216-feb8-4108-9766-e1c6a5446642",
+      "migrations_dir": "migrations"
+    }
+  ],
+  // Accounts with these emails (comma-separated) become admins when they sign up or log in
+  "vars": {
+    "ADMIN_EMAILS": "utdiscant@gmail.com"
+  },
+  "observability": { "enabled": true }
+}

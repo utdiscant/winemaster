@@ -8,9 +8,9 @@ import { Input } from "@/components/ui/input";
 import { CheckCircle2, XCircle, Wine } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { QuizQuestion, User } from "@shared/schema";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, apiUrl } from "@/lib/queryClient";
 import WineMap from "@/components/WineMap";
-import { getPolygonCentroid, getBoundsForPolygonAndPoint } from "@/utils/geoUtils";
+import { getPolygonCentroid, getBoundsForPolygonAndPoint } from "@shared/geo";
 
 interface QuizResponse {
   questions: QuizQuestion[];
@@ -55,7 +55,7 @@ export default function QuizPage() {
   const { data: quizData, isLoading: isLoadingQuestions, isFetching, refetch, isError } = useQuery<QuizResponse>({
     queryKey: ["/api/quiz/due", { curricula: user?.selectedCurricula || [] }],
     queryFn: async () => {
-      const response = await fetch(buildQuizQueryUrl(), { credentials: "include" });
+      const response = await fetch(apiUrl(buildQuizQueryUrl()), { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch quiz questions");
       return response.json();
     },
