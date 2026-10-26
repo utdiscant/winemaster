@@ -15,6 +15,7 @@ import {
   type ReviewCard,
   type Statistics,
 } from "@shared/schema";
+import { compareCategories } from "@shared/chapters";
 import type { Db } from "./index";
 
 // D1 caps a single bound value at 2 MB, so large uploads are sent in pieces
@@ -189,7 +190,8 @@ export async function getDueQuestions(
   return rows.map((row) => row.question);
 }
 
-// Each category (optionally only some curricula) with its number of questions and how many are due
+// Each category (optionally only some curricula) with its number of questions and how many are due,
+// in textbook order
 export async function getCategorySummaries(db: Db, userId: string, curricula?: string[]): Promise<CategorySummary[]> {
   const rows = await db
     .select({
@@ -200,9 +202,10 @@ export async function getCategorySummaries(db: Db, userId: string, curricula?: s
     .from(questions)
     .leftJoin(reviewCards, and(eq(reviewCards.questionId, questions.id), eq(reviewCards.userId, userId)))
     .where(and(curriculumFilter(curricula), isNotNull(questions.category)))
-    .groupBy(questions.category)
-    .orderBy(questions.category);
-  return rows.map((row) => ({ category: row.category!, total: row.total, due: row.due ?? 0 }));
+    .groupBy(questions.category);
+  return rows
+    .map((row) => ({ category: row.category!, total: row.total, due: row.due ?? 0 }))
+    .sort((a, b) => compareCategories(a.category, b.category));
 }
 
 // Marks a question as known (never due again) or puts it back into review, due now

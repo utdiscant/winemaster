@@ -34,6 +34,7 @@ import { Settings, Edit2, Trash2, Search, ChevronLeft, ChevronRight, Download } 
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Question } from "@shared/schema";
+import { compareCategories } from "@shared/chapters";
 
 export default function AdminPage() {
   const { toast } = useToast();
@@ -70,7 +71,7 @@ export default function AdminPage() {
     questions.forEach(q => {
       if (q.category) uniqueCategories.add(q.category);
     });
-    return Array.from(uniqueCategories).sort();
+    return Array.from(uniqueCategories).sort(compareCategories); // Textbook order
   }, [questions]);
 
   // Get unique curriculums for filter
