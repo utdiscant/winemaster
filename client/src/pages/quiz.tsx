@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
-import { CheckCircle2, XCircle, Wine, BookCheck } from "lucide-react";
+import { CheckCircle2, XCircle, Wine, BookCheck, BookOpen, HelpCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import type { CategorySummary, QuizQuestion, User } from "@shared/schema";
@@ -90,6 +90,9 @@ function QuizSession({ category }: { category?: string }) {
   const [sessionStartCount, setSessionStartCount] = useState<number | null>(null);
   const [answeredInSession, setAnsweredInSession] = useState(0);
   const [isAdvancing, setIsAdvancing] = useState(false);
+  const [explanation, setExplanation] = useState<string | null>(null); // The theory behind the answer
+  const [answeredDontKnow, setAnsweredDontKnow] = useState(false);
+  const [showExplanation, setShowExplanation] = useState(false); // After a correct answer, shown on request
 
   // Fetch user to get curriculum preferences
   const { data: user, isLoading: isLoadingUser } = useQuery<User | null>({
@@ -167,7 +170,7 @@ function QuizSession({ category }: { category?: string }) {
   }, [isError, isAdvancing, toast]);
 
   const submitAnswerMutation = useMutation({
-    mutationFn: async (data: { questionId: string; selectedAnswer?: number; selectedAnswers?: number[]; textAnswer?: string; mapClick?: { lat: number; lng: number }; displayMode?: 'text-to-map' | 'map-to-text' }) => {
+    mutationFn: async (data: { questionId: string; selectedAnswer?: number; selectedAnswers?: number[]; textAnswer?: string; mapClick?: { lat: number; lng: number }; displayMode?: 'text-to-map' | 'map-to-text'; dontKnow?: true }) => {
       return await apiRequest("POST", "/api/quiz/answer", data);
     },
     onSuccess: (response) => {
@@ -188,6 +191,7 @@ function QuizSession({ category }: { category?: string }) {
         setCorrectAnswerIndexes(correctShuffledIndexes);
       }
       setIsCorrect(response.correct);
+      setExplanation(response.explanation ?? null);
       setIsAnswered(true);
       
       // Only invalidate statistics, NOT the due questions query
@@ -272,6 +276,9 @@ function QuizSession({ category }: { category?: string }) {
       setMapClick(null);
       setIsAnswered(false);
       setCorrectMapData(null);
+      setExplanation(null);
+      setAnsweredDontKnow(false);
+      setShowExplanation(false);
     }
   }, [currentQuestion?.id]); // Key on question ID to reset when question changes
 
@@ -293,6 +300,17 @@ function QuizSession({ category }: { category?: string }) {
         setSelectedAnswer(index);
       }
     }
+  };
+
+  // Reveal the answer and explanation; counts as not knowing it
+  const handleDontKnow = () => {
+    if (!currentQuestion) return;
+    setAnsweredDontKnow(true);
+    submitAnswerMutation.mutate({
+      questionId: currentQuestion.id,
+      dontKnow: true,
+      ...(mapDisplayMode ? { displayMode: mapDisplayMode } : {}),
+    });
   };
 
   const handleSubmitAnswer = () => {
@@ -351,6 +369,9 @@ function QuizSession({ category }: { category?: string }) {
     setTextAnswer("");
     setMapClick(null);
     setCorrectMapData(null);
+    setExplanation(null);
+    setAnsweredDontKnow(false);
+    setShowExplanation(false);
     setIsAdvancing(true);
     queryClient.invalidateQueries({ queryKey: ["/api/quiz/categories"], exact: false });
     
@@ -605,7 +626,7 @@ function QuizSession({ category }: { category?: string }) {
                 const isCorrectAnswer = correctAnswerIndexes.has(index);
                 const showAsCorrect = isAnswered && isCorrectAnswer;
                 const showAsIncorrect = isAnswered && isSelected && !isCorrectAnswer;
-                const showAsMissed = isAnswered && isMulti && isCorrectAnswer && !isSelected;
+                const showAsMissed = isAnswered && isMulti && isCorrectAnswer && !isSelected && !answeredDontKnow;
 
                 return (
                   <button
@@ -688,6 +709,16 @@ function QuizSession({ category }: { category?: string }) {
             {/* Action Buttons */}
             <div className="flex justify-end gap-2 md:gap-3 pt-2 md:pt-4">
               {!isAnswered ? (
+                <>
+                <Button
+                  variant="ghost"
+                  onClick={handleDontKnow}
+                  disabled={submitAnswerMutation.isPending}
+                  data-testid="button-dont-know"
+                >
+                  <HelpCircle className="w-4 h-4 mr-2" />
+                  I don't know
+                </Button>
                 <Button
                   onClick={handleSubmitAnswer}
                   disabled={
@@ -702,6 +733,7 @@ function QuizSession({ category }: { category?: string }) {
                 >
                   {submitAnswerMutation.isPending ? "Submitting..." : "Submit Answer"}
                 </Button>
+                </>
               ) : (
                 <>
                   {isCorrect && (
@@ -743,15 +775,32 @@ function QuizSession({ category }: { category?: string }) {
                   )}
                   <div>
                     <p className="font-semibold text-base md:text-lg">
-                      {isCorrect ? "Correct!" : "Incorrect"}
+                      {isCorrect ? "Correct!" : answeredDontKnow ? "Here's the answer" : "Incorrect"}
                     </p>
                     <p className="text-xs md:text-sm text-muted-foreground">
                       {isCorrect
                         ? "Great job! You got it right."
-                        : "The correct answer is highlighted in green above."}
+                        : "The correct answer is shown above."}
                     </p>
                   </div>
                 </div>
+                {explanation && (isCorrect && !showExplanation ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="ml-6 md:ml-8"
+                    onClick={() => setShowExplanation(true)}
+                    data-testid="button-show-explanation"
+                  >
+                    <BookOpen className="w-4 h-4 mr-2" />
+                    Why?
+                  </Button>
+                ) : (
+                  <div className="flex gap-2 md:gap-3 rounded-md bg-background/70 p-3 md:p-4" data-testid="text-explanation">
+                    <BookOpen className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                    <p className="text-sm md:text-base leading-relaxed">{explanation}</p>
+                  </div>
+                ))}
                 {!isCorrect && (
                   <p className="text-xs md:text-sm text-muted-foreground pl-8 md:pl-10">
                     This question will be reviewed again soon to help you master it.

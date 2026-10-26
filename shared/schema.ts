@@ -38,6 +38,7 @@ export const questions = sqliteTable("questions", {
   regionName: text("region_name"),
   category: text("category"),
   curricula: text("curricula", { mode: "json" }).$type<string[]>(), // e.g. ["WSET2", "WSET3"]
+  explanation: text("explanation"), // The theory behind the answer, shown after a wrong answer or "I don't know"
 });
 
 // SM-2 state per user per question. A question the user has never answered has no row and counts as
@@ -57,7 +58,24 @@ export const reviewCards = sqliteTable("review_cards", {
   index("review_cards_question_idx").on(table.questionId),
 ]);
 
+// Every answer a user gives, so they can review their mistakes
+export const answerLog = sqliteTable("answer_log", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: text("user_id").notNull(),
+  questionId: text("question_id").notNull(),
+  answeredAt: integer("answered_at", { mode: "timestamp_ms" }).notNull(),
+  outcome: text("outcome").$type<AnswerOutcome>().notNull(),
+  answer: text("answer", { mode: "json" }).$type<GivenAnswer>(), // What the user answered; null for "I don't know"
+}, (table) => [
+  index("answer_log_user_time_idx").on(table.userId, table.answeredAt),
+  index("answer_log_question_idx").on(table.questionId),
+]);
+
 // ===== Types =====
+
+export type AnswerOutcome = "correct" | "wrong" | "dont_know";
+// The answer as given: option texts for choice questions, typed text, or a map click
+export type GivenAnswer = { options?: string[]; text?: string; mapClick?: { lat: number; lng: number } };
 
 export type QuestionType = "single" | "multi" | "text-input" | "map";
 export type Question = typeof questions.$inferSelect;
@@ -78,6 +96,7 @@ const singleChoiceQuestionSchema = z.object({
   options: z.array(z.string()).length(4, "Single-choice questions must have exactly 4 options"),
   correctAnswer: z.number().int().min(0).max(3, "Correct answer must be between 0 and 3"),
   category: z.string().optional(),
+  explanation: z.string().optional(),
   curriculum: z.string().optional(), // One curriculum (older files)
   curricula: z.array(z.string()).optional(), // One or more, e.g. ["WSET2", "WSET3"]
 });
@@ -89,6 +108,7 @@ const multiSelectQuestionSchema = z.object({
   options: z.array(z.string()).length(6, "Multi-select questions must have exactly 6 options"),
   correctAnswers: z.array(z.number().int().min(0).max(5)).max(6, "Multi-select can have 0-6 correct answers"),
   category: z.string().optional(),
+  explanation: z.string().optional(),
   curriculum: z.string().optional(), // One curriculum (older files)
   curricula: z.array(z.string()).optional(), // One or more, e.g. ["WSET2", "WSET3"]
 });
@@ -99,6 +119,7 @@ const textInputQuestionSchema = z.object({
   type: z.literal('text-input'),
   acceptedAnswers: z.array(z.string()).min(1, "Text-input questions must have at least 1 accepted answer"),
   category: z.string().optional(),
+  explanation: z.string().optional(),
   curriculum: z.string().optional(), // One curriculum (older files)
   curricula: z.array(z.string()).optional(), // One or more, e.g. ["WSET2", "WSET3"]
 });
@@ -111,6 +132,7 @@ const mapQuestionSchema = z.object({
   regionPolygon: z.any().refine((polygon) => polygon != null, "Region polygon is required"), // GeoJSON
   acceptedAnswers: z.array(z.string()).min(1, "Map questions must have at least 1 accepted answer"),
   category: z.string().optional(),
+  explanation: z.string().optional(),
   curriculum: z.string().optional(), // One curriculum (older files)
   curricula: z.array(z.string()).optional(), // One or more, e.g. ["WSET2", "WSET3"]
 });
@@ -137,6 +159,7 @@ export const questionUpdateSchema = z.object({
   correctAnswers: z.array(z.number().int().min(0).max(5)).nullable(),
   category: z.string().nullable(),
   curricula: z.array(z.string()).nullable(),
+  explanation: z.string().nullable(),
 }).partial();
 
 // Answer submission: exactly one of
@@ -144,6 +167,7 @@ export const questionUpdateSchema = z.object({
 // - selectedAnswers (multi-select)
 // - textAnswer (text-input, or a map question shown as name-the-region)
 // - mapClick (a map question shown as click-the-region)
+// - dontKnow (the user clicked "I don't know")
 export const answerSubmissionSchema = z.object({
   questionId: z.string(),
   selectedAnswer: z.number().min(0).max(3).optional(),
@@ -151,12 +175,13 @@ export const answerSubmissionSchema = z.object({
   textAnswer: z.string().optional(),
   mapClick: z.object({ lat: z.number(), lng: z.number() }).optional(),
   displayMode: z.enum(['text-to-map', 'map-to-text']).optional(), // For map questions: which mode was shown
+  dontKnow: z.literal(true).optional(),
   timeTaken: z.number().optional(),
 }).refine(
-  (data) => [data.selectedAnswer, data.selectedAnswers, data.textAnswer, data.mapClick]
+  (data) => [data.selectedAnswer, data.selectedAnswers, data.textAnswer, data.mapClick, data.dontKnow]
     .filter((answer) => answer !== undefined).length === 1,
   {
-    message: "Must provide exactly one of: selectedAnswer (single-choice), selectedAnswers (multi-select), textAnswer (text-input or map-to-text), or mapClick (text-to-map)"
+    message: "Must provide exactly one of: selectedAnswer (single-choice), selectedAnswers (multi-select), textAnswer (text-input or map-to-text), mapClick (text-to-map), or dontKnow"
   }
 );
 
@@ -209,6 +234,21 @@ export type CategorySummary = {
   category: string;
   total: number;
   due: number;
+};
+
+// A question the user got wrong or didn't know in a period, for the Mistakes page and study guides
+export type Mistake = {
+  questionId: string;
+  question: string;
+  questionType: QuestionType;
+  category: string | null;
+  correctAnswers: string[]; // Option texts, accepted answers, or the region name
+  explanation: string | null;
+  wrongCount: number; // Wrong answers in the period
+  dontKnowCount: number; // "I don't know" in the period
+  lastAnswer: GivenAnswer | null; // The most recent wrong answer given
+  lastMistakeAt: string;
+  correctSince: boolean; // Answered correctly after the last mistake
 };
 
 // Authentication

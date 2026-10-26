@@ -53,6 +53,7 @@ export default function AdminPage() {
     correctAnswer: 0,
     category: "",
     acceptedAnswers: [] as string[],
+    explanation: "",
   });
 
   const ITEMS_PER_PAGE = 10;
@@ -206,6 +207,7 @@ export default function AdminPage() {
           correctAnswer: 0,
           category: editingQuestion.category || "",
           acceptedAnswers: editingQuestion.options || [],
+          explanation: editingQuestion.explanation || "",
         });
       } else {
         setFormData({
@@ -217,6 +219,7 @@ export default function AdminPage() {
           correctAnswer: editingQuestion.correctAnswer ?? 0,
           category: editingQuestion.category || "",
           acceptedAnswers: [],
+          explanation: editingQuestion.explanation || "",
         });
       }
     }
@@ -225,8 +228,16 @@ export default function AdminPage() {
   const handleSave = () => {
     if (!editingQuestion) return;
 
+    const explanation = formData.explanation.trim() || null;
     let updates;
-    if (editingQuestion.questionType === 'text-input') {
+    if (editingQuestion.questionType === 'multi' || editingQuestion.questionType === 'map') {
+      // Their options and answers are edited by re-uploading JSON
+      updates = {
+        question: formData.question,
+        category: formData.category || undefined,
+        explanation,
+      };
+    } else if (editingQuestion.questionType === 'text-input') {
       // Validate text-input has at least one accepted answer
       const nonEmptyAnswers = formData.acceptedAnswers.filter(a => a.trim() !== '');
       if (nonEmptyAnswers.length === 0) {
@@ -242,6 +253,7 @@ export default function AdminPage() {
         question: formData.question,
         options: nonEmptyAnswers,
         category: formData.category || undefined,
+        explanation,
       };
     } else {
       // Validate single-choice has all four non-empty options
@@ -266,6 +278,7 @@ export default function AdminPage() {
         options,
         correctAnswer: formData.correctAnswer,
         category: formData.category || undefined,
+        explanation,
       };
     }
 
@@ -295,6 +308,7 @@ export default function AdminPage() {
           type: q.questionType,
           ...(q.category && { category: q.category }),
           ...(q.curricula?.length && { curricula: q.curricula }),
+          ...(q.explanation && { explanation: q.explanation }),
         };
 
         if (q.questionType === 'text-input') {
@@ -687,6 +701,11 @@ export default function AdminPage() {
                   </Button>
                 </div>
               </div>
+            ) : editingQuestion?.questionType === 'multi' || editingQuestion?.questionType === 'map' ? (
+              <p className="text-sm text-muted-foreground">
+                To change the options or answers of {editingQuestion.questionType === 'map' ? 'a map' : 'a multi-select'} question,
+                edit it in the JSON file and upload it again.
+              </p>
             ) : (
               <>
                 <div>
@@ -755,6 +774,17 @@ export default function AdminPage() {
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 placeholder="e.g., Bordeaux, Italian Wines"
                 data-testid="input-edit-category"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="explanation">Explanation (shown after a wrong answer)</Label>
+              <Textarea
+                id="explanation"
+                value={formData.explanation}
+                onChange={(e) => setFormData({ ...formData, explanation: e.target.value })}
+                rows={4}
+                data-testid="input-edit-explanation"
               />
             </div>
           </div>

@@ -6,12 +6,13 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Wine, BarChart3, Upload, Settings, LogOut, User, Users, Menu } from "lucide-react";
+import { Wine, BarChart3, Upload, Settings, LogOut, User, Users, Menu, ListX } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/landing";
 import AuthPage from "@/pages/auth";
 import QuizPage from "@/pages/quiz";
 import ProgressPage from "@/pages/progress";
+import MistakesPage from "@/pages/mistakes";
 import ProfilePage from "@/pages/profile";
 import UploadPage from "@/pages/upload";
 import AdminPage from "@/pages/admin";
@@ -26,6 +27,7 @@ function Navigation() {
   const navItems = [
     { path: "/", icon: Wine, label: "Learn" },
     { path: "/progress", icon: BarChart3, label: "Progress" },
+    { path: "/mistakes", icon: ListX, label: "Mistakes" },
     { path: "/profile", icon: User, label: "Profile" },
     ...(isAdmin ? [{ path: "/upload", icon: Upload, label: "Upload" }] : []),
     ...(isAdmin ? [{ path: "/admin", icon: Settings, label: "Admin" }] : []),
@@ -132,6 +134,7 @@ function AppRoutes() {
       <Switch>
         <Route path="/" component={QuizPage} />
         <Route path="/progress" component={ProgressPage} />
+        <Route path="/mistakes" component={MistakesPage} />
         <Route path="/profile" component={ProfilePage} />
         {isAdmin && <Route path="/upload" component={UploadPage} />}
         {isAdmin && <Route path="/admin" component={AdminPage} />}

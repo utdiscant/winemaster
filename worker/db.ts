@@ -1,11 +1,15 @@
 import { and, eq, isNotNull, isNull, lte, or, sql, type SQL } from "drizzle-orm";
 import {
+  answerLog,
   questions,
   reviewCards,
   sessions,
   users,
+  type AnswerOutcome,
   type CategorySummary,
+  type GivenAnswer,
   type InsertQuestion,
+  type Mistake,
   type ProgressCard,
   type Question,
   type ReviewCard,
@@ -45,7 +49,8 @@ function questionsWithCards(db: Db, userId: string, curricula?: string[], extra?
 // ===== Users =====
 
 export async function deleteUser(db: Db, userId: string): Promise<boolean> {
-  const [, , deleted] = await db.batch([
+  const [, , , deleted] = await db.batch([
+    db.delete(answerLog).where(eq(answerLog.userId, userId)),
     db.delete(reviewCards).where(eq(reviewCards.userId, userId)),
     db.delete(sessions).where(eq(sessions.userId, userId)),
     db.delete(users).where(eq(users.id, userId)).returning({ id: users.id }),
@@ -63,7 +68,8 @@ export async function getAllCurricula(db: Db): Promise<string[]> {
 }
 
 export async function deleteQuestion(db: Db, id: string): Promise<boolean> {
-  const [, deleted] = await db.batch([
+  const [, , deleted] = await db.batch([
+    db.delete(answerLog).where(eq(answerLog.questionId, id)),
     db.delete(reviewCards).where(eq(reviewCards.questionId, id)),
     db.delete(questions).where(eq(questions.id, id)).returning({ id: questions.id }),
   ]);
@@ -71,7 +77,8 @@ export async function deleteQuestion(db: Db, id: string): Promise<boolean> {
 }
 
 export async function deleteAllQuestions(db: Db): Promise<number> {
-  const [, deleted] = await db.batch([
+  const [, , deleted] = await db.batch([
+    db.delete(answerLog),
     db.delete(reviewCards),
     db.delete(questions).returning({ id: questions.id }),
   ]);
@@ -79,8 +86,8 @@ export async function deleteAllQuestions(db: Db): Promise<number> {
 }
 
 // Creates or updates questions in a few statements, however many there are. If an update changes
-// what a question asks or accepts, everyone's progress on it is reset; a change of category or
-// curricula alone keeps progress.
+// what a question asks or accepts, everyone's progress on it is reset; a change of category,
+// curricula or explanation alone keeps progress.
 export async function upsertQuestions(
   db: Db,
   rows: InsertQuestion[],
@@ -130,7 +137,7 @@ export async function upsertQuestions(
   }
 
   const upsert = d1.prepare(`
-    INSERT INTO questions (id, question, question_type, options, correct_answer, correct_answers, region_polygon, region_name, category, curricula)
+    INSERT INTO questions (id, question, question_type, options, correct_answer, correct_answers, region_polygon, region_name, category, curricula, explanation)
     SELECT
       json_extract(value, '$.id'),
       json_extract(value, '$.question'),
@@ -141,7 +148,8 @@ export async function upsertQuestions(
       json_extract(value, '$.regionPolygon'),
       json_extract(value, '$.regionName'),
       json_extract(value, '$.category'),
-      json_extract(value, '$.curricula')
+      json_extract(value, '$.curricula'),
+      json_extract(value, '$.explanation')
     FROM json_each(?) WHERE true
     ON CONFLICT(id) DO UPDATE SET
       question = excluded.question,
@@ -152,7 +160,8 @@ export async function upsertQuestions(
       region_polygon = excluded.region_polygon,
       region_name = excluded.region_name,
       category = excluded.category,
-      curricula = excluded.curricula
+      curricula = excluded.curricula,
+      explanation = excluded.explanation
   `);
   const resetProgress = d1
     .prepare("DELETE FROM review_cards WHERE question_id IN (SELECT value FROM json_each(?))")
@@ -224,6 +233,73 @@ export async function saveReviewCard(db: Db, card: Omit<ReviewCard, "knownAt">) 
     .insert(reviewCards)
     .values(card)
     .onConflictDoUpdate({ target: [reviewCards.userId, reviewCards.questionId], set: progress });
+}
+
+export async function logAnswer(
+  db: Db,
+  entry: { userId: string; questionId: string; outcome: AnswerOutcome; answer: GivenAnswer | null },
+) {
+  await db.insert(answerLog).values({ ...entry, answeredAt: new Date() });
+}
+
+// The right answer in words, for review: option texts, accepted answers, or the region's name
+function correctAnswerTexts(q: Question): string[] {
+  const options = q.options ?? [];
+  switch (q.questionType) {
+    case "single":
+      return q.correctAnswer != null && options[q.correctAnswer] ? [options[q.correctAnswer]] : [];
+    case "multi":
+      return (q.correctAnswers ?? []).map((i) => options[i]).filter(Boolean);
+    case "map":
+      return q.regionName ? [q.regionName] : options;
+    default:
+      return options;
+  }
+}
+
+// Questions the user got wrong or didn't know since a date, most-missed first
+export async function getMistakes(db: Db, userId: string, since: Date): Promise<Mistake[]> {
+  const logs = await db
+    .select()
+    .from(answerLog)
+    .where(and(eq(answerLog.userId, userId), sql`${answerLog.answeredAt} >= ${since.getTime()}`))
+    .orderBy(answerLog.answeredAt);
+
+  const byQuestion = new Map<string, typeof logs>();
+  for (const log of logs) {
+    const list = byQuestion.get(log.questionId) ?? [];
+    list.push(log);
+    byQuestion.set(log.questionId, list);
+  }
+  const missedIds = [...byQuestion].filter(([, list]) => list.some((l) => l.outcome !== "correct")).map(([id]) => id);
+  if (missedIds.length === 0) return [];
+
+  const rows = await db
+    .select()
+    .from(questions)
+    .where(sql`${questions.id} IN (SELECT value FROM json_each(${JSON.stringify(missedIds)}))`);
+
+  const mistakes = rows.map((q): Mistake => {
+    const list = byQuestion.get(q.id)!;
+    const missed = list.filter((l) => l.outcome !== "correct");
+    const last = missed[missed.length - 1];
+    const lastWrong = [...missed].reverse().find((l) => l.outcome === "wrong");
+    return {
+      questionId: q.id,
+      question: q.question,
+      questionType: q.questionType,
+      category: q.category,
+      correctAnswers: correctAnswerTexts(q),
+      explanation: q.explanation,
+      wrongCount: missed.filter((l) => l.outcome === "wrong").length,
+      dontKnowCount: missed.filter((l) => l.outcome === "dont_know").length,
+      lastAnswer: lastWrong?.answer ?? null,
+      lastMistakeAt: last.answeredAt.toISOString(),
+      correctSince: list.some((l) => l.outcome === "correct" && l.answeredAt > last.answeredAt),
+    };
+  });
+  return mistakes.sort((a, b) =>
+    b.wrongCount + b.dontKnowCount - (a.wrongCount + a.dontKnowCount) || b.lastMistakeAt.localeCompare(a.lastMistakeAt));
 }
 
 function startOfToday(): Date {

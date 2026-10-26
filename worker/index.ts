@@ -11,6 +11,7 @@ import {
   questions,
   signupSchema,
   users,
+  type GivenAnswer,
   type InsertQuestion,
   type QuizQuestion,
   type UserRow,
@@ -36,9 +37,11 @@ import {
   getAllCurricula,
   getCategorySummaries,
   getDueQuestions,
+  getMistakes,
   getProgressCards,
   getQuestionWithCard,
   getStatistics,
+  logAnswer,
   NEW_CARD,
   saveReviewCard,
   setKnown,
@@ -205,9 +208,9 @@ const matchesAcceptedAnswer = (answer: string | undefined, accepted: string[] | 
   return (accepted ?? []).some((a) => a.trim().toLowerCase() === normalized);
 };
 
-// Check an answer and schedule the question's next review with SM-2
+// Check an answer (or "I don't know"), log it, and schedule the question's next review with SM-2
 api.post("/quiz/answer", requireUser, async (c) => {
-  const { questionId, selectedAnswer, selectedAnswers, textAnswer, mapClick, displayMode } =
+  const { questionId, selectedAnswer, selectedAnswers, textAnswer, mapClick, displayMode, dontKnow } =
     answerSubmissionSchema.parse(await c.req.json());
   const db = c.var.db;
   const userId = c.var.user.id;
@@ -240,10 +243,20 @@ api.post("/quiz/answer", requireUser, async (c) => {
       isCorrect = selectedAnswer === question.correctAnswer;
       correctAnswer = question.correctAnswer ?? 0;
   }
+  if (dontKnow) isCorrect = false;
+
+  // What the user answered, in words, for reviewing mistakes later
+  const options = question.options ?? [];
+  const given: GivenAnswer | null = dontKnow ? null
+    : selectedAnswer !== undefined ? { options: [options[selectedAnswer]] }
+    : selectedAnswers !== undefined ? { options: selectedAnswers.map((i) => options[i]) }
+    : mapClick ? { mapClick }
+    : { text: textAnswer };
 
   const previous = card ?? NEW_CARD;
   const sm2 = calculateSM2(
-    correctnessToQuality(isCorrect),
+    // "I don't know" is SM-2's "complete blackout"
+    dontKnow ? 0 : correctnessToQuality(isCorrect),
     previous.easeFactor,
     previous.interval,
     previous.repetitions,
@@ -257,10 +270,17 @@ api.post("/quiz/answer", requireUser, async (c) => {
     nextReviewDate: sm2.nextReviewDate,
     lastReviewDate: new Date(),
   });
+  await logAnswer(db, {
+    userId,
+    questionId,
+    outcome: dontKnow ? "dont_know" : isCorrect ? "correct" : "wrong",
+    answer: given,
+  });
 
   return c.json({
     correct: isCorrect,
     correctAnswer,
+    explanation: question.explanation,
     questionType: question.questionType,
     nextReviewDate: sm2.nextReviewDate,
     interval: sm2.interval,
@@ -274,6 +294,12 @@ api.get("/statistics", requireUser, async (c) =>
 
 api.get("/progress/cards", requireUser, async (c) =>
   c.json(await getProgressCards(c.var.db, c.var.user.id, c.var.user.selectedCurricula ?? undefined)));
+
+// Questions answered wrong or "I don't know" in the last `days` days (default 7)
+api.get("/mistakes", requireUser, async (c) => {
+  const days = z.coerce.number().int().min(1).max(365).catch(7).parse(c.req.query("days") ?? 7);
+  return c.json(await getMistakes(c.var.db, c.var.user.id, new Date(Date.now() - days * 24 * 60 * 60 * 1000)));
+});
 
 // ===== Admin =====
 
@@ -295,7 +321,13 @@ api.post("/questions/upload", requireAdmin, async (c) => {
   const { questions: uploaded } = jsonUploadSchema.parse(await c.req.json());
   const rows: InsertQuestion[] = uploaded.map((q) => {
     const curricula = q.curricula ?? (q.curriculum ? [q.curriculum] : undefined);
-    const common = { id: q.id ?? crypto.randomUUID(), question: q.question, category: q.category, curricula };
+    const common = {
+      id: q.id ?? crypto.randomUUID(),
+      question: q.question,
+      category: q.category,
+      curricula,
+      explanation: q.explanation,
+    };
     switch (q.type) {
       case "multi":
         return { ...common, questionType: "multi", options: q.options, correctAnswers: q.correctAnswers };
