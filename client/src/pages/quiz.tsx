@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useLocation, useSearch } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,8 @@ const ALL_CATEGORIES = "__all__";
 // are due in each.
 function CategoryPicker({ category, curricula }: { category?: string; curricula: string[] }) {
   const [, setLocation] = useLocation();
+  const { data: user } = useQuery<User | null>({ queryKey: ["/api/auth/user"] });
+  const pausedCount = user?.pausedCategories?.length ?? 0;
   const { data: categories } = useQuery<CategorySummary[]>({
     queryKey: ["/api/quiz/categories", { curricula }],
     queryFn: async () => {
@@ -48,6 +50,7 @@ function CategoryPicker({ category, curricula }: { category?: string; curricula:
 
   const totalDue = categories.reduce((sum, c) => sum + c.due, 0);
   return (
+    <div className="space-y-1">
     <Select
       value={category ?? ALL_CATEGORIES}
       onValueChange={(value) => setLocation(value === ALL_CATEGORIES ? "/" : trainCategoryPath(value))}
@@ -64,6 +67,13 @@ function CategoryPicker({ category, curricula }: { category?: string; curricula:
         ))}
       </SelectContent>
     </Select>
+    {pausedCount > 0 && (
+      <p className="text-xs text-muted-foreground px-1" data-testid="text-paused-chapters">
+        {pausedCount} {pausedCount === 1 ? "chapter" : "chapters"} paused ·{" "}
+        <Link href="/profile" className="underline underline-offset-2">Change</Link>
+      </p>
+    )}
+    </div>
   );
 }
 

@@ -36,6 +36,13 @@
       "when": 1793259181993,
       "tag": "0004_question_active",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1793260142370,
+      "tag": "0005_paused_categories",
+      "breakpoints": true
     }
   ]
 }

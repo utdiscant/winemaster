@@ -38,13 +38,24 @@ const isDue = () => or(
   and(isNull(reviewCards.knownAt), lte(reviewCards.nextReviewDate, new Date())),
 );
 
-// Every question (optionally only some curricula) with this user's review card, if they have one
-function questionsWithCards(db: Db, userId: string, curricula?: string[], extra?: SQL) {
+// Which questions a learner is studying: only some curricula (if any are chosen), minus the categories
+// they've paused
+export type Scope = { curricula?: string[]; pausedCategories?: string[] };
+
+function scopeFilter({ curricula, pausedCategories }: Scope): SQL | undefined {
+  const notPaused = pausedCategories && pausedCategories.length > 0
+    ? sql`(${questions.category} IS NULL OR ${questions.category} NOT IN (SELECT value FROM json_each(${JSON.stringify(pausedCategories)})))`
+    : undefined;
+  return and(eq(questions.active, true), curriculumFilter(curricula), notPaused);
+}
+
+// Every active question in scope with this user's review card, if they have one
+function questionsWithCards(db: Db, userId: string, scope: Scope, extra?: SQL) {
   return db
     .select({ question: questions, card: reviewCards })
     .from(questions)
     .leftJoin(reviewCards, and(eq(reviewCards.questionId, questions.id), eq(reviewCards.userId, userId)))
-    .where(and(eq(questions.active, true), curriculumFilter(curricula), extra));
+    .where(and(scopeFilter(scope), extra));
 }
 
 // ===== Users =====
@@ -60,6 +71,15 @@ export async function deleteUser(db: Db, userId: string): Promise<boolean> {
 }
 
 // ===== Questions =====
+
+// Every category of active questions, in textbook order
+export async function getAllCategories(db: Db): Promise<string[]> {
+  const rows = await db
+    .selectDistinct({ category: questions.category })
+    .from(questions)
+    .where(and(eq(questions.active, true), isNotNull(questions.category)));
+  return rows.map((r) => r.category!).sort(compareCategories);
+}
 
 export async function getAllCurricula(db: Db): Promise<string[]> {
   const rows = await db.all<{ curriculum: string }>(
@@ -180,21 +200,20 @@ export async function upsertQuestions(
 export async function getDueQuestions(
   db: Db,
   userId: string,
-  curricula?: string[],
+  scope: Scope,
   category?: string,
 ): Promise<Question[]> {
   const rows = await questionsWithCards(
     db,
     userId,
-    curricula,
+    scope,
     and(isDue(), category ? eq(questions.category, category) : undefined),
   );
   return rows.map((row) => row.question);
 }
 
-// Each category (optionally only some curricula) with its number of questions and how many are due,
-// in textbook order
-export async function getCategorySummaries(db: Db, userId: string, curricula?: string[]): Promise<CategorySummary[]> {
+// Each category in scope with its number of questions and how many are due, in textbook order
+export async function getCategorySummaries(db: Db, userId: string, scope: Scope): Promise<CategorySummary[]> {
   const rows = await db
     .select({
       category: questions.category,
@@ -203,7 +222,7 @@ export async function getCategorySummaries(db: Db, userId: string, curricula?: s
     })
     .from(questions)
     .leftJoin(reviewCards, and(eq(reviewCards.questionId, questions.id), eq(reviewCards.userId, userId)))
-    .where(and(eq(questions.active, true), curriculumFilter(curricula), isNotNull(questions.category)))
+    .where(and(scopeFilter(scope), isNotNull(questions.category)))
     .groupBy(questions.category);
   return rows
     .map((row) => ({ category: row.category!, total: row.total, due: row.due ?? 0 }))
@@ -227,7 +246,7 @@ export async function setKnown(db: Db, userId: string, questionId: string, known
 }
 
 export async function getQuestionWithCard(db: Db, userId: string, questionId: string) {
-  const [row] = await questionsWithCards(db, userId, undefined, eq(questions.id, questionId));
+  const [row] = await questionsWithCards(db, userId, {}, eq(questions.id, questionId));
   return row;
 }
 
@@ -329,9 +348,9 @@ export async function countCompletedToday(db: Db, userId: string, curricula?: st
 
 // ===== Progress =====
 
-export async function getProgressCards(db: Db, userId: string, curricula?: string[]): Promise<ProgressCard[]> {
+export async function getProgressCards(db: Db, userId: string, scope: Scope): Promise<ProgressCard[]> {
   const now = new Date();
-  const rows = await questionsWithCards(db, userId, curricula);
+  const rows = await questionsWithCards(db, userId, scope);
   return rows.map(({ question: q, card }) => ({
     questionId: q.id,
     question: q.question,
@@ -349,10 +368,10 @@ export async function getProgressCards(db: Db, userId: string, curricula?: strin
   }));
 }
 
-export async function getStatistics(db: Db, userId: string, curricula?: string[]): Promise<Statistics> {
+export async function getStatistics(db: Db, userId: string, scope: Scope): Promise<Statistics> {
   const [cards, completedToday] = await Promise.all([
-    getProgressCards(db, userId, curricula),
-    countCompletedToday(db, userId, curricula),
+    getProgressCards(db, userId, scope),
+    countCompletedToday(db, userId, scope.curricula),
   ]);
   const now = Date.now();
   const weekFromNow = now + 7 * DAY_MS;

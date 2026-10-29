@@ -34,6 +34,7 @@ import {
   deleteAllQuestions,
   deleteQuestion,
   deleteUser,
+  getAllCategories,
   getAllCurricula,
   getCategorySummaries,
   getDueQuestions,
@@ -46,6 +47,7 @@ import {
   saveReviewCard,
   setKnown,
   upsertQuestions,
+  type Scope,
 } from "./db";
 
 const BASE_PATH = "/wset-training";
@@ -150,9 +152,28 @@ api.patch("/user/curricula", requireUser, async (c) => {
 
 api.get("/curricula", requireUser, async (c) => c.json(await getAllCurricula(c.var.db)));
 
+// Pause categories (e.g. chapters not covered in the course yet): they're left out of this user's
+// quizzes and statistics until unpaused
+api.patch("/user/paused-categories", requireUser, async (c) => {
+  const { pausedCategories } = z.object({ pausedCategories: z.array(z.string()).max(200) }).parse(await c.req.json());
+  const [updated] = await c.var.db
+    .update(users)
+    .set({ pausedCategories })
+    .where(eq(users.id, c.var.user.id))
+    .returning();
+  return c.json(publicUser(updated));
+});
+
+// Every category, for choosing which to pause
+api.get("/categories", requireUser, async (c) => c.json(await getAllCategories(c.var.db)));
+
 // ===== Quiz =====
 
 const curriculaParam = (value?: string) => value?.split(",").map((s) => s.trim()).filter(Boolean);
+
+// What the user is studying: the given curricula, minus the categories they've paused
+const studyScope = (user: UserRow, curricula?: string[]): Scope =>
+  ({ curricula, pausedCategories: user.pausedCategories ?? undefined });
 
 // Questions due for review (optionally one category only), in random order, plus how far the user is
 // towards today's goal
@@ -162,7 +183,7 @@ api.get("/quiz/due", requireUser, async (c) => {
   const db = c.var.db;
   const userId = c.var.user.id;
   const [due, completedToday] = await Promise.all([
-    getDueQuestions(db, userId, curricula, category),
+    getDueQuestions(db, userId, studyScope(c.var.user, curricula), category),
     countCompletedToday(db, userId, curricula),
   ]);
 
@@ -191,7 +212,7 @@ api.get("/quiz/due", requireUser, async (c) => {
 
 // The categories the user can train on, with how many questions are due in each
 api.get("/quiz/categories", requireUser, async (c) =>
-  c.json(await getCategorySummaries(c.var.db, c.var.user.id, curriculaParam(c.req.query("curricula")))));
+  c.json(await getCategorySummaries(c.var.db, c.var.user.id, studyScope(c.var.user, curriculaParam(c.req.query("curricula"))))));
 
 // Mark a question as known (it won't come up for review again) or put it back into review
 api.put("/quiz/known/:questionId", requireUser, async (c) => {
@@ -287,13 +308,13 @@ api.post("/quiz/answer", requireUser, async (c) => {
   });
 });
 
-// ===== Progress (filtered to the user's chosen curricula) =====
+// ===== Progress (filtered to the user's chosen curricula, without paused categories) =====
 
 api.get("/statistics", requireUser, async (c) =>
-  c.json(await getStatistics(c.var.db, c.var.user.id, c.var.user.selectedCurricula ?? undefined)));
+  c.json(await getStatistics(c.var.db, c.var.user.id, studyScope(c.var.user, c.var.user.selectedCurricula ?? undefined))));
 
 api.get("/progress/cards", requireUser, async (c) =>
-  c.json(await getProgressCards(c.var.db, c.var.user.id, c.var.user.selectedCurricula ?? undefined)));
+  c.json(await getProgressCards(c.var.db, c.var.user.id, studyScope(c.var.user, c.var.user.selectedCurricula ?? undefined))));
 
 // Questions answered wrong or "I don't know" in the last `days` days (default 7)
 api.get("/mistakes", requireUser, async (c) => {

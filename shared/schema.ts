@@ -11,6 +11,9 @@ export const users = sqliteTable("users", {
   passwordHash: text("password_hash").notNull(),
   isAdmin: integer("is_admin", { mode: "boolean" }).notNull().default(false),
   selectedCurricula: text("selected_curricula", { mode: "json" }).$type<string[]>(), // Curricula the quiz is filtered to
+  // Categories (chapters) the user has paused, e.g. not covered in their course yet: left out of their
+  // quizzes and statistics until they turn them back on
+  pausedCategories: text("paused_categories", { mode: "json" }).$type<string[]>(),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 });
 
