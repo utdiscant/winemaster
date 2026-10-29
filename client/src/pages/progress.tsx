@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,9 +8,10 @@ import { Progress } from "@/components/ui/progress";
 import { Wine, Calendar, Target, TrendingUp, ChevronRight, Star } from "lucide-react";
 import { useLocation } from "wouter";
 import type { Statistics } from "@shared/schema";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { trainCategoryPath } from "@/pages/quiz";
 
 interface QuestionCard {
-  reviewCardId: string;
   questionId: string;
   question: string;
   options: string[];
@@ -18,12 +19,15 @@ interface QuestionCard {
   correctAnswers: number[] | null;
   questionType: string;
   category: string | null;
-  curriculum: string | null;
+  curricula: string[] | null;
   repetitions: number;
   interval: number;
-  nextReviewDate: Date;
+  nextReviewDate: string;
   easeFactor: number;
+  known: boolean; // Marked "I know this": never due, counts as mastered
 }
+
+const isMastered = (card: QuestionCard) => card.known || (card.repetitions >= 3 && card.interval >= 21);
 
 export default function ProgressPage() {
   const [, setLocation] = useLocation();
@@ -40,6 +44,17 @@ export default function ProgressPage() {
     staleTime: 0, // Consider data stale immediately
   });
 
+  // Takes a question marked as known back into review, due now
+  const trainAgainMutation = useMutation({
+    mutationFn: (questionId: string) => apiRequest("PUT", `/api/quiz/known/${questionId}`, { known: false }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/progress/cards"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/statistics"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/quiz/due"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["/api/quiz/categories"], exact: false });
+    },
+  });
+
   const isLoading = loadingStats || loadingCards;
 
   if (isLoading) {
@@ -53,11 +68,12 @@ export default function ProgressPage() {
     );
   }
 
-  // Categorize questions
-  const newQuestions = questionCards?.filter(card => card.repetitions === 0) || [];
-  const learningQuestions = questionCards?.filter(card => card.repetitions > 0 && card.repetitions < 3) || [];
-  const masteredQuestions = questionCards?.filter(card => card.repetitions >= 3 && card.interval >= 21) || [];
+  // Categorize questions. Questions marked as known count as mastered and are never due.
+  const newQuestions = questionCards?.filter(card => !card.known && card.repetitions === 0) || [];
+  const learningQuestions = questionCards?.filter(card => !card.known && card.repetitions > 0 && card.repetitions < 3) || [];
+  const masteredQuestions = questionCards?.filter(isMastered) || [];
   const dueQuestions = questionCards?.filter(card => {
+    if (card.known) return false;
     const cardDate = new Date(card.nextReviewDate);
     const now = new Date();
     return cardDate <= now;
@@ -70,6 +86,8 @@ export default function ProgressPage() {
   // Calculate mastery level for a question (0-100)
   const calculateMastery = (card: QuestionCard): number => {
     const { repetitions, interval, easeFactor } = card;
+
+    if (card.known) return 100;
     
     // New questions have 0% mastery
     if (repetitions === 0) return 0;
@@ -133,7 +151,7 @@ export default function ProgressPage() {
     const categoryStats: CategoryMastery[] = Array.from(categoryMap.entries()).map(([category, cards]) => {
       const totalMastery = cards.reduce((sum, card) => sum + calculateMastery(card), 0);
       const averageMastery = Math.round(totalMastery / cards.length);
-      const masteredCount = cards.filter(card => card.repetitions >= 3 && card.interval >= 21).length;
+      const masteredCount = cards.filter(isMastered).length;
       
       return {
         category,
@@ -151,7 +169,9 @@ export default function ProgressPage() {
 
   const QuestionListItem = ({ card }: { card: QuestionCard }) => {
     const mastery = calculateMastery(card);
-    const masteryBadge = getMasteryBadge(mastery);
+    const masteryBadge = card.known
+      ? { label: "Known", variant: "default" as const, color: "" }
+      : getMasteryBadge(mastery);
     
     return (
     <div className="flex items-start justify-between p-4 rounded-lg border border-border gap-4 hover-elevate" data-testid={`question-item-${card.questionId}`}>
@@ -174,11 +194,11 @@ export default function ProgressPage() {
               {card.category}
             </Badge>
           )}
-          {card.curriculum && (
-            <Badge variant="secondary" className="text-xs">
-              {card.curriculum}
+          {card.curricula?.map((curriculum) => (
+            <Badge key={curriculum} variant="secondary" className="text-xs">
+              {curriculum}
             </Badge>
-          )}
+          ))}
           <Badge variant="secondary" className="text-xs">
             {card.questionType === 'multi' ? 'Multi-Select' : 'Single Choice'}
           </Badge>
@@ -197,6 +217,18 @@ export default function ProgressPage() {
           <div className="text-xs text-muted-foreground">
             {card.easeFactor.toFixed(1)} ease
           </div>
+        )}
+        {card.known && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-2"
+            disabled={trainAgainMutation.isPending}
+            onClick={() => trainAgainMutation.mutate(card.questionId)}
+            data-testid={`button-train-again-${card.questionId}`}
+          >
+            Train again
+          </Button>
         )}
       </div>
     </div>
@@ -344,6 +376,17 @@ export default function ProgressPage() {
                         <div className="text-2xl font-bold">{cat.averageMastery}%</div>
                         <p className="text-xs text-muted-foreground">average</p>
                       </div>
+                      {cat.category !== "Uncategorized" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="shrink-0"
+                          onClick={() => setLocation(trainCategoryPath(cat.category))}
+                          data-testid={`button-train-category-${cat.category}`}
+                        >
+                          Train
+                        </Button>
+                      )}
                     </div>
                     <div className="flex items-center gap-3">
                       <Progress value={cat.averageMastery} className="h-2 flex-1" />
@@ -395,7 +438,7 @@ export default function ProgressPage() {
                   {dueQuestions.length > 0 ? (
                     <div className="space-y-3">
                       {dueQuestions.map(card => (
-                        <QuestionListItem key={card.reviewCardId} card={card} />
+                        <QuestionListItem key={card.questionId} card={card} />
                       ))}
                     </div>
                   ) : (
@@ -409,7 +452,7 @@ export default function ProgressPage() {
                   {newQuestions.length > 0 ? (
                     <div className="space-y-3">
                       {newQuestions.map(card => (
-                        <QuestionListItem key={card.reviewCardId} card={card} />
+                        <QuestionListItem key={card.questionId} card={card} />
                       ))}
                     </div>
                   ) : (
@@ -423,7 +466,7 @@ export default function ProgressPage() {
                   {learningQuestions.length > 0 ? (
                     <div className="space-y-3">
                       {learningQuestions.map(card => (
-                        <QuestionListItem key={card.reviewCardId} card={card} />
+                        <QuestionListItem key={card.questionId} card={card} />
                       ))}
                     </div>
                   ) : (
@@ -437,7 +480,7 @@ export default function ProgressPage() {
                   {masteredQuestions.length > 0 ? (
                     <div className="space-y-3">
                       {masteredQuestions.map(card => (
-                        <QuestionListItem key={card.reviewCardId} card={card} />
+                        <QuestionListItem key={card.questionId} card={card} />
                       ))}
                     </div>
                   ) : (

@@ -1,17 +1,18 @@
 import { useState } from "react";
-import { Switch, Route, Link, useLocation } from "wouter";
-import { queryClient } from "./lib/queryClient";
+import { Router, Switch, Route, Link, useLocation } from "wouter";
+import { queryClient, apiRequest } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Wine, BarChart3, Upload, Settings, LogOut, User, Users, Menu } from "lucide-react";
+import { Wine, BarChart3, Upload, Settings, LogOut, User, Users, Menu, ListX } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/landing";
 import AuthPage from "@/pages/auth";
 import QuizPage from "@/pages/quiz";
 import ProgressPage from "@/pages/progress";
+import MistakesPage from "@/pages/mistakes";
 import ProfilePage from "@/pages/profile";
 import UploadPage from "@/pages/upload";
 import AdminPage from "@/pages/admin";
@@ -26,6 +27,7 @@ function Navigation() {
   const navItems = [
     { path: "/", icon: Wine, label: "Learn" },
     { path: "/progress", icon: BarChart3, label: "Progress" },
+    { path: "/mistakes", icon: ListX, label: "Mistakes" },
     { path: "/profile", icon: User, label: "Profile" },
     ...(isAdmin ? [{ path: "/upload", icon: Upload, label: "Upload" }] : []),
     ...(isAdmin ? [{ path: "/admin", icon: Settings, label: "Admin" }] : []),
@@ -56,8 +58,9 @@ function Navigation() {
           className="gap-2 w-full justify-start"
           onClick={async () => {
             setOpen(false);
-            await fetch('/api/auth/logout', { method: 'POST' });
-            window.location.href = "/";
+            await apiRequest("POST", "/api/auth/logout");
+            // Full reload so no cached data from this account survives
+            window.location.href = import.meta.env.BASE_URL;
           }}
           data-testid="button-logout"
         >
@@ -101,7 +104,7 @@ function Navigation() {
   );
 }
 
-function Router() {
+function AppRoutes() {
   const { isAuthenticated, isLoading, isAdmin } = useAuth();
 
   if (isLoading) {
@@ -131,6 +134,7 @@ function Router() {
       <Switch>
         <Route path="/" component={QuizPage} />
         <Route path="/progress" component={ProgressPage} />
+        <Route path="/mistakes" component={MistakesPage} />
         <Route path="/profile" component={ProfilePage} />
         {isAdmin && <Route path="/upload" component={UploadPage} />}
         {isAdmin && <Route path="/admin" component={AdminPage} />}
@@ -146,7 +150,10 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <div className="min-h-screen bg-background">
-          <Router />
+          {/* Paths are relative to where the app is served, e.g. /wset-training */}
+          <Router base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+            <AppRoutes />
+          </Router>
         </div>
         <Toaster />
       </TooltipProvider>

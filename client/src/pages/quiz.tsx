@@ -1,16 +1,18 @@
 import { useState, useEffect, useMemo } from "react";
+import { Link, useLocation, useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
-import { CheckCircle2, XCircle, Wine } from "lucide-react";
+import { CheckCircle2, XCircle, Wine, BookCheck, BookOpen, HelpCircle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import type { QuizQuestion, User } from "@shared/schema";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import type { CategorySummary, QuizQuestion, User } from "@shared/schema";
+import { queryClient, apiRequest, apiUrl } from "@/lib/queryClient";
 import WineMap from "@/components/WineMap";
-import { getPolygonCentroid, getBoundsForPolygonAndPoint } from "@/utils/geoUtils";
+import { getPolygonCentroid, getBoundsForPolygonAndPoint } from "@shared/geo";
 
 interface QuizResponse {
   questions: QuizQuestion[];
@@ -21,8 +23,69 @@ interface QuizResponse {
   };
 }
 
+// The Learn page, training only one category
+export function trainCategoryPath(category: string): string {
+  return `/?category=${encodeURIComponent(category)}`;
+}
+
+const ALL_CATEGORIES = "__all__";
+
+// Picks which category to train. Lists the categories in the user's curricula with how many questions
+// are due in each.
+function CategoryPicker({ category, curricula }: { category?: string; curricula: string[] }) {
+  const [, setLocation] = useLocation();
+  const { data: user } = useQuery<User | null>({ queryKey: ["/api/auth/user"] });
+  const pausedCount = user?.pausedCategories?.length ?? 0;
+  const { data: categories } = useQuery<CategorySummary[]>({
+    queryKey: ["/api/quiz/categories", { curricula }],
+    queryFn: async () => {
+      const params = curricula.length > 0 ? `?curricula=${curricula.map(encodeURIComponent).join(",")}` : "";
+      const response = await fetch(apiUrl(`/api/quiz/categories${params}`), { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch categories");
+      return response.json();
+    },
+    staleTime: 0,
+  });
+  if (!categories || categories.length === 0) return null;
+
+  const totalDue = categories.reduce((sum, c) => sum + c.due, 0);
+  return (
+    <div className="space-y-1">
+    <Select
+      value={category ?? ALL_CATEGORIES}
+      onValueChange={(value) => setLocation(value === ALL_CATEGORIES ? "/" : trainCategoryPath(value))}
+    >
+      <SelectTrigger className="w-full" data-testid="select-category">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value={ALL_CATEGORIES}>All categories · {totalDue} due</SelectItem>
+        {categories.map((c) => (
+          <SelectItem key={c.category} value={c.category}>
+            {c.category} · {c.due} due
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+    {pausedCount > 0 && (
+      <p className="text-xs text-muted-foreground px-1" data-testid="text-paused-chapters">
+        {pausedCount} {pausedCount === 1 ? "chapter" : "chapters"} paused ·{" "}
+        <Link href="/profile" className="underline underline-offset-2">Change</Link>
+      </p>
+    )}
+    </div>
+  );
+}
+
 export default function QuizPage() {
+  const category = new URLSearchParams(useSearch()).get("category") || undefined;
+  // A new session (counts, current question) for each category
+  return <QuizSession key={category ?? ALL_CATEGORIES} category={category} />;
+}
+
+function QuizSession({ category }: { category?: string }) {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null); // For single-choice
   const [selectedAnswers, setSelectedAnswers] = useState<Set<number>>(new Set()); // For multi-select
   const [textAnswer, setTextAnswer] = useState<string>(""); // For text-input and map (map-to-text mode)
@@ -37,25 +100,30 @@ export default function QuizPage() {
   const [sessionStartCount, setSessionStartCount] = useState<number | null>(null);
   const [answeredInSession, setAnsweredInSession] = useState(0);
   const [isAdvancing, setIsAdvancing] = useState(false);
+  const [explanation, setExplanation] = useState<string | null>(null); // The theory behind the answer
+  const [answeredDontKnow, setAnsweredDontKnow] = useState(false);
+  const [showExplanation, setShowExplanation] = useState(false); // After a correct answer, shown on request
 
   // Fetch user to get curriculum preferences
   const { data: user, isLoading: isLoadingUser } = useQuery<User | null>({
     queryKey: ["/api/auth/user"],
   });
 
-  // Build query URL based on user's selected curricula
+  const selectedCurricula = user?.selectedCurricula || [];
+
+  // Build query URL based on user's selected curricula and the category being trained
   const buildQuizQueryUrl = () => {
-    const selectedCurricula = user?.selectedCurricula || [];
-    if (selectedCurricula.length === 0) {
-      return "/api/quiz/due";
-    }
-    return `/api/quiz/due?curricula=${selectedCurricula.map(c => encodeURIComponent(c)).join(',')}`;
+    const params = new URLSearchParams();
+    if (selectedCurricula.length > 0) params.set("curricula", selectedCurricula.join(","));
+    if (category) params.set("category", category);
+    const query = params.toString();
+    return query ? `/api/quiz/due?${query}` : "/api/quiz/due";
   };
 
   const { data: quizData, isLoading: isLoadingQuestions, isFetching, refetch, isError } = useQuery<QuizResponse>({
-    queryKey: ["/api/quiz/due", { curricula: user?.selectedCurricula || [] }],
+    queryKey: ["/api/quiz/due", { curricula: selectedCurricula, category }],
     queryFn: async () => {
-      const response = await fetch(buildQuizQueryUrl(), { credentials: "include" });
+      const response = await fetch(apiUrl(buildQuizQueryUrl()), { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch quiz questions");
       return response.json();
     },
@@ -112,7 +180,7 @@ export default function QuizPage() {
   }, [isError, isAdvancing, toast]);
 
   const submitAnswerMutation = useMutation({
-    mutationFn: async (data: { questionId: string; selectedAnswer?: number; selectedAnswers?: number[]; textAnswer?: string; mapClick?: { lat: number; lng: number }; displayMode?: 'text-to-map' | 'map-to-text' }) => {
+    mutationFn: async (data: { questionId: string; selectedAnswer?: number; selectedAnswers?: number[]; textAnswer?: string; mapClick?: { lat: number; lng: number }; displayMode?: 'text-to-map' | 'map-to-text'; dontKnow?: true }) => {
       return await apiRequest("POST", "/api/quiz/answer", data);
     },
     onSuccess: (response) => {
@@ -133,6 +201,7 @@ export default function QuizPage() {
         setCorrectAnswerIndexes(correctShuffledIndexes);
       }
       setIsCorrect(response.correct);
+      setExplanation(response.explanation ?? null);
       setIsAnswered(true);
       
       // Only invalidate statistics, NOT the due questions query
@@ -145,6 +214,22 @@ export default function QuizPage() {
         description: error.message,
         variant: "destructive",
       });
+    },
+  });
+
+  // "I know this": the question won't come up for review again (undo from the Progress page)
+  const markKnownMutation = useMutation({
+    mutationFn: (questionId: string) => apiRequest("PUT", `/api/quiz/known/${questionId}`, { known: true }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/statistics"] });
+      toast({
+        title: "Marked as known",
+        description: "You won't be asked this again. You can bring it back from the Progress page.",
+      });
+      handleNextQuestion();
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
@@ -201,6 +286,9 @@ export default function QuizPage() {
       setMapClick(null);
       setIsAnswered(false);
       setCorrectMapData(null);
+      setExplanation(null);
+      setAnsweredDontKnow(false);
+      setShowExplanation(false);
     }
   }, [currentQuestion?.id]); // Key on question ID to reset when question changes
 
@@ -222,6 +310,17 @@ export default function QuizPage() {
         setSelectedAnswer(index);
       }
     }
+  };
+
+  // Reveal the answer and explanation; counts as not knowing it
+  const handleDontKnow = () => {
+    if (!currentQuestion) return;
+    setAnsweredDontKnow(true);
+    submitAnswerMutation.mutate({
+      questionId: currentQuestion.id,
+      dontKnow: true,
+      ...(mapDisplayMode ? { displayMode: mapDisplayMode } : {}),
+    });
   };
 
   const handleSubmitAnswer = () => {
@@ -280,7 +379,11 @@ export default function QuizPage() {
     setTextAnswer("");
     setMapClick(null);
     setCorrectMapData(null);
+    setExplanation(null);
+    setAnsweredDontKnow(false);
+    setShowExplanation(false);
     setIsAdvancing(true);
+    queryClient.invalidateQueries({ queryKey: ["/api/quiz/categories"], exact: false });
     
     // Refetch to get next question (answered one is removed by backend)
     await refetch();
@@ -297,18 +400,49 @@ export default function QuizPage() {
     );
   }
 
+  // A failed load must not look like "nothing due"
+  if (isError && !quizData) {
+    return (
+      <div className="min-h-screen bg-background py-4 px-4">
+        <div className="max-w-md mx-auto space-y-4">
+          <CategoryPicker category={category} curricula={selectedCurricula} />
+          <Card>
+            <CardContent className="pt-6 text-center space-y-4">
+              <XCircle className="w-12 h-12 text-destructive mx-auto" />
+              <h2 className="text-2xl font-serif font-semibold">Couldn't load questions</h2>
+              <p className="text-muted-foreground">Check your connection and try again.</p>
+              <Button onClick={() => refetch()} disabled={isFetching} data-testid="button-retry">
+                {isFetching ? "Loading..." : "Try again"}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   if (!dueQuestions || dueQuestions.length === 0) {
     return (
-      <div className="flex items-center justify-center min-h-screen px-4">
-        <Card className="max-w-md w-full">
-          <CardContent className="pt-6 text-center space-y-4">
-            <Wine className="w-16 h-16 text-primary mx-auto" />
-            <h2 className="text-2xl font-serif font-semibold">No Questions Due</h2>
-            <p className="text-muted-foreground">
-              Great work! You're all caught up. Check back later for more reviews, or upload new questions to continue learning.
-            </p>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-background py-4 px-4">
+        <div className="max-w-md mx-auto space-y-4">
+          <CategoryPicker category={category} curricula={selectedCurricula} />
+          <Card>
+            <CardContent className="pt-6 text-center space-y-4">
+              <Wine className="w-16 h-16 text-primary mx-auto" />
+              <h2 className="text-2xl font-serif font-semibold">No Questions Due</h2>
+              <p className="text-muted-foreground">
+                {category
+                  ? `You're all caught up in ${category}. Pick another category, or train all of them.`
+                  : "Great work! You're all caught up. Check back later for more reviews, or upload new questions to continue learning."}
+              </p>
+              {category && (
+                <Button variant="outline" onClick={() => setLocation("/")} data-testid="button-train-all">
+                  Train all categories
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
@@ -332,6 +466,8 @@ export default function QuizPage() {
   return (
     <div className="min-h-screen bg-background py-4 px-4">
       <div className="max-w-3xl mx-auto space-y-4">
+        <CategoryPicker category={category} curricula={selectedCurricula} />
+
         {/* Daily Goal Progress */}
         {dailyProgress && (
           <Card className={`${dailyGoalMet ? 'border-green-600 bg-green-50 dark:bg-green-950/40' : ''}`}>
@@ -500,7 +636,7 @@ export default function QuizPage() {
                 const isCorrectAnswer = correctAnswerIndexes.has(index);
                 const showAsCorrect = isAnswered && isCorrectAnswer;
                 const showAsIncorrect = isAnswered && isSelected && !isCorrectAnswer;
-                const showAsMissed = isAnswered && isMulti && isCorrectAnswer && !isSelected;
+                const showAsMissed = isAnswered && isMulti && isCorrectAnswer && !isSelected && !answeredDontKnow;
 
                 return (
                   <button
@@ -583,6 +719,16 @@ export default function QuizPage() {
             {/* Action Buttons */}
             <div className="flex justify-end gap-2 md:gap-3 pt-2 md:pt-4">
               {!isAnswered ? (
+                <>
+                <Button
+                  variant="ghost"
+                  onClick={handleDontKnow}
+                  disabled={submitAnswerMutation.isPending}
+                  data-testid="button-dont-know"
+                >
+                  <HelpCircle className="w-4 h-4 mr-2" />
+                  I don't know
+                </Button>
                 <Button
                   onClick={handleSubmitAnswer}
                   disabled={
@@ -597,15 +743,30 @@ export default function QuizPage() {
                 >
                   {submitAnswerMutation.isPending ? "Submitting..." : "Submit Answer"}
                 </Button>
+                </>
               ) : (
-                <Button
-                  onClick={handleNextQuestion}
-                  size="default"
-                  disabled={isAdvancing}
-                  data-testid="button-next-question"
-                >
-                  {isAdvancing ? "Loading..." : ((dueQuestions?.length ?? 0) > 1 ? "Next Question" : "Finish Session")}
-                </Button>
+                <>
+                  {isCorrect && (
+                    <Button
+                      variant="outline"
+                      onClick={() => markKnownMutation.mutate(currentQuestion.id)}
+                      disabled={isAdvancing || markKnownMutation.isPending}
+                      title="You won't be asked this question again"
+                      data-testid="button-mark-known"
+                    >
+                      <BookCheck className="w-4 h-4 mr-2" />
+                      I know this
+                    </Button>
+                  )}
+                  <Button
+                    onClick={handleNextQuestion}
+                    size="default"
+                    disabled={isAdvancing || markKnownMutation.isPending}
+                    data-testid="button-next-question"
+                  >
+                    {isAdvancing ? "Loading..." : ((dueQuestions?.length ?? 0) > 1 ? "Next Question" : "Finish Session")}
+                  </Button>
+                </>
               )}
             </div>
           </CardContent>
@@ -624,15 +785,32 @@ export default function QuizPage() {
                   )}
                   <div>
                     <p className="font-semibold text-base md:text-lg">
-                      {isCorrect ? "Correct!" : "Incorrect"}
+                      {isCorrect ? "Correct!" : answeredDontKnow ? "Here's the answer" : "Incorrect"}
                     </p>
                     <p className="text-xs md:text-sm text-muted-foreground">
                       {isCorrect
                         ? "Great job! You got it right."
-                        : "The correct answer is highlighted in green above."}
+                        : "The correct answer is shown above."}
                     </p>
                   </div>
                 </div>
+                {explanation && (isCorrect && !showExplanation ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="ml-6 md:ml-8"
+                    onClick={() => setShowExplanation(true)}
+                    data-testid="button-show-explanation"
+                  >
+                    <BookOpen className="w-4 h-4 mr-2" />
+                    Why?
+                  </Button>
+                ) : (
+                  <div className="flex gap-2 md:gap-3 rounded-md bg-background/70 p-3 md:p-4" data-testid="text-explanation">
+                    <BookOpen className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                    <p className="text-sm md:text-base leading-relaxed">{explanation}</p>
+                  </div>
+                ))}
                 {!isCorrect && (
                   <p className="text-xs md:text-sm text-muted-foreground pl-8 md:pl-10">
                     This question will be reviewed again soon to help you master it.

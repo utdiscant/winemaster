@@ -30,10 +30,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Settings, Edit2, Trash2, Search, ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { Settings, Edit2, Trash2, Search, ChevronLeft, ChevronRight, Download, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Question } from "@shared/schema";
+import { compareCategories } from "@shared/chapters";
 
 export default function AdminPage() {
   const { toast } = useToast();
@@ -44,6 +45,8 @@ export default function AdminPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [curriculumFilter, setCurriculumFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all"); // "all" | "active" | "inactive"
   const [formData, setFormData] = useState({
     question: "",
     option1: "",
@@ -53,6 +56,7 @@ export default function AdminPage() {
     correctAnswer: 0,
     category: "",
     acceptedAnswers: [] as string[],
+    explanation: "",
   });
 
   const ITEMS_PER_PAGE = 10;
@@ -69,7 +73,7 @@ export default function AdminPage() {
     questions.forEach(q => {
       if (q.category) uniqueCategories.add(q.category);
     });
-    return Array.from(uniqueCategories).sort();
+    return Array.from(uniqueCategories).sort(compareCategories); // Textbook order
   }, [questions]);
 
   // Get unique curriculums for filter
@@ -77,7 +81,7 @@ export default function AdminPage() {
     if (!questions) return [];
     const uniqueCurriculums = new Set<string>();
     questions.forEach(q => {
-      if (q.curriculum) uniqueCurriculums.add(q.curriculum);
+      q.curricula?.forEach(c => uniqueCurriculums.add(c));
     });
     return Array.from(uniqueCurriculums).sort();
   }, [questions]);
@@ -93,9 +97,11 @@ export default function AdminPage() {
         (q.options && q.options.some(opt => opt.toLowerCase().includes(searchQuery.toLowerCase())));
       
       const matchesCategory = categoryFilter === "all" || q.category === categoryFilter;
-      const matchesCurriculum = curriculumFilter === "all" || q.curriculum === curriculumFilter;
+      const matchesCurriculum = curriculumFilter === "all" || (q.curricula ?? []).includes(curriculumFilter);
+      const matchesType = typeFilter === "all" || q.questionType === typeFilter;
+      const matchesStatus = statusFilter === "all" || (statusFilter === "active") === q.active;
       
-      return matchesSearch && matchesCategory && matchesCurriculum;
+      return matchesSearch && matchesCategory && matchesCurriculum && matchesType && matchesStatus;
     });
 
     const total = Math.ceil(filtered.length / ITEMS_PER_PAGE);
@@ -107,12 +113,12 @@ export default function AdminPage() {
       totalPages: total,
       paginatedQuestions: paginated,
     };
-  }, [questions, searchQuery, categoryFilter, curriculumFilter, currentPage]);
+  }, [questions, searchQuery, categoryFilter, curriculumFilter, typeFilter, statusFilter, currentPage]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, categoryFilter, curriculumFilter]);
+  }, [searchQuery, categoryFilter, curriculumFilter, typeFilter, statusFilter]);
 
   // Clamp currentPage when totalPages shrinks (e.g., after deletions)
   useEffect(() => {
@@ -140,6 +146,28 @@ export default function AdminPage() {
         description: error.message,
         variant: "destructive",
       });
+    },
+  });
+
+  // Deactivate (leave out of quizzes and statistics, keeping progress) or reactivate a question
+  const setActiveMutation = useMutation({
+    mutationFn: async (data: { id: string; active: boolean }) => {
+      return await apiRequest("PATCH", `/api/questions/${data.id}`, { active: data.active });
+    },
+    onSuccess: (_response, data) => {
+      toast({
+        title: data.active ? "Question activated" : "Question deactivated",
+        description: data.active
+          ? "It's back in quizzes and statistics."
+          : "It's left out of quizzes and statistics. Progress on it is kept.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/questions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/statistics"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/quiz/due"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["/api/quiz/categories"], exact: false });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
@@ -196,7 +224,7 @@ export default function AdminPage() {
   // Populate form when editing
   useEffect(() => {
     if (editingQuestion) {
-      if (editingQuestion.questionType === 'text-input') {
+      if (editingQuestion.questionType === 'text-input' || editingQuestion.questionType === 'map') {
         setFormData({
           question: editingQuestion.question,
           option1: "",
@@ -206,6 +234,7 @@ export default function AdminPage() {
           correctAnswer: 0,
           category: editingQuestion.category || "",
           acceptedAnswers: editingQuestion.options || [],
+          explanation: editingQuestion.explanation || "",
         });
       } else {
         setFormData({
@@ -217,6 +246,7 @@ export default function AdminPage() {
           correctAnswer: editingQuestion.correctAnswer ?? 0,
           category: editingQuestion.category || "",
           acceptedAnswers: [],
+          explanation: editingQuestion.explanation || "",
         });
       }
     }
@@ -225,14 +255,22 @@ export default function AdminPage() {
   const handleSave = () => {
     if (!editingQuestion) return;
 
+    const explanation = formData.explanation.trim() || null;
     let updates;
-    if (editingQuestion.questionType === 'text-input') {
-      // Validate text-input has at least one accepted answer
+    if (editingQuestion.questionType === 'multi') {
+      // Options and answers of multi-select questions are edited by re-uploading JSON
+      updates = {
+        question: formData.question,
+        category: formData.category || undefined,
+        explanation,
+      };
+    } else if (editingQuestion.questionType === 'text-input' || editingQuestion.questionType === 'map') {
+      // Validate there is at least one accepted answer (for map questions: an accepted region name)
       const nonEmptyAnswers = formData.acceptedAnswers.filter(a => a.trim() !== '');
       if (nonEmptyAnswers.length === 0) {
         toast({
           title: "Validation Error",
-          description: "Text-input questions must have at least one accepted answer",
+          description: "There must be at least one accepted answer",
           variant: "destructive",
         });
         return;
@@ -242,6 +280,7 @@ export default function AdminPage() {
         question: formData.question,
         options: nonEmptyAnswers,
         category: formData.category || undefined,
+        explanation,
       };
     } else {
       // Validate single-choice has all four non-empty options
@@ -266,6 +305,7 @@ export default function AdminPage() {
         options,
         correctAnswer: formData.correctAnswer,
         category: formData.category || undefined,
+        explanation,
       };
     }
 
@@ -294,7 +334,9 @@ export default function AdminPage() {
           question: q.question,
           type: q.questionType,
           ...(q.category && { category: q.category }),
-          ...(q.curriculum && { curriculum: q.curriculum }),
+          ...(q.curricula?.length && { curricula: q.curricula }),
+          ...(q.explanation && { explanation: q.explanation }),
+          ...(!q.active && { active: false }),
         };
 
         if (q.questionType === 'text-input') {
@@ -384,8 +426,8 @@ export default function AdminPage() {
       {/* Search and Filter Controls */}
       <Card className="mb-6">
         <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1 relative">
+          <div className="flex flex-col gap-4">
+            <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Search questions..."
@@ -395,8 +437,9 @@ export default function AdminPage() {
                 data-testid="input-search-questions"
               />
             </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="sm:w-[200px]" data-testid="select-category-filter">
+              <SelectTrigger data-testid="select-category-filter">
                 <SelectValue placeholder="All Categories" />
               </SelectTrigger>
               <SelectContent>
@@ -409,7 +452,7 @@ export default function AdminPage() {
               </SelectContent>
             </Select>
             <Select value={curriculumFilter} onValueChange={setCurriculumFilter}>
-              <SelectTrigger className="sm:w-[200px]" data-testid="select-curriculum-filter">
+              <SelectTrigger data-testid="select-curriculum-filter">
                 <SelectValue placeholder="All Curriculums" />
               </SelectTrigger>
               <SelectContent>
@@ -421,6 +464,29 @@ export default function AdminPage() {
                 ))}
               </SelectContent>
             </Select>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger data-testid="select-type-filter">
+                <SelectValue placeholder="All Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="single">Single Choice</SelectItem>
+                <SelectItem value="multi">Multi-Select</SelectItem>
+                <SelectItem value="text-input">Text Input</SelectItem>
+                <SelectItem value="map">Map Region</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger data-testid="select-status-filter">
+                <SelectValue placeholder="Active and Inactive" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Active and Inactive</SelectItem>
+                <SelectItem value="active">Active only</SelectItem>
+                <SelectItem value="inactive">Inactive only</SelectItem>
+              </SelectContent>
+            </Select>
+            </div>
           </div>
           <div className="mt-4 text-sm text-muted-foreground">
             Showing {paginatedQuestions.length} of {filteredQuestions.length} questions
@@ -457,7 +523,7 @@ export default function AdminPage() {
           const correctSet = new Set(isMulti ? (question.correctAnswers || []) : [question.correctAnswer]);
           
           return (
-            <Card key={question.id} data-testid={`card-question-${question.id}`}>
+            <Card key={question.id} className={question.active ? "" : "opacity-60"} data-testid={`card-question-${question.id}`}>
               <CardHeader>
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
@@ -473,16 +539,21 @@ export default function AdminPage() {
                          isMap ? 'Map Region' : 
                          'Single Choice'}
                       </Badge>
+                      {!question.active && (
+                        <Badge variant="outline" className="shrink-0 border-dashed" data-testid={`badge-inactive-${question.id}`}>
+                          Inactive
+                        </Badge>
+                      )}
                     </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       {question.category && (
                         <span>Category: {question.category}</span>
                       )}
-                      {question.curriculum && (
+                      {question.curricula?.length ? (
                         <span data-testid={`text-curriculum-${question.id}`}>
-                          Curriculum: {question.curriculum}
+                          Curriculum: {question.curricula.join(", ")}
                         </span>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -491,14 +562,21 @@ export default function AdminPage() {
                       size="icon"
                       onClick={() => setEditingQuestion(question)}
                       data-testid={`button-edit-${question.id}`}
-                      disabled={isMulti || isMap}
-                      title={
-                        isMulti ? "Multi-select editing not yet supported in UI" : 
-                        isMap ? "Map-based questions can only be edited via JSON upload" : 
-                        "Edit question"
-                      }
+                      title="Edit question"
                     >
                       <Edit2 className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setActiveMutation.mutate({ id: question.id, active: !question.active })}
+                      disabled={setActiveMutation.isPending}
+                      data-testid={`button-toggle-active-${question.id}`}
+                      title={question.active
+                        ? "Deactivate: leave out of quizzes and statistics, keeping progress"
+                        : "Activate: bring back into quizzes and statistics"}
+                    >
+                      {question.active ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </Button>
                     <Button
                       variant="outline"
@@ -647,9 +725,14 @@ export default function AdminPage() {
               />
             </div>
 
-            {editingQuestion?.questionType === 'text-input' ? (
+            {editingQuestion?.questionType === 'text-input' || editingQuestion?.questionType === 'map' ? (
               <div>
-                <Label>Accepted Answers</Label>
+                <Label>{editingQuestion.questionType === 'map' ? 'Accepted Region Names' : 'Accepted Answers'}</Label>
+                {editingQuestion.questionType === 'map' && (
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Region: {editingQuestion.regionName}. To change the region's outline, edit it in the JSON file and upload it again.
+                  </p>
+                )}
                 <div className="space-y-2">
                   {formData.acceptedAnswers.map((answer, index) => (
                     <div key={index} className="flex gap-2">
@@ -687,6 +770,10 @@ export default function AdminPage() {
                   </Button>
                 </div>
               </div>
+            ) : editingQuestion?.questionType === 'multi' ? (
+              <p className="text-sm text-muted-foreground">
+                To change the options or answers of a multi-select question, edit it in the JSON file and upload it again.
+              </p>
             ) : (
               <>
                 <div>
@@ -755,6 +842,17 @@ export default function AdminPage() {
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 placeholder="e.g., Bordeaux, Italian Wines"
                 data-testid="input-edit-category"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="explanation">Explanation (shown after a wrong answer)</Label>
+              <Textarea
+                id="explanation"
+                value={formData.explanation}
+                onChange={(e) => setFormData({ ...formData, explanation: e.target.value })}
+                rows={4}
+                data-testid="input-edit-explanation"
               />
             </div>
           </div>
