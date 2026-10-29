@@ -327,6 +327,7 @@ api.post("/questions/upload", requireAdmin, async (c) => {
       category: q.category,
       curricula,
       explanation: q.explanation,
+      active: q.active,
     };
     switch (q.type) {
       case "multi":

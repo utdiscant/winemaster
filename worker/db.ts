@@ -44,7 +44,7 @@ function questionsWithCards(db: Db, userId: string, curricula?: string[], extra?
     .select({ question: questions, card: reviewCards })
     .from(questions)
     .leftJoin(reviewCards, and(eq(reviewCards.questionId, questions.id), eq(reviewCards.userId, userId)))
-    .where(and(curriculumFilter(curricula), extra));
+    .where(and(eq(questions.active, true), curriculumFilter(curricula), extra));
 }
 
 // ===== Users =====
@@ -63,7 +63,7 @@ export async function deleteUser(db: Db, userId: string): Promise<boolean> {
 
 export async function getAllCurricula(db: Db): Promise<string[]> {
   const rows = await db.all<{ curriculum: string }>(
-    sql`SELECT DISTINCT c.value AS curriculum FROM questions, json_each(questions.curricula) c ORDER BY c.value`,
+    sql`SELECT DISTINCT c.value AS curriculum FROM questions, json_each(questions.curricula) c WHERE questions.active = 1 ORDER BY c.value`,
   );
   return rows.map((r) => r.curriculum);
 }
@@ -86,7 +86,8 @@ export async function deleteAllQuestions(db: Db): Promise<number> {
   return deleted.length;
 }
 
-// Creates or updates questions in a few statements, however many there are. If an update changes
+// Creates or updates questions in a few statements, however many there are. Updates leave a question's
+// active/inactive status as it is. If an update changes
 // what a question asks or accepts, everyone's progress on it is reset; a change of category,
 // curricula or explanation alone keeps progress.
 export async function upsertQuestions(
@@ -138,7 +139,7 @@ export async function upsertQuestions(
   }
 
   const upsert = d1.prepare(`
-    INSERT INTO questions (id, question, question_type, options, correct_answer, correct_answers, region_polygon, region_name, category, curricula, explanation)
+    INSERT INTO questions (id, question, question_type, options, correct_answer, correct_answers, region_polygon, region_name, category, curricula, explanation, active)
     SELECT
       json_extract(value, '$.id'),
       json_extract(value, '$.question'),
@@ -150,7 +151,8 @@ export async function upsertQuestions(
       json_extract(value, '$.regionName'),
       json_extract(value, '$.category'),
       json_extract(value, '$.curricula'),
-      json_extract(value, '$.explanation')
+      json_extract(value, '$.explanation'),
+      coalesce(json_extract(value, '$.active'), 1)
     FROM json_each(?) WHERE true
     ON CONFLICT(id) DO UPDATE SET
       question = excluded.question,
@@ -201,7 +203,7 @@ export async function getCategorySummaries(db: Db, userId: string, curricula?: s
     })
     .from(questions)
     .leftJoin(reviewCards, and(eq(reviewCards.questionId, questions.id), eq(reviewCards.userId, userId)))
-    .where(and(curriculumFilter(curricula), isNotNull(questions.category)))
+    .where(and(eq(questions.active, true), curriculumFilter(curricula), isNotNull(questions.category)))
     .groupBy(questions.category);
   return rows
     .map((row) => ({ category: row.category!, total: row.total, due: row.due ?? 0 }))
@@ -280,7 +282,10 @@ export async function getMistakes(db: Db, userId: string, since: Date): Promise<
   const rows = await db
     .select()
     .from(questions)
-    .where(sql`${questions.id} IN (SELECT value FROM json_each(${JSON.stringify(missedIds)}))`);
+    .where(and(
+      eq(questions.active, true),
+      sql`${questions.id} IN (SELECT value FROM json_each(${JSON.stringify(missedIds)}))`,
+    ));
 
   const mistakes = rows.map((q): Mistake => {
     const list = byQuestion.get(q.id)!;

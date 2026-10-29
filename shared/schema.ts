@@ -39,6 +39,8 @@ export const questions = sqliteTable("questions", {
   category: text("category"),
   curricula: text("curricula", { mode: "json" }).$type<string[]>(), // e.g. ["WSET2", "WSET3"]
   explanation: text("explanation"), // The theory behind the answer, shown after a wrong answer or "I don't know"
+  // Inactive questions are kept (with everyone's progress) but left out of quizzes and statistics
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
 });
 
 // SM-2 state per user per question. A question the user has never answered has no row and counts as
@@ -97,6 +99,7 @@ const singleChoiceQuestionSchema = z.object({
   correctAnswer: z.number().int().min(0).max(3, "Correct answer must be between 0 and 3"),
   category: z.string().optional(),
   explanation: z.string().optional(),
+  active: z.boolean().optional(), // Only applies to new questions; existing ones keep their status
   curriculum: z.string().optional(), // One curriculum (older files)
   curricula: z.array(z.string()).optional(), // One or more, e.g. ["WSET2", "WSET3"]
 });
@@ -109,6 +112,7 @@ const multiSelectQuestionSchema = z.object({
   correctAnswers: z.array(z.number().int().min(0).max(5)).max(6, "Multi-select can have 0-6 correct answers"),
   category: z.string().optional(),
   explanation: z.string().optional(),
+  active: z.boolean().optional(), // Only applies to new questions; existing ones keep their status
   curriculum: z.string().optional(), // One curriculum (older files)
   curricula: z.array(z.string()).optional(), // One or more, e.g. ["WSET2", "WSET3"]
 });
@@ -120,6 +124,7 @@ const textInputQuestionSchema = z.object({
   acceptedAnswers: z.array(z.string()).min(1, "Text-input questions must have at least 1 accepted answer"),
   category: z.string().optional(),
   explanation: z.string().optional(),
+  active: z.boolean().optional(), // Only applies to new questions; existing ones keep their status
   curriculum: z.string().optional(), // One curriculum (older files)
   curricula: z.array(z.string()).optional(), // One or more, e.g. ["WSET2", "WSET3"]
 });
@@ -133,6 +138,7 @@ const mapQuestionSchema = z.object({
   acceptedAnswers: z.array(z.string()).min(1, "Map questions must have at least 1 accepted answer"),
   category: z.string().optional(),
   explanation: z.string().optional(),
+  active: z.boolean().optional(), // Only applies to new questions; existing ones keep their status
   curriculum: z.string().optional(), // One curriculum (older files)
   curricula: z.array(z.string()).optional(), // One or more, e.g. ["WSET2", "WSET3"]
 });
@@ -160,6 +166,7 @@ export const questionUpdateSchema = z.object({
   category: z.string().nullable(),
   curricula: z.array(z.string()).nullable(),
   explanation: z.string().nullable(),
+  active: z.boolean(),
 }).partial();
 
 // Answer submission: exactly one of
