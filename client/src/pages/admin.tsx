@@ -257,8 +257,8 @@ export default function AdminPage() {
 
     const explanation = formData.explanation.trim() || null;
     let updates;
-    if (editingQuestion.questionType === 'multi') {
-      // Options and answers of multi-select questions are edited by re-uploading JSON
+    if (editingQuestion.questionType === 'multi' || editingQuestion.questionType === 'place') {
+      // Options and answers of multi-select and place questions are edited by re-uploading JSON
       updates = {
         question: formData.question,
         category: formData.category || undefined,
@@ -343,6 +343,18 @@ export default function AdminPage() {
           return {
             ...base,
             acceptedAnswers: q.options,
+          };
+        } else if (q.questionType === 'map') {
+          return {
+            ...base,
+            regionName: q.regionName,
+            regionPolygon: q.regionPolygon,
+            acceptedAnswers: q.options,
+          };
+        } else if (q.questionType === 'place') {
+          return {
+            ...base,
+            path: q.options,
           };
         } else if (q.questionType === 'multi') {
           return {
@@ -520,6 +532,7 @@ export default function AdminPage() {
           const isMulti = question.questionType === 'multi';
           const isTextInput = question.questionType === 'text-input';
           const isMap = question.questionType === 'map';
+          const isPlace = question.questionType === 'place';
           const correctSet = new Set(isMulti ? (question.correctAnswers || []) : [question.correctAnswer]);
           
           return (
@@ -531,12 +544,13 @@ export default function AdminPage() {
                       <CardTitle className="text-lg">{question.question}</CardTitle>
                       <Badge variant={
                         isMulti ? "default" : 
-                        isTextInput || isMap ? "outline" : 
+                        isTextInput || isMap || isPlace ? "outline" : 
                         "secondary"
                       } className="shrink-0">
                         {isMulti ? 'Multi-Select' : 
                          isTextInput ? 'Text Input' : 
                          isMap ? 'Map Region' : 
+                         isPlace ? 'Place it' :
                          'Single Choice'}
                       </Badge>
                       {!question.active && (
@@ -590,7 +604,12 @@ export default function AdminPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                {isTextInput ? (
+                {isPlace ? (
+                  <p className="text-sm" data-testid={`text-place-path-${question.id}`}>
+                    <span className="font-medium text-muted-foreground">Place: </span>
+                    {(question.options ?? []).join(" › ")}
+                  </p>
+                ) : isTextInput ? (
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-muted-foreground">Accepted answers:</p>
                     {question.options?.map((answer, index) => (
@@ -770,9 +789,11 @@ export default function AdminPage() {
                   </Button>
                 </div>
               </div>
-            ) : editingQuestion?.questionType === 'multi' ? (
+            ) : editingQuestion?.questionType === 'multi' || editingQuestion?.questionType === 'place' ? (
               <p className="text-sm text-muted-foreground">
-                To change the options or answers of a multi-select question, edit it in the JSON file and upload it again.
+                {editingQuestion.questionType === 'place'
+                  ? `Where it is (${(editingQuestion.options ?? []).join(" › ")}) is changed by editing the JSON file and uploading it again.`
+                  : "To change the options or answers of a multi-select question, edit it in the JSON file and upload it again."}
               </p>
             ) : (
               <>

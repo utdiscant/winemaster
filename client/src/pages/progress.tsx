@@ -27,6 +27,14 @@ interface QuestionCard {
   known: boolean; // Marked "I know this": never due, counts as mastered
 }
 
+const TYPE_LABELS: Record<string, string> = {
+  single: 'Single Choice',
+  multi: 'Multi-Select',
+  'text-input': 'Text Input',
+  map: 'Map Region',
+  place: 'Place it',
+};
+
 const isMastered = (card: QuestionCard) => card.known || (card.repetitions >= 3 && card.interval >= 21);
 
 export default function ProgressPage() {
@@ -200,7 +208,7 @@ export default function ProgressPage() {
             </Badge>
           ))}
           <Badge variant="secondary" className="text-xs">
-            {card.questionType === 'multi' ? 'Multi-Select' : 'Single Choice'}
+            {TYPE_LABELS[card.questionType] ?? 'Single Choice'}
           </Badge>
         </div>
       </div>

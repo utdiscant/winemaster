@@ -16,6 +16,7 @@ import {
   users,
   type GivenAnswer,
   type InsertQuestion,
+  type QuestionType,
   type QuizQuestion,
   type UserRow,
 } from "@shared/schema";
@@ -42,6 +43,7 @@ import {
   getCategorySummaries,
   getDueQuestions,
   getMistakes,
+  getPlaceTree,
   getProgressCards,
   getQuestionWithCard,
   getStatistics,
@@ -176,8 +178,11 @@ api.get("/categories", requireUser, async (c) => c.json(await getAllCategories(c
 const curriculaParam = (value?: string) => value?.split(",").map((s) => s.trim()).filter(Boolean);
 
 // What the user is studying: the given curricula, minus the categories they've paused
-const studyScope = (user: UserRow, curricula?: string[]): Scope =>
-  ({ curricula, pausedCategories: user.pausedCategories ?? undefined });
+const studyScope = (user: UserRow, curricula?: string[], questionType?: QuestionType): Scope =>
+  ({ curricula, pausedCategories: user.pausedCategories ?? undefined, questionType });
+
+// ?type=place trains only place questions
+const typeParam = (value?: string): QuestionType | undefined => (value === "place" ? "place" : undefined);
 
 // Questions due for review (optionally one category only), in random order, plus how far the user is
 // towards today's goal
@@ -187,7 +192,7 @@ api.get("/quiz/due", requireUser, async (c) => {
   const db = c.var.db;
   const userId = c.var.user.id;
   const [due, completedToday] = await Promise.all([
-    getDueQuestions(db, userId, studyScope(c.var.user, curricula), category),
+    getDueQuestions(db, userId, studyScope(c.var.user, curricula, typeParam(c.req.query("type"))), category),
     countCompletedToday(db, userId, curricula),
   ]);
 
@@ -201,7 +206,7 @@ api.get("/quiz/due", requireUser, async (c) => {
     id: q.id,
     question: q.question,
     questionType: q.questionType,
-    options: q.options ?? [],
+    options: q.questionType === "place" ? [] : q.options ?? [], // A place question's options are its answer
     category: q.category ?? undefined,
     curricula: q.curricula ?? undefined,
     regionPolygon: q.regionPolygon ?? undefined,
@@ -216,7 +221,14 @@ api.get("/quiz/due", requireUser, async (c) => {
 
 // The categories the user can train on, with how many questions are due in each
 api.get("/quiz/categories", requireUser, async (c) =>
-  c.json(await getCategorySummaries(c.var.db, c.var.user.id, studyScope(c.var.user, curriculaParam(c.req.query("curricula"))))));
+  c.json(await getCategorySummaries(
+    c.var.db,
+    c.var.user.id,
+    studyScope(c.var.user, curriculaParam(c.req.query("curricula")), typeParam(c.req.query("type"))),
+  )));
+
+// Countries and their bigger areas, the answer choices for place questions
+api.get("/places/tree", requireUser, async (c) => c.json(await getPlaceTree(c.var.db)));
 
 // Mark a question as known (it won't come up for review again) or put it back into review
 api.put("/quiz/known/:questionId", requireUser, async (c) => {
@@ -235,7 +247,7 @@ const matchesAcceptedAnswer = (answer: string | undefined, accepted: string[] | 
 
 // Check an answer (or "I don't know"), log it, and schedule the question's next review with SM-2
 api.post("/quiz/answer", requireUser, async (c) => {
-  const { questionId, selectedAnswer, selectedAnswers, textAnswer, mapClick, displayMode, dontKnow } =
+  const { questionId, selectedAnswer, selectedAnswers, textAnswer, mapClick, displayMode, path, dontKnow } =
     answerSubmissionSchema.parse(await c.req.json());
   const db = c.var.db;
   const userId = c.var.user.id;
@@ -257,6 +269,13 @@ api.post("/quiz/answer", requireUser, async (c) => {
         : displayMode === "map-to-text" && matchesAcceptedAnswer(textAnswer, question.options);
       correctAnswer = { regionName: question.regionName ?? undefined, regionPolygon: question.regionPolygon };
       break;
+    case "place": {
+      const same = (a?: string, b?: string) => (a ?? "").trim().toLowerCase() === (b ?? "").trim().toLowerCase();
+      const answer = question.options ?? [];
+      isCorrect = !!path && answer.length === path.length && answer.every((part, i) => same(part, path[i]));
+      correctAnswer = answer;
+      break;
+    }
     case "multi": {
       const selected = new Set(selectedAnswers ?? []);
       const correct = new Set(question.correctAnswers ?? []);
@@ -276,6 +295,7 @@ api.post("/quiz/answer", requireUser, async (c) => {
     : selectedAnswer !== undefined ? { options: [options[selectedAnswer]] }
     : selectedAnswers !== undefined ? { options: selectedAnswers.map((i) => options[i]) }
     : mapClick ? { mapClick }
+    : path ? { text: path.join(" › ") }
     : { text: textAnswer };
 
   const previous = card ?? NEW_CARD;
@@ -389,6 +409,8 @@ api.post("/questions/upload", requireAdmin, async (c) => {
         return { ...common, questionType: "multi", options: q.options, correctAnswers: q.correctAnswers };
       case "text-input":
         return { ...common, questionType: "text-input", options: q.acceptedAnswers };
+      case "place":
+        return { ...common, questionType: "place", options: q.path };
       case "map":
         return {
           ...common,

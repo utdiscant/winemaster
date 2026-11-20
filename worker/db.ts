@@ -11,6 +11,8 @@ import {
   type GivenAnswer,
   type InsertQuestion,
   type Mistake,
+  type PlaceTree,
+  type QuestionType,
   type ProgressCard,
   type Question,
   type ReviewCard,
@@ -40,14 +42,19 @@ const isDue = () => or(
 );
 
 // Which questions a learner is studying: only some curricula (if any are chosen), minus the categories
-// they've paused
-export type Scope = { curricula?: string[]; pausedCategories?: string[] };
+// they've paused, optionally only one type of question (e.g. the place drill)
+export type Scope = { curricula?: string[]; pausedCategories?: string[]; questionType?: QuestionType };
 
-function scopeFilter({ curricula, pausedCategories }: Scope): SQL | undefined {
+function scopeFilter({ curricula, pausedCategories, questionType }: Scope): SQL | undefined {
   const notPaused = pausedCategories && pausedCategories.length > 0
     ? sql`(${questions.category} IS NULL OR ${questions.category} NOT IN (SELECT value FROM json_each(${JSON.stringify(pausedCategories)})))`
     : undefined;
-  return and(eq(questions.active, true), curriculumFilter(curricula), notPaused);
+  return and(
+    eq(questions.active, true),
+    curriculumFilter(curricula),
+    notPaused,
+    questionType ? eq(questions.questionType, questionType) : undefined,
+  );
 }
 
 // Every active question in scope with this user's review card, if they have one
@@ -73,6 +80,24 @@ export async function deleteUser(db: Db, userId: string): Promise<boolean> {
 }
 
 // ===== Questions =====
+
+// Every country with the bigger areas place questions use, for the answer choices. Built from all active
+// place questions, so the choices for any one question include its neighbours.
+export async function getPlaceTree(db: Db): Promise<PlaceTree> {
+  const rows = await db
+    .select({ options: questions.options })
+    .from(questions)
+    .where(and(eq(questions.active, true), eq(questions.questionType, "place")));
+  const tree = new Map<string, Set<string>>();
+  for (const { options } of rows) {
+    const [country, area] = options ?? [];
+    if (!country || !area) continue;
+    tree.set(country, (tree.get(country) ?? new Set()).add(area));
+  }
+  return [...tree]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([country, areas]) => ({ country, areas: [...areas].sort((a, b) => a.localeCompare(b)) }));
+}
 
 // Every category of active questions, in textbook order
 export async function getAllCategories(db: Db): Promise<string[]> {
@@ -278,6 +303,8 @@ function correctAnswerTexts(q: Question): string[] {
       return (q.correctAnswers ?? []).map((i) => options[i]).filter(Boolean);
     case "map":
       return q.regionName ? [q.regionName] : options;
+    case "place":
+      return [options.join(" › ")];
     default:
       return options;
   }

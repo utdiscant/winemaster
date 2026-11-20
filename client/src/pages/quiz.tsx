@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { CheckCircle2, XCircle, Wine, BookCheck, BookOpen, HelpCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import type { CategorySummary, QuizQuestion, User } from "@shared/schema";
+import type { CategorySummary, PlaceTree, QuizQuestion, User } from "@shared/schema";
 import { queryClient, apiRequest, apiUrl } from "@/lib/queryClient";
 import WineMap from "@/components/WineMap";
 import { getPolygonCentroid, getBoundsForPolygonAndPoint } from "@shared/geo";
@@ -23,24 +23,125 @@ interface QuizResponse {
   };
 }
 
-// The Learn page, training only one category
-export function trainCategoryPath(category: string): string {
-  return `/?category=${encodeURIComponent(category)}`;
+// The Learn page, optionally training one category and/or only place questions (?type=place)
+export function trainCategoryPath(category?: string, type?: string): string {
+  const params = new URLSearchParams();
+  if (type) params.set("type", type);
+  if (category) params.set("category", category);
+  const query = params.toString();
+  return query ? `/?${query}` : "/";
 }
 
 const ALL_CATEGORIES = "__all__";
 
+// Switches between all questions and the "Place it" drill
+function ModeSwitch({ type }: { type?: string }) {
+  const [, setLocation] = useLocation();
+  const modes = [
+    { type: undefined, label: "All questions" },
+    { type: "place", label: "Place it" },
+  ];
+  return (
+    <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1" data-testid="mode-switch">
+      {modes.map((m) => (
+        <button
+          key={m.label}
+          type="button"
+          onClick={() => setLocation(trainCategoryPath(undefined, m.type))}
+          className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+            type === m.type ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"
+          }`}
+          data-testid={`mode-${m.type ?? "all"}`}
+        >
+          {m.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// A place question's answer: pick the country, then the bigger area. After answering, shows what was
+// right and wrong.
+function PlacePicker({
+  country,
+  area,
+  onCountry,
+  onArea,
+  answered,
+  correctPath,
+}: {
+  country: string | null;
+  area: string | null;
+  onCountry: (country: string) => void;
+  onArea: (area: string) => void;
+  answered: boolean;
+  correctPath: string[] | null;
+}) {
+  const { data: tree } = useQuery<PlaceTree>({ queryKey: ["/api/places/tree"] });
+  if (!tree) return null;
+  const [rightCountry, rightArea] = correctPath ?? [];
+  const shownCountry = answered && !country ? rightCountry : country;
+  const areas = tree.find((c) => c.country === shownCountry)?.areas ?? [];
+
+  const chip = (label: string, selected: boolean, right: boolean, onClick: () => void) => {
+    const state = answered
+      ? right ? "border-green-600 bg-green-50 dark:bg-green-950/40 text-green-800 dark:text-green-300"
+        : selected ? "border-destructive bg-destructive/10 text-destructive" : "border-border text-muted-foreground"
+      : selected ? "border-primary bg-primary/5" : "border-border hover-elevate";
+    return (
+      <button
+        key={label}
+        type="button"
+        disabled={answered}
+        onClick={onClick}
+        className={`rounded-full border-2 px-3 py-1.5 text-sm transition-colors disabled:opacity-100 ${state}`}
+        data-testid={`place-option-${label}`}
+      >
+        {label}
+      </button>
+    );
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <p className="text-sm font-medium text-muted-foreground">Country</p>
+        <div className="flex flex-wrap gap-2">
+          {tree.map((c) => chip(c.country, c.country === country, answered && c.country === rightCountry, () => onCountry(c.country)))}
+        </div>
+      </div>
+      {shownCountry && (
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-muted-foreground">Area in {shownCountry}</p>
+          <div className="flex flex-wrap gap-2">
+            {areas.map((a) => chip(a, a === area, answered && shownCountry === rightCountry && a === rightArea, () => onArea(a)))}
+          </div>
+        </div>
+      )}
+      {answered && correctPath && (
+        <p className="text-sm" data-testid="text-place-answer">
+          <span className="font-medium text-green-700 dark:text-green-400">Answer: </span>
+          {correctPath.join(" › ")}
+        </p>
+      )}
+    </div>
+  );
+}
+
 // Picks which category to train. Lists the categories in the user's curricula with how many questions
 // are due in each.
-function CategoryPicker({ category, curricula }: { category?: string; curricula: string[] }) {
+function CategoryPicker({ category, curricula, type }: { category?: string; curricula: string[]; type?: string }) {
   const [, setLocation] = useLocation();
   const { data: user } = useQuery<User | null>({ queryKey: ["/api/auth/user"] });
   const pausedCount = user?.pausedCategories?.length ?? 0;
   const { data: categories } = useQuery<CategorySummary[]>({
-    queryKey: ["/api/quiz/categories", { curricula }],
+    queryKey: ["/api/quiz/categories", { curricula, type }],
     queryFn: async () => {
-      const params = curricula.length > 0 ? `?curricula=${curricula.map(encodeURIComponent).join(",")}` : "";
-      const response = await fetch(apiUrl(`/api/quiz/categories${params}`), { credentials: "include" });
+      const params = new URLSearchParams();
+      if (curricula.length > 0) params.set("curricula", curricula.join(","));
+      if (type) params.set("type", type);
+      const query = params.toString();
+      const response = await fetch(apiUrl(`/api/quiz/categories${query ? `?${query}` : ""}`), { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch categories");
       return response.json();
     },
@@ -53,7 +154,7 @@ function CategoryPicker({ category, curricula }: { category?: string; curricula:
     <div className="space-y-1">
     <Select
       value={category ?? ALL_CATEGORIES}
-      onValueChange={(value) => setLocation(value === ALL_CATEGORIES ? "/" : trainCategoryPath(value))}
+      onValueChange={(value) => setLocation(trainCategoryPath(value === ALL_CATEGORIES ? undefined : value, type))}
     >
       <SelectTrigger className="w-full" data-testid="select-category">
         <SelectValue />
@@ -78,12 +179,14 @@ function CategoryPicker({ category, curricula }: { category?: string; curricula:
 }
 
 export default function QuizPage() {
-  const category = new URLSearchParams(useSearch()).get("category") || undefined;
-  // A new session (counts, current question) for each category
-  return <QuizSession key={category ?? ALL_CATEGORIES} category={category} />;
+  const params = new URLSearchParams(useSearch());
+  const category = params.get("category") || undefined;
+  const type = params.get("type") === "place" ? "place" : undefined;
+  // A new session (counts, current question) for each category and mode
+  return <QuizSession key={`${type ?? "all"}:${category ?? ALL_CATEGORIES}`} category={category} type={type} />;
 }
 
-function QuizSession({ category }: { category?: string }) {
+function QuizSession({ category, type }: { category?: string; type?: string }) {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null); // For single-choice
@@ -103,6 +206,9 @@ function QuizSession({ category }: { category?: string }) {
   const [explanation, setExplanation] = useState<string | null>(null); // The theory behind the answer
   const [answeredDontKnow, setAnsweredDontKnow] = useState(false);
   const [showExplanation, setShowExplanation] = useState(false); // After a correct answer, shown on request
+  const [placeCountry, setPlaceCountry] = useState<string | null>(null); // For place questions
+  const [placeArea, setPlaceArea] = useState<string | null>(null);
+  const [correctPlace, setCorrectPlace] = useState<string[] | null>(null);
 
   // Fetch user to get curriculum preferences
   const { data: user, isLoading: isLoadingUser } = useQuery<User | null>({
@@ -116,12 +222,13 @@ function QuizSession({ category }: { category?: string }) {
     const params = new URLSearchParams();
     if (selectedCurricula.length > 0) params.set("curricula", selectedCurricula.join(","));
     if (category) params.set("category", category);
+    if (type) params.set("type", type);
     const query = params.toString();
     return query ? `/api/quiz/due?${query}` : "/api/quiz/due";
   };
 
   const { data: quizData, isLoading: isLoadingQuestions, isFetching, refetch, isError } = useQuery<QuizResponse>({
-    queryKey: ["/api/quiz/due", { curricula: selectedCurricula, category }],
+    queryKey: ["/api/quiz/due", { curricula: selectedCurricula, category, type }],
     queryFn: async () => {
       const response = await fetch(apiUrl(buildQuizQueryUrl()), { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch quiz questions");
@@ -180,7 +287,7 @@ function QuizSession({ category }: { category?: string }) {
   }, [isError, isAdvancing, toast]);
 
   const submitAnswerMutation = useMutation({
-    mutationFn: async (data: { questionId: string; selectedAnswer?: number; selectedAnswers?: number[]; textAnswer?: string; mapClick?: { lat: number; lng: number }; displayMode?: 'text-to-map' | 'map-to-text'; dontKnow?: true }) => {
+    mutationFn: async (data: { questionId: string; selectedAnswer?: number; selectedAnswers?: number[]; textAnswer?: string; mapClick?: { lat: number; lng: number }; displayMode?: 'text-to-map' | 'map-to-text'; path?: string[]; dontKnow?: true }) => {
       return await apiRequest("POST", "/api/quiz/answer", data);
     },
     onSuccess: (response) => {
@@ -190,6 +297,8 @@ function QuizSession({ category }: { category?: string }) {
       } else if (currentQuestion?.questionType === 'map') {
         // For map questions, store the correct region data
         setCorrectMapData(response.correctAnswer || null);
+      } else if (currentQuestion?.questionType === 'place') {
+        setCorrectPlace(response.correctAnswer || null);
       } else {
         // Find the shuffled indexes of the correct answer(s)
         const correctAnswers = Array.isArray(response.correctAnswer) ? response.correctAnswer : [response.correctAnswer];
@@ -289,6 +398,9 @@ function QuizSession({ category }: { category?: string }) {
       setExplanation(null);
       setAnsweredDontKnow(false);
       setShowExplanation(false);
+      setPlaceCountry(null);
+      setPlaceArea(null);
+      setCorrectPlace(null);
     }
   }, [currentQuestion?.id]); // Key on question ID to reset when question changes
 
@@ -330,7 +442,10 @@ function QuizSession({ category }: { category?: string }) {
     const isTextInput = currentQuestion.questionType === 'text-input';
     const isMap = currentQuestion.questionType === 'map';
     
-    if (isTextInput) {
+    if (currentQuestion.questionType === 'place') {
+      if (!placeCountry || !placeArea) return;
+      submitAnswerMutation.mutate({ questionId: currentQuestion.id, path: [placeCountry, placeArea] });
+    } else if (isTextInput) {
       // Text-input: submit the text answer
       submitAnswerMutation.mutate({
         questionId: currentQuestion.id,
@@ -382,6 +497,9 @@ function QuizSession({ category }: { category?: string }) {
     setExplanation(null);
     setAnsweredDontKnow(false);
     setShowExplanation(false);
+    setPlaceCountry(null);
+    setPlaceArea(null);
+    setCorrectPlace(null);
     setIsAdvancing(true);
     queryClient.invalidateQueries({ queryKey: ["/api/quiz/categories"], exact: false });
     
@@ -405,7 +523,8 @@ function QuizSession({ category }: { category?: string }) {
     return (
       <div className="min-h-screen bg-background py-4 px-4">
         <div className="max-w-md mx-auto space-y-4">
-          <CategoryPicker category={category} curricula={selectedCurricula} />
+          <ModeSwitch type={type} />
+          <CategoryPicker category={category} curricula={selectedCurricula} type={type} />
           <Card>
             <CardContent className="pt-6 text-center space-y-4">
               <XCircle className="w-12 h-12 text-destructive mx-auto" />
@@ -425,7 +544,8 @@ function QuizSession({ category }: { category?: string }) {
     return (
       <div className="min-h-screen bg-background py-4 px-4">
         <div className="max-w-md mx-auto space-y-4">
-          <CategoryPicker category={category} curricula={selectedCurricula} />
+          <ModeSwitch type={type} />
+          <CategoryPicker category={category} curricula={selectedCurricula} type={type} />
           <Card>
             <CardContent className="pt-6 text-center space-y-4">
               <Wine className="w-16 h-16 text-primary mx-auto" />
@@ -466,7 +586,8 @@ function QuizSession({ category }: { category?: string }) {
   return (
     <div className="min-h-screen bg-background py-4 px-4">
       <div className="max-w-3xl mx-auto space-y-4">
-        <CategoryPicker category={category} curricula={selectedCurricula} />
+        <ModeSwitch type={type} />
+        <CategoryPicker category={category} curricula={selectedCurricula} type={type} />
 
         {/* Daily Goal Progress */}
         {dailyProgress && (
@@ -516,6 +637,11 @@ function QuizSession({ category }: { category?: string }) {
                 Type your answer below (not case-sensitive)
               </p>
             )}
+            {currentQuestion.questionType === 'place' && !isAnswered && (
+              <p className="text-xs md:text-sm text-muted-foreground">
+                Choose the country, then the bigger area it belongs to
+              </p>
+            )}
             {currentQuestion.questionType === 'map' && mapDisplayMode === 'text-to-map' && !isAnswered && (
               <p className="text-xs md:text-sm text-muted-foreground">
                 Click on the map to identify the wine region
@@ -529,14 +655,25 @@ function QuizSession({ category }: { category?: string }) {
           </CardHeader>
           <CardContent className="space-y-2 md:space-y-4 py-2 md:py-3 px-4 md:px-6">
             <h2 className="text-base md:text-2xl font-medium leading-relaxed" data-testid="text-question">
-              {currentQuestion.questionType === 'map' && mapDisplayMode === 'map-to-text' 
+              {currentQuestion.questionType === 'map' && mapDisplayMode === 'map-to-text'
                 ? `What wine region is highlighted on the map?`
-                : currentQuestion.question
+                : currentQuestion.questionType === 'place'
+                  ? <>Where is <span className="font-semibold">{currentQuestion.question}</span>?</>
+                  : currentQuestion.question
               }
             </h2>
 
-            {/* Text Input for text-input questions */}
-            {currentQuestion.questionType === 'text-input' ? (
+            {/* Country and area chips for place questions */}
+            {currentQuestion.questionType === 'place' ? (
+              <PlacePicker
+                country={placeCountry}
+                area={placeArea}
+                onCountry={(c) => { setPlaceCountry(c); setPlaceArea(null); }}
+                onArea={setPlaceArea}
+                answered={isAnswered}
+                correctPath={correctPlace}
+              />
+            ) : currentQuestion.questionType === 'text-input' ? (
               <div className="space-y-2 md:space-y-4">
                 <Input
                   type="text"
@@ -733,6 +870,7 @@ function QuizSession({ category }: { category?: string }) {
                   onClick={handleSubmitAnswer}
                   disabled={
                     (currentQuestion.questionType === 'single' && selectedAnswer === null) ||
+                    (currentQuestion.questionType === 'place' && (!placeCountry || !placeArea)) ||
                     (currentQuestion.questionType === 'text-input' && textAnswer.trim() === '') ||
                     (currentQuestion.questionType === 'map' && mapDisplayMode === 'text-to-map' && mapClick === null) ||
                     (currentQuestion.questionType === 'map' && mapDisplayMode === 'map-to-text' && textAnswer.trim() === '') ||

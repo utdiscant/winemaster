@@ -172,8 +172,12 @@ export default function UploadPage() {
             if (!normalized.acceptedAnswers || !Array.isArray(normalized.acceptedAnswers) || normalized.acceptedAnswers.length === 0) {
               throw new Error(`Question ${index + 1} ("${questionPreview}"): Map questions must have acceptedAnswers array with at least 1 answer`);
             }
+          } else if (qType === 'place') {
+            if (!Array.isArray(normalized.path) || normalized.path.length !== 2) {
+              throw new Error(`Question ${index + 1} ("${questionPreview}"): Place questions must have a path of [country, area]`);
+            }
           } else {
-            throw new Error(`Question ${index + 1} ("${questionPreview}"): Unknown question type "${qType}". Must be 'single', 'multi', 'text-input', or 'map'`);
+            throw new Error(`Question ${index + 1} ("${questionPreview}"): Unknown question type "${qType}". Must be 'single', 'multi', 'text-input', 'map' or 'place'`);
           }
 
           return normalized;
@@ -309,6 +313,7 @@ Example:
                   const isMulti = q.type === 'multi';
                   const isTextInput = q.type === 'text-input';
                   const isMap = q.type === 'map';
+                  const isPlace = q.type === 'place';
                   
                   return (
                     <div key={i} className="p-4 rounded-lg bg-card border border-card-border" data-testid={`preview-question-${i}`}>
@@ -316,16 +321,19 @@ Example:
                         <p className="font-medium flex-1">{q.question}</p>
                         <Badge variant={
                           isMulti ? "secondary" : 
-                          isTextInput || isMap ? "outline" : 
+                          isTextInput || isMap || isPlace ? "outline" : 
                           "default"
                         } className="ml-2">
                           {isMulti ? 'Multi-Select' : 
                            isTextInput ? 'Text Input' : 
                            isMap ? 'Map Region' : 
+                           isPlace ? 'Place it' :
                            'Single Choice'}
                         </Badge>
                       </div>
-                      {isTextInput || isMap ? (
+                      {isPlace ? (
+                        <p className="text-sm text-muted-foreground">{((q as any).path ?? []).join(" › ")}</p>
+                      ) : isTextInput || isMap ? (
                         <div className="space-y-2">
                           <p className="text-sm text-muted-foreground">
                             {isTextInput ? 'Accepted answers:' : 'Accepted region names:'}

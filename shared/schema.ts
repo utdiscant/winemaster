@@ -28,6 +28,8 @@ export const sessions = sqliteTable("sessions", {
 // - 'single': 4 options, correctAnswer is the index of the right one (0-3)
 // - 'multi': 6 options, correctAnswers is an array of indices (0-5)
 // - 'text-input': options holds the accepted answers (case-insensitive match)
+// - 'place': the question is the name of a smaller wine area; options holds where it is, [country,
+//          bigger area], and the user answers by choosing both
 // - 'map': regionPolygon (GeoJSON Polygon or MultiPolygon) and regionName; options holds the accepted
 //          names. Shown either as click-the-region or name-the-region.
 export const questions = sqliteTable("questions", {
@@ -115,7 +117,7 @@ export type AnswerOutcome = "correct" | "wrong" | "dont_know";
 // The answer as given: option texts for choice questions, typed text, or a map click
 export type GivenAnswer = { options?: string[]; text?: string; mapClick?: { lat: number; lng: number } };
 
-export type QuestionType = "single" | "multi" | "text-input" | "map";
+export type QuestionType = "single" | "multi" | "text-input" | "map" | "place";
 export type Question = typeof questions.$inferSelect;
 export type InsertQuestion = typeof questions.$inferInsert;
 export type ReviewCard = typeof reviewCards.$inferSelect;
@@ -179,13 +181,26 @@ const mapQuestionSchema = z.object({
   curricula: z.array(z.string()).optional(), // One or more, e.g. ["WSET2", "WSET3"]
 });
 
+const placeQuestionSchema = z.object({
+  id: z.string().optional(),
+  question: z.string().min(1, "Question cannot be empty"), // The place's name, e.g. "Walker Bay"
+  type: z.literal('place'),
+  path: z.tuple([z.string().min(1), z.string().min(1)]), // [country, bigger area]
+  category: z.string().optional(),
+  explanation: z.string().optional(),
+  active: z.boolean().optional(),
+  curriculum: z.string().optional(),
+  curricula: z.array(z.string()).optional(),
+});
+
 export const jsonUploadSchema = z.object({
   questions: z.array(
     z.discriminatedUnion('type', [
       singleChoiceQuestionSchema,
       multiSelectQuestionSchema,
       textInputQuestionSchema,
-      mapQuestionSchema
+      mapQuestionSchema,
+      placeQuestionSchema
     ])
   ).min(1, "Must have at least 1 question"),
 });
@@ -195,7 +210,7 @@ export type JsonUpload = z.infer<typeof jsonUploadSchema>;
 // Admin edits to a single question
 export const questionUpdateSchema = z.object({
   question: z.string().min(1),
-  questionType: z.enum(["single", "multi", "text-input", "map"]),
+  questionType: z.enum(["single", "multi", "text-input", "map", "place"]),
   options: z.array(z.string()),
   correctAnswer: z.number().int().min(0).max(5).nullable(),
   correctAnswers: z.array(z.number().int().min(0).max(5)).nullable(),
@@ -210,6 +225,7 @@ export const questionUpdateSchema = z.object({
 // - selectedAnswers (multi-select)
 // - textAnswer (text-input, or a map question shown as name-the-region)
 // - mapClick (a map question shown as click-the-region)
+// - path (a place question: the chosen [country, bigger area])
 // - dontKnow (the user clicked "I don't know")
 export const answerSubmissionSchema = z.object({
   questionId: z.string(),
@@ -218,13 +234,14 @@ export const answerSubmissionSchema = z.object({
   textAnswer: z.string().optional(),
   mapClick: z.object({ lat: z.number(), lng: z.number() }).optional(),
   displayMode: z.enum(['text-to-map', 'map-to-text']).optional(), // For map questions: which mode was shown
+  path: z.array(z.string()).length(2).optional(),
   dontKnow: z.literal(true).optional(),
   timeTaken: z.number().optional(),
 }).refine(
-  (data) => [data.selectedAnswer, data.selectedAnswers, data.textAnswer, data.mapClick, data.dontKnow]
+  (data) => [data.selectedAnswer, data.selectedAnswers, data.textAnswer, data.mapClick, data.path, data.dontKnow]
     .filter((answer) => answer !== undefined).length === 1,
   {
-    message: "Must provide exactly one of: selectedAnswer (single-choice), selectedAnswers (multi-select), textAnswer (text-input or map-to-text), mapClick (text-to-map), or dontKnow"
+    message: "Must provide exactly one of: selectedAnswer (single-choice), selectedAnswers (multi-select), textAnswer (text-input or map-to-text), mapClick (text-to-map), path (place), or dontKnow"
   }
 );
 
@@ -271,6 +288,9 @@ export type ProgressCard = {
   easeFactor: number;
   known: boolean;
 };
+
+// Where place questions can be: each country with its bigger areas, for building the answer choices
+export type PlaceTree = { country: string; areas: string[] }[];
 
 // A category with how many of its questions there are and how many are due
 export type CategorySummary = {
