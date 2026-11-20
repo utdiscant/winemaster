@@ -1,0 +1,1 @@
+ALTER TABLE `review_cards` ADD `known_at` integer;

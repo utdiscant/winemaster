@@ -9,12 +9,58 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { JsonUpload } from "@shared/schema";
 
+// Replaces the mock exam bank and its video list from a JSON file: {"videos": [...], "questions": [...]}
+function ExamBankUpload() {
+  const { toast } = useToast();
+  const uploadMutation = useMutation({
+    mutationFn: (bank: unknown) =>
+      apiRequest<{ questions: number; videos: number }>("POST", "/api/exam/bank", bank),
+    onSuccess: (result) => {
+      toast({ title: "Exam bank replaced", description: `${result.questions} questions and ${result.videos} videos` });
+      queryClient.invalidateQueries({ queryKey: ["/api/exam/info"] });
+    },
+    onError: (error: Error) => toast({ title: "Upload failed", description: error.message, variant: "destructive" }),
+  });
+
+  const onFile = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      uploadMutation.mutate(JSON.parse(await file.text()));
+    } catch {
+      toast({ title: "Not valid JSON", description: file.name, variant: "destructive" });
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-xl font-serif">Mock exam bank</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          Choose the exam bank JSON file (with its "videos" and "questions"). It replaces the current exam questions and
+          video list; past exam scores are kept.
+        </p>
+        <input
+          type="file"
+          accept=".json,application/json"
+          disabled={uploadMutation.isPending}
+          onChange={(e) => { onFile(e.target.files?.[0]); e.target.value = ""; }}
+          className="block text-sm file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-2 file:text-primary-foreground"
+          data-testid="input-exam-bank"
+        />
+        {uploadMutation.isPending && <p className="text-sm text-muted-foreground">Uploading…</p>}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function UploadPage() {
   const { toast } = useToast();
   const [uploadedData, setUploadedData] = useState<JsonUpload | null>(null);
   const [pastedJson, setPastedJson] = useState<string>("");
 
-  const uploadMutation = useMutation<{ success: boolean; created: number; updated: number; total: number }, Error, JsonUpload>({
+  const uploadMutation = useMutation<{ success: boolean; created: number; updated: number; progressReset: number; total: number }, Error, JsonUpload>({
     mutationFn: async (data: JsonUpload) => {
       return await apiRequest("POST", "/api/questions/upload", data);
     },
@@ -24,7 +70,10 @@ export default function UploadPage() {
         parts.push(`${response.created} created`);
       }
       if (response.updated > 0) {
-        parts.push(`${response.updated} updated (progress cleared)`);
+        parts.push(`${response.updated} updated`);
+      }
+      if (response.progressReset > 0) {
+        parts.push(`progress cleared on ${response.progressReset} changed ${response.progressReset === 1 ? 'question' : 'questions'}`);
       }
       const description = parts.length > 0 
         ? parts.join(', ') + ` - ${response.total} total`
@@ -123,8 +172,12 @@ export default function UploadPage() {
             if (!normalized.acceptedAnswers || !Array.isArray(normalized.acceptedAnswers) || normalized.acceptedAnswers.length === 0) {
               throw new Error(`Question ${index + 1} ("${questionPreview}"): Map questions must have acceptedAnswers array with at least 1 answer`);
             }
+          } else if (qType === 'place') {
+            if (!Array.isArray(normalized.path) || normalized.path.length !== 2) {
+              throw new Error(`Question ${index + 1} ("${questionPreview}"): Place questions must have a path of [country, area]`);
+            }
           } else {
-            throw new Error(`Question ${index + 1} ("${questionPreview}"): Unknown question type "${qType}". Must be 'single', 'multi', 'text-input', or 'map'`);
+            throw new Error(`Question ${index + 1} ("${questionPreview}"): Unknown question type "${qType}". Must be 'single', 'multi', 'text-input', 'map' or 'place'`);
           }
 
           return normalized;
@@ -186,7 +239,7 @@ Example:
       "options": ["Piedmont, Italy", "Tuscany, Italy", "Bordeaux, France", "Rioja, Spain"],
       "correctAnswer": 0,
       "category": "Italian Wines",
-      "curriculum": "WSET2"
+      "curricula": ["WSET2", "WSET3"]
     },
     {
       "question": "Which are red grape varieties?",
@@ -194,14 +247,14 @@ Example:
       "options": ["Cabernet Sauvignon", "Chardonnay", "Merlot", "Riesling", "Pinot Noir", "Sauvignon Blanc"],
       "correctAnswers": [0, 2, 4],
       "category": "Grape Varieties",
-      "curriculum": "WSET2"
+      "curricula": ["WSET2", "WSET3"]
     },
     {
       "question": "What is the primary grape variety used in Champagne?",
       "type": "text-input",
       "acceptedAnswers": ["Chardonnay", "Pinot Noir", "Pinot Meunier"],
       "category": "French Wines",
-      "curriculum": "WSET2"
+      "curricula": ["WSET2", "WSET3"]
     },
     {
       "question": "Identify the Bordeaux region",
@@ -260,6 +313,7 @@ Example:
                   const isMulti = q.type === 'multi';
                   const isTextInput = q.type === 'text-input';
                   const isMap = q.type === 'map';
+                  const isPlace = q.type === 'place';
                   
                   return (
                     <div key={i} className="p-4 rounded-lg bg-card border border-card-border" data-testid={`preview-question-${i}`}>
@@ -267,16 +321,19 @@ Example:
                         <p className="font-medium flex-1">{q.question}</p>
                         <Badge variant={
                           isMulti ? "secondary" : 
-                          isTextInput || isMap ? "outline" : 
+                          isTextInput || isMap || isPlace ? "outline" : 
                           "default"
                         } className="ml-2">
                           {isMulti ? 'Multi-Select' : 
                            isTextInput ? 'Text Input' : 
                            isMap ? 'Map Region' : 
+                           isPlace ? 'Place it' :
                            'Single Choice'}
                         </Badge>
                       </div>
-                      {isTextInput || isMap ? (
+                      {isPlace ? (
+                        <p className="text-sm text-muted-foreground">{((q as any).path ?? []).join(" › ")}</p>
+                      ) : isTextInput || isMap ? (
                         <div className="space-y-2">
                           <p className="text-sm text-muted-foreground">
                             {isTextInput ? 'Accepted answers:' : 'Accepted region names:'}
@@ -364,7 +421,7 @@ Example:
                   "Bordeaux, France", "Rioja, Spain"],
       "correctAnswer": 0,
       "category": "Italian Wines",
-      "curriculum": "WSET2"
+      "curricula": ["WSET2", "WSET3"]
     },
     {
       "id": "red-grapes-001",
@@ -374,7 +431,7 @@ Example:
                   "Merlot", "Riesling", "Pinot Noir", "Sauvignon Blanc"],
       "correctAnswers": [0, 2, 4],
       "category": "Grape Varieties",
-      "curriculum": "WSET2"
+      "curricula": ["WSET2", "WSET3"]
     },
     {
       "id": "champagne-grapes-001",
@@ -382,7 +439,7 @@ Example:
       "type": "text-input",
       "acceptedAnswers": ["Chardonnay", "Pinot Noir", "Pinot Meunier"],
       "category": "French Wines",
-      "curriculum": "WSET2"
+      "curricula": ["WSET2", "WSET3"]
     },
     {
       "id": "bordeaux-map-001",
@@ -398,7 +455,7 @@ Example:
       },
       "options": ["Bordeaux"],
       "category": "French Regions",
-      "curriculum": "WSET2"
+      "curricula": ["WSET2", "WSET3"]
     }
   ]
 }`}
@@ -420,13 +477,15 @@ Example:
                   <li>Multi-select can have 0-6 correct answers</li>
                   <li>Text input and map answers are matched case-insensitively with trimming</li>
                   <li>Map question regionPolygon must be valid GeoJSON Polygon or MultiPolygon format with coordinates in [longitude, latitude] order</li>
-                  <li>Category and curriculum fields are optional for all types</li>
+                  <li>Category and curricula (a list, e.g. ["WSET2", "WSET3"]) are optional for all types</li>
                   <li>Curriculum examples: "WSET1", "WSET2", "WSET3", etc.</li>
                 </ul>
               </div>
             </div>
           </CardContent>
         </Card>
+
+        <ExamBankUpload />
       </div>
     </div>
   );

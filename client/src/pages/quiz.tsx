@@ -1,16 +1,18 @@
 import { useState, useEffect, useMemo } from "react";
+import { Link, useLocation, useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
-import { CheckCircle2, XCircle, Wine } from "lucide-react";
+import { CheckCircle2, XCircle, Wine, BookCheck, BookOpen, HelpCircle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import type { QuizQuestion, User } from "@shared/schema";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import type { CategorySummary, PlaceTree, QuizQuestion, User } from "@shared/schema";
+import { queryClient, apiRequest, apiUrl } from "@/lib/queryClient";
 import WineMap from "@/components/WineMap";
-import { getPolygonCentroid, getBoundsForPolygonAndPoint } from "@/utils/geoUtils";
+import { getPolygonCentroid, getBoundsForPolygonAndPoint } from "@shared/geo";
 
 interface QuizResponse {
   questions: QuizQuestion[];
@@ -21,8 +23,172 @@ interface QuizResponse {
   };
 }
 
+// The Learn page, optionally training one category and/or only place questions (?type=place)
+export function trainCategoryPath(category?: string, type?: string): string {
+  const params = new URLSearchParams();
+  if (type) params.set("type", type);
+  if (category) params.set("category", category);
+  const query = params.toString();
+  return query ? `/?${query}` : "/";
+}
+
+const ALL_CATEGORIES = "__all__";
+
+// Switches between all questions and the "Place it" drill
+function ModeSwitch({ type }: { type?: string }) {
+  const [, setLocation] = useLocation();
+  const modes = [
+    { type: undefined, label: "All questions" },
+    { type: "place", label: "Place it" },
+  ];
+  return (
+    <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1" data-testid="mode-switch">
+      {modes.map((m) => (
+        <button
+          key={m.label}
+          type="button"
+          onClick={() => setLocation(trainCategoryPath(undefined, m.type))}
+          className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+            type === m.type ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"
+          }`}
+          data-testid={`mode-${m.type ?? "all"}`}
+        >
+          {m.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// A place question's answer: pick the country, then the bigger area. After answering, shows what was
+// right and wrong.
+function PlacePicker({
+  country,
+  area,
+  onCountry,
+  onArea,
+  answered,
+  correctPath,
+}: {
+  country: string | null;
+  area: string | null;
+  onCountry: (country: string) => void;
+  onArea: (area: string) => void;
+  answered: boolean;
+  correctPath: string[] | null;
+}) {
+  const { data: tree } = useQuery<PlaceTree>({ queryKey: ["/api/places/tree"] });
+  if (!tree) return null;
+  const [rightCountry, rightArea] = correctPath ?? [];
+  const shownCountry = answered && !country ? rightCountry : country;
+  const areas = tree.find((c) => c.country === shownCountry)?.areas ?? [];
+
+  const chip = (label: string, selected: boolean, right: boolean, onClick: () => void) => {
+    const state = answered
+      ? right ? "border-green-600 bg-green-50 dark:bg-green-950/40 text-green-800 dark:text-green-300"
+        : selected ? "border-destructive bg-destructive/10 text-destructive" : "border-border text-muted-foreground"
+      : selected ? "border-primary bg-primary/5" : "border-border hover-elevate";
+    return (
+      <button
+        key={label}
+        type="button"
+        disabled={answered}
+        onClick={onClick}
+        className={`rounded-full border-2 px-3 py-1.5 text-sm transition-colors disabled:opacity-100 ${state}`}
+        data-testid={`place-option-${label}`}
+      >
+        {label}
+      </button>
+    );
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <p className="text-sm font-medium text-muted-foreground">Country</p>
+        <div className="flex flex-wrap gap-2">
+          {tree.map((c) => chip(c.country, c.country === country, answered && c.country === rightCountry, () => onCountry(c.country)))}
+        </div>
+      </div>
+      {shownCountry && (
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-muted-foreground">Area in {shownCountry}</p>
+          <div className="flex flex-wrap gap-2">
+            {areas.map((a) => chip(a, a === area, answered && shownCountry === rightCountry && a === rightArea, () => onArea(a)))}
+          </div>
+        </div>
+      )}
+      {answered && correctPath && (
+        <p className="text-sm" data-testid="text-place-answer">
+          <span className="font-medium text-green-700 dark:text-green-400">Answer: </span>
+          {correctPath.join(" › ")}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// Picks which category to train. Lists the categories in the user's curricula with how many questions
+// are due in each.
+function CategoryPicker({ category, curricula, type }: { category?: string; curricula: string[]; type?: string }) {
+  const [, setLocation] = useLocation();
+  const { data: user } = useQuery<User | null>({ queryKey: ["/api/auth/user"] });
+  const pausedCount = user?.pausedCategories?.length ?? 0;
+  const { data: categories } = useQuery<CategorySummary[]>({
+    queryKey: ["/api/quiz/categories", { curricula, type }],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (curricula.length > 0) params.set("curricula", curricula.join(","));
+      if (type) params.set("type", type);
+      const query = params.toString();
+      const response = await fetch(apiUrl(`/api/quiz/categories${query ? `?${query}` : ""}`), { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch categories");
+      return response.json();
+    },
+    staleTime: 0,
+  });
+  if (!categories || categories.length === 0) return null;
+
+  const totalDue = categories.reduce((sum, c) => sum + c.due, 0);
+  return (
+    <div className="space-y-1">
+    <Select
+      value={category ?? ALL_CATEGORIES}
+      onValueChange={(value) => setLocation(trainCategoryPath(value === ALL_CATEGORIES ? undefined : value, type))}
+    >
+      <SelectTrigger className="w-full" data-testid="select-category">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value={ALL_CATEGORIES}>All categories · {totalDue} due</SelectItem>
+        {categories.map((c) => (
+          <SelectItem key={c.category} value={c.category}>
+            {c.category} · {c.due} due
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+    {pausedCount > 0 && (
+      <p className="text-xs text-muted-foreground px-1" data-testid="text-paused-chapters">
+        {pausedCount} {pausedCount === 1 ? "chapter" : "chapters"} paused ·{" "}
+        <Link href="/profile" className="underline underline-offset-2">Change</Link>
+      </p>
+    )}
+    </div>
+  );
+}
+
 export default function QuizPage() {
+  const params = new URLSearchParams(useSearch());
+  const category = params.get("category") || undefined;
+  const type = params.get("type") === "place" ? "place" : undefined;
+  // A new session (counts, current question) for each category and mode
+  return <QuizSession key={`${type ?? "all"}:${category ?? ALL_CATEGORIES}`} category={category} type={type} />;
+}
+
+function QuizSession({ category, type }: { category?: string; type?: string }) {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null); // For single-choice
   const [selectedAnswers, setSelectedAnswers] = useState<Set<number>>(new Set()); // For multi-select
   const [textAnswer, setTextAnswer] = useState<string>(""); // For text-input and map (map-to-text mode)
@@ -37,25 +203,34 @@ export default function QuizPage() {
   const [sessionStartCount, setSessionStartCount] = useState<number | null>(null);
   const [answeredInSession, setAnsweredInSession] = useState(0);
   const [isAdvancing, setIsAdvancing] = useState(false);
+  const [explanation, setExplanation] = useState<string | null>(null); // The theory behind the answer
+  const [answeredDontKnow, setAnsweredDontKnow] = useState(false);
+  const [showExplanation, setShowExplanation] = useState(false); // After a correct answer, shown on request
+  const [placeCountry, setPlaceCountry] = useState<string | null>(null); // For place questions
+  const [placeArea, setPlaceArea] = useState<string | null>(null);
+  const [correctPlace, setCorrectPlace] = useState<string[] | null>(null);
 
   // Fetch user to get curriculum preferences
   const { data: user, isLoading: isLoadingUser } = useQuery<User | null>({
     queryKey: ["/api/auth/user"],
   });
 
-  // Build query URL based on user's selected curricula
+  const selectedCurricula = user?.selectedCurricula || [];
+
+  // Build query URL based on user's selected curricula and the category being trained
   const buildQuizQueryUrl = () => {
-    const selectedCurricula = user?.selectedCurricula || [];
-    if (selectedCurricula.length === 0) {
-      return "/api/quiz/due";
-    }
-    return `/api/quiz/due?curricula=${selectedCurricula.map(c => encodeURIComponent(c)).join(',')}`;
+    const params = new URLSearchParams();
+    if (selectedCurricula.length > 0) params.set("curricula", selectedCurricula.join(","));
+    if (category) params.set("category", category);
+    if (type) params.set("type", type);
+    const query = params.toString();
+    return query ? `/api/quiz/due?${query}` : "/api/quiz/due";
   };
 
   const { data: quizData, isLoading: isLoadingQuestions, isFetching, refetch, isError } = useQuery<QuizResponse>({
-    queryKey: ["/api/quiz/due", { curricula: user?.selectedCurricula || [] }],
+    queryKey: ["/api/quiz/due", { curricula: selectedCurricula, category, type }],
     queryFn: async () => {
-      const response = await fetch(buildQuizQueryUrl(), { credentials: "include" });
+      const response = await fetch(apiUrl(buildQuizQueryUrl()), { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch quiz questions");
       return response.json();
     },
@@ -112,7 +287,7 @@ export default function QuizPage() {
   }, [isError, isAdvancing, toast]);
 
   const submitAnswerMutation = useMutation({
-    mutationFn: async (data: { questionId: string; selectedAnswer?: number; selectedAnswers?: number[]; textAnswer?: string; mapClick?: { lat: number; lng: number }; displayMode?: 'text-to-map' | 'map-to-text' }) => {
+    mutationFn: async (data: { questionId: string; selectedAnswer?: number; selectedAnswers?: number[]; textAnswer?: string; mapClick?: { lat: number; lng: number }; displayMode?: 'text-to-map' | 'map-to-text'; path?: string[]; dontKnow?: true }) => {
       return await apiRequest("POST", "/api/quiz/answer", data);
     },
     onSuccess: (response) => {
@@ -122,6 +297,8 @@ export default function QuizPage() {
       } else if (currentQuestion?.questionType === 'map') {
         // For map questions, store the correct region data
         setCorrectMapData(response.correctAnswer || null);
+      } else if (currentQuestion?.questionType === 'place') {
+        setCorrectPlace(response.correctAnswer || null);
       } else {
         // Find the shuffled indexes of the correct answer(s)
         const correctAnswers = Array.isArray(response.correctAnswer) ? response.correctAnswer : [response.correctAnswer];
@@ -133,6 +310,7 @@ export default function QuizPage() {
         setCorrectAnswerIndexes(correctShuffledIndexes);
       }
       setIsCorrect(response.correct);
+      setExplanation(response.explanation ?? null);
       setIsAnswered(true);
       
       // Only invalidate statistics, NOT the due questions query
@@ -145,6 +323,22 @@ export default function QuizPage() {
         description: error.message,
         variant: "destructive",
       });
+    },
+  });
+
+  // "I know this": the question won't come up for review again (undo from the Progress page)
+  const markKnownMutation = useMutation({
+    mutationFn: (questionId: string) => apiRequest("PUT", `/api/quiz/known/${questionId}`, { known: true }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/statistics"] });
+      toast({
+        title: "Marked as known",
+        description: "You won't be asked this again. You can bring it back from the Progress page.",
+      });
+      handleNextQuestion();
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
@@ -201,6 +395,12 @@ export default function QuizPage() {
       setMapClick(null);
       setIsAnswered(false);
       setCorrectMapData(null);
+      setExplanation(null);
+      setAnsweredDontKnow(false);
+      setShowExplanation(false);
+      setPlaceCountry(null);
+      setPlaceArea(null);
+      setCorrectPlace(null);
     }
   }, [currentQuestion?.id]); // Key on question ID to reset when question changes
 
@@ -224,6 +424,17 @@ export default function QuizPage() {
     }
   };
 
+  // Reveal the answer and explanation; counts as not knowing it
+  const handleDontKnow = () => {
+    if (!currentQuestion) return;
+    setAnsweredDontKnow(true);
+    submitAnswerMutation.mutate({
+      questionId: currentQuestion.id,
+      dontKnow: true,
+      ...(mapDisplayMode ? { displayMode: mapDisplayMode } : {}),
+    });
+  };
+
   const handleSubmitAnswer = () => {
     if (!currentQuestion) return;
 
@@ -231,7 +442,10 @@ export default function QuizPage() {
     const isTextInput = currentQuestion.questionType === 'text-input';
     const isMap = currentQuestion.questionType === 'map';
     
-    if (isTextInput) {
+    if (currentQuestion.questionType === 'place') {
+      if (!placeCountry || !placeArea) return;
+      submitAnswerMutation.mutate({ questionId: currentQuestion.id, path: [placeCountry, placeArea] });
+    } else if (isTextInput) {
       // Text-input: submit the text answer
       submitAnswerMutation.mutate({
         questionId: currentQuestion.id,
@@ -280,7 +494,14 @@ export default function QuizPage() {
     setTextAnswer("");
     setMapClick(null);
     setCorrectMapData(null);
+    setExplanation(null);
+    setAnsweredDontKnow(false);
+    setShowExplanation(false);
+    setPlaceCountry(null);
+    setPlaceArea(null);
+    setCorrectPlace(null);
     setIsAdvancing(true);
+    queryClient.invalidateQueries({ queryKey: ["/api/quiz/categories"], exact: false });
     
     // Refetch to get next question (answered one is removed by backend)
     await refetch();
@@ -297,18 +518,51 @@ export default function QuizPage() {
     );
   }
 
+  // A failed load must not look like "nothing due"
+  if (isError && !quizData) {
+    return (
+      <div className="min-h-screen bg-background py-4 px-4">
+        <div className="max-w-md mx-auto space-y-4">
+          <ModeSwitch type={type} />
+          <CategoryPicker category={category} curricula={selectedCurricula} type={type} />
+          <Card>
+            <CardContent className="pt-6 text-center space-y-4">
+              <XCircle className="w-12 h-12 text-destructive mx-auto" />
+              <h2 className="text-2xl font-serif font-semibold">Couldn't load questions</h2>
+              <p className="text-muted-foreground">Check your connection and try again.</p>
+              <Button onClick={() => refetch()} disabled={isFetching} data-testid="button-retry">
+                {isFetching ? "Loading..." : "Try again"}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   if (!dueQuestions || dueQuestions.length === 0) {
     return (
-      <div className="flex items-center justify-center min-h-screen px-4">
-        <Card className="max-w-md w-full">
-          <CardContent className="pt-6 text-center space-y-4">
-            <Wine className="w-16 h-16 text-primary mx-auto" />
-            <h2 className="text-2xl font-serif font-semibold">No Questions Due</h2>
-            <p className="text-muted-foreground">
-              Great work! You're all caught up. Check back later for more reviews, or upload new questions to continue learning.
-            </p>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-background py-4 px-4">
+        <div className="max-w-md mx-auto space-y-4">
+          <ModeSwitch type={type} />
+          <CategoryPicker category={category} curricula={selectedCurricula} type={type} />
+          <Card>
+            <CardContent className="pt-6 text-center space-y-4">
+              <Wine className="w-16 h-16 text-primary mx-auto" />
+              <h2 className="text-2xl font-serif font-semibold">No Questions Due</h2>
+              <p className="text-muted-foreground">
+                {category
+                  ? `You're all caught up in ${category}. Pick another category, or train all of them.`
+                  : "Great work! You're all caught up. Check back later for more reviews, or upload new questions to continue learning."}
+              </p>
+              {category && (
+                <Button variant="outline" onClick={() => setLocation("/")} data-testid="button-train-all">
+                  Train all categories
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
@@ -332,6 +586,9 @@ export default function QuizPage() {
   return (
     <div className="min-h-screen bg-background py-4 px-4">
       <div className="max-w-3xl mx-auto space-y-4">
+        <ModeSwitch type={type} />
+        <CategoryPicker category={category} curricula={selectedCurricula} type={type} />
+
         {/* Daily Goal Progress */}
         {dailyProgress && (
           <Card className={`${dailyGoalMet ? 'border-green-600 bg-green-50 dark:bg-green-950/40' : ''}`}>
@@ -380,6 +637,11 @@ export default function QuizPage() {
                 Type your answer below (not case-sensitive)
               </p>
             )}
+            {currentQuestion.questionType === 'place' && !isAnswered && (
+              <p className="text-xs md:text-sm text-muted-foreground">
+                Choose the country, then the bigger area it belongs to
+              </p>
+            )}
             {currentQuestion.questionType === 'map' && mapDisplayMode === 'text-to-map' && !isAnswered && (
               <p className="text-xs md:text-sm text-muted-foreground">
                 Click on the map to identify the wine region
@@ -393,14 +655,25 @@ export default function QuizPage() {
           </CardHeader>
           <CardContent className="space-y-2 md:space-y-4 py-2 md:py-3 px-4 md:px-6">
             <h2 className="text-base md:text-2xl font-medium leading-relaxed" data-testid="text-question">
-              {currentQuestion.questionType === 'map' && mapDisplayMode === 'map-to-text' 
+              {currentQuestion.questionType === 'map' && mapDisplayMode === 'map-to-text'
                 ? `What wine region is highlighted on the map?`
-                : currentQuestion.question
+                : currentQuestion.questionType === 'place'
+                  ? <>Where is <span className="font-semibold">{currentQuestion.question}</span>?</>
+                  : currentQuestion.question
               }
             </h2>
 
-            {/* Text Input for text-input questions */}
-            {currentQuestion.questionType === 'text-input' ? (
+            {/* Country and area chips for place questions */}
+            {currentQuestion.questionType === 'place' ? (
+              <PlacePicker
+                country={placeCountry}
+                area={placeArea}
+                onCountry={(c) => { setPlaceCountry(c); setPlaceArea(null); }}
+                onArea={setPlaceArea}
+                answered={isAnswered}
+                correctPath={correctPlace}
+              />
+            ) : currentQuestion.questionType === 'text-input' ? (
               <div className="space-y-2 md:space-y-4">
                 <Input
                   type="text"
@@ -500,7 +773,7 @@ export default function QuizPage() {
                 const isCorrectAnswer = correctAnswerIndexes.has(index);
                 const showAsCorrect = isAnswered && isCorrectAnswer;
                 const showAsIncorrect = isAnswered && isSelected && !isCorrectAnswer;
-                const showAsMissed = isAnswered && isMulti && isCorrectAnswer && !isSelected;
+                const showAsMissed = isAnswered && isMulti && isCorrectAnswer && !isSelected && !answeredDontKnow;
 
                 return (
                   <button
@@ -583,10 +856,21 @@ export default function QuizPage() {
             {/* Action Buttons */}
             <div className="flex justify-end gap-2 md:gap-3 pt-2 md:pt-4">
               {!isAnswered ? (
+                <>
+                <Button
+                  variant="ghost"
+                  onClick={handleDontKnow}
+                  disabled={submitAnswerMutation.isPending}
+                  data-testid="button-dont-know"
+                >
+                  <HelpCircle className="w-4 h-4 mr-2" />
+                  I don't know
+                </Button>
                 <Button
                   onClick={handleSubmitAnswer}
                   disabled={
                     (currentQuestion.questionType === 'single' && selectedAnswer === null) ||
+                    (currentQuestion.questionType === 'place' && (!placeCountry || !placeArea)) ||
                     (currentQuestion.questionType === 'text-input' && textAnswer.trim() === '') ||
                     (currentQuestion.questionType === 'map' && mapDisplayMode === 'text-to-map' && mapClick === null) ||
                     (currentQuestion.questionType === 'map' && mapDisplayMode === 'map-to-text' && textAnswer.trim() === '') ||
@@ -597,15 +881,30 @@ export default function QuizPage() {
                 >
                   {submitAnswerMutation.isPending ? "Submitting..." : "Submit Answer"}
                 </Button>
+                </>
               ) : (
-                <Button
-                  onClick={handleNextQuestion}
-                  size="default"
-                  disabled={isAdvancing}
-                  data-testid="button-next-question"
-                >
-                  {isAdvancing ? "Loading..." : ((dueQuestions?.length ?? 0) > 1 ? "Next Question" : "Finish Session")}
-                </Button>
+                <>
+                  {isCorrect && (
+                    <Button
+                      variant="outline"
+                      onClick={() => markKnownMutation.mutate(currentQuestion.id)}
+                      disabled={isAdvancing || markKnownMutation.isPending}
+                      title="You won't be asked this question again"
+                      data-testid="button-mark-known"
+                    >
+                      <BookCheck className="w-4 h-4 mr-2" />
+                      I know this
+                    </Button>
+                  )}
+                  <Button
+                    onClick={handleNextQuestion}
+                    size="default"
+                    disabled={isAdvancing || markKnownMutation.isPending}
+                    data-testid="button-next-question"
+                  >
+                    {isAdvancing ? "Loading..." : ((dueQuestions?.length ?? 0) > 1 ? "Next Question" : "Finish Session")}
+                  </Button>
+                </>
               )}
             </div>
           </CardContent>
@@ -624,15 +923,32 @@ export default function QuizPage() {
                   )}
                   <div>
                     <p className="font-semibold text-base md:text-lg">
-                      {isCorrect ? "Correct!" : "Incorrect"}
+                      {isCorrect ? "Correct!" : answeredDontKnow ? "Here's the answer" : "Incorrect"}
                     </p>
                     <p className="text-xs md:text-sm text-muted-foreground">
                       {isCorrect
                         ? "Great job! You got it right."
-                        : "The correct answer is highlighted in green above."}
+                        : "The correct answer is shown above."}
                     </p>
                   </div>
                 </div>
+                {explanation && (isCorrect && !showExplanation ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="ml-6 md:ml-8"
+                    onClick={() => setShowExplanation(true)}
+                    data-testid="button-show-explanation"
+                  >
+                    <BookOpen className="w-4 h-4 mr-2" />
+                    Why?
+                  </Button>
+                ) : (
+                  <div className="flex gap-2 md:gap-3 rounded-md bg-background/70 p-3 md:p-4" data-testid="text-explanation">
+                    <BookOpen className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                    <p className="text-sm md:text-base leading-relaxed">{explanation}</p>
+                  </div>
+                ))}
                 {!isCorrect && (
                   <p className="text-xs md:text-sm text-muted-foreground pl-8 md:pl-10">
                     This question will be reviewed again soon to help you master it.

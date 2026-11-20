@@ -1,0 +1,163 @@
+// Geographic helpers for map questions, used by both the browser and the Worker
+
+/**
+ * Normalize GeoJSON geometry to extract all coordinate points
+ * Supports both Polygon and MultiPolygon, including interior rings
+ * @param geometry - GeoJSON geometry object
+ * @returns Array of [lat, lng] coordinates from all rings
+ */
+export function normalizeGeoJSONCoordinates(geometry: any): number[][] {
+  if (!geometry) return [];
+
+  try {
+    const coords: number[][] = [];
+
+    if (geometry.type === 'Polygon' && geometry.coordinates) {
+      // Polygon: coordinates is [outerRing, innerRing1, innerRing2, ...]
+      // Each ring is [[lng, lat], [lng, lat], ...]
+      for (const ring of geometry.coordinates) {
+        if (Array.isArray(ring)) {
+          for (const coord of ring) {
+            if (coord.length >= 2) {
+              // Convert from [lng, lat] to [lat, lng]
+              coords.push([coord[1], coord[0]]);
+            }
+          }
+        }
+      }
+    } else if (geometry.type === 'MultiPolygon' && geometry.coordinates) {
+      // MultiPolygon: coordinates is [polygon1, polygon2, ...]
+      // Each polygon is [outerRing, innerRing1, ...]
+      for (const polygon of geometry.coordinates) {
+        if (Array.isArray(polygon)) {
+          for (const ring of polygon) {
+            if (Array.isArray(ring)) {
+              for (const coord of ring) {
+                if (coord.length >= 2) {
+                  // Convert from [lng, lat] to [lat, lng]
+                  coords.push([coord[1], coord[0]]);
+                }
+              }
+            }
+          }
+        }
+      }
+    } else if (Array.isArray(geometry) && geometry.length > 0) {
+      // Direct array format [[lat, lng], ...]
+      return geometry.filter(c => Array.isArray(c) && c.length >= 2);
+    }
+
+    return coords;
+  } catch (error) {
+    console.error('Error normalizing GeoJSON coordinates:', error);
+    return [];
+  }
+}
+
+/**
+ * Calculate bounds that include a polygon/multipolygon and a point
+ * @param geometry - GeoJSON polygon or multipolygon object
+ * @param point - Additional point { lat, lng } to include in bounds
+ * @returns Bounds as [[minLat, minLng], [maxLat, maxLng]] or null if invalid
+ */
+export function getBoundsForPolygonAndPoint(
+  geometry: any,
+  point: { lat: number; lng: number }
+): [[number, number], [number, number]] | null {
+  if (!geometry || !point) return null;
+
+  try {
+    const coords = normalizeGeoJSONCoordinates(geometry);
+    
+    if (coords.length === 0) return null;
+
+    // Get all latitudes and longitudes (polygon + user point)
+    const allLats = [...coords.map(c => c[0]), point.lat];
+    const allLngs = [...coords.map(c => c[1]), point.lng];
+    
+    const minLat = Math.min(...allLats);
+    const maxLat = Math.max(...allLats);
+    const minLng = Math.min(...allLngs);
+    const maxLng = Math.max(...allLngs);
+    
+    return [
+      [minLat, minLng], // Southwest corner
+      [maxLat, maxLng], // Northeast corner
+    ];
+  } catch (error) {
+    console.error('Error calculating bounds:', error);
+    return null;
+  }
+}
+
+/**
+ * Calculate the centroid (center point) of a polygon or multipolygon
+ * Uses the geometric center of all coordinates (bounds center)
+ * @param geometry - GeoJSON polygon or multipolygon object
+ * @returns centroid as { lat: number; lng: number } or null if invalid
+ */
+export function getPolygonCentroid(geometry: any): { lat: number; lng: number } | null {
+  if (!geometry) return null;
+
+  try {
+    // Get all coordinates from the geometry
+    const coords = normalizeGeoJSONCoordinates(geometry);
+    
+    if (coords.length === 0) return null;
+
+    // Calculate center from bounds (more reliable than vertex average for complex geometries)
+    const lats = coords.map(coord => coord[0]);
+    const lngs = coords.map(coord => coord[1]);
+    
+    const minLat = Math.min(...lats);
+    const maxLat = Math.max(...lats);
+    const minLng = Math.min(...lngs);
+    const maxLng = Math.max(...lngs);
+    
+    const centerLat = (minLat + maxLat) / 2;
+    const centerLng = (minLng + maxLng) / 2;
+
+    return { lat: centerLat, lng: centerLng };
+  } catch (error) {
+    console.error('Error calculating polygon centroid:', error);
+    return null;
+  }
+}
+
+/**
+ * Check whether a point lies inside a region. Handles GeoJSON Polygon and MultiPolygon (holes
+ * included) and the plain [[lat, lng], ...] array format.
+ * @param point - The clicked point
+ * @param geometry - GeoJSON polygon or multipolygon object, or an array of [lat, lng]
+ * @returns true if the point is inside the region
+ */
+export function isPointInPolygon(point: { lat: number; lng: number }, geometry: any): boolean {
+  if (!geometry || !point) return false;
+
+  // Ray casting over one ring of [x, y] pairs
+  const inRing = (x: number, y: number, ring: number[][]) => {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [xi, yi] = ring[i];
+      const [xj, yj] = ring[j];
+      if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  };
+
+  // GeoJSON polygon: [outerRing, ...holes], each ring of [lng, lat]
+  const inGeoJSONPolygon = (rings: number[][][]) =>
+    Array.isArray(rings) && rings.length > 0 &&
+    inRing(point.lng, point.lat, rings[0]) &&
+    !rings.slice(1).some((hole) => inRing(point.lng, point.lat, hole));
+
+  try {
+    if (geometry.type === 'Polygon') return inGeoJSONPolygon(geometry.coordinates);
+    if (geometry.type === 'MultiPolygon') return (geometry.coordinates || []).some(inGeoJSONPolygon);
+    if (Array.isArray(geometry)) return inRing(point.lat, point.lng, geometry);
+    return false;
+  } catch (error) {
+    console.error('Error checking point in polygon:', error);
+    return false;
+  }
+}

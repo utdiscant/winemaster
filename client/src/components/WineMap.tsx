@@ -2,7 +2,7 @@ import { useEffect, useRef, useMemo } from 'react';
 import L, { type LatLngExpression } from 'leaflet';
 import { MapContainer, TileLayer, Polygon, useMapEvents, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { normalizeGeoJSONCoordinates } from '@/utils/geoUtils';
+import { normalizeGeoJSONCoordinates } from '@shared/geo';
 
 // Fix for default marker icons in Leaflet with bundlers
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -243,10 +243,9 @@ export default function WineMap({
         data-testid="wine-map"
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-          subdomains="abcd"
-          maxZoom={20}
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+          maxZoom={19}
         />
         
         {/* Imperatively reset view when question changes or fit to custom bounds */}
