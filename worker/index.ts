@@ -5,6 +5,9 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import {
   answerSubmissionSchema,
+  examBankUploadSchema,
+  examStartSchema,
+  examSubmitSchema,
   jsonUploadSchema,
   loginSchema,
   questionUpdateSchema,
@@ -49,6 +52,7 @@ import {
   upsertQuestions,
   type Scope,
 } from "./db";
+import { getExamAttempts, getExamInfo, replaceExamBank, startExam, submitExam } from "./exam";
 
 const BASE_PATH = "/wset-training";
 const DAILY_GOAL = 20;
@@ -320,6 +324,36 @@ api.get("/progress/cards", requireUser, async (c) =>
 api.get("/mistakes", requireUser, async (c) => {
   const days = z.coerce.number().int().min(1).max(365).catch(7).parse(c.req.query("days") ?? 7);
   return c.json(await getMistakes(c.var.db, c.var.user.id, new Date(Date.now() - days * 24 * 60 * 60 * 1000)));
+});
+
+// ===== Mock exams =====
+
+// How many exam questions there are, and how many the user can be examined on (paused chapters left out)
+api.get("/exam/info", requireUser, async (c) =>
+  c.json({ ...(await getExamInfo(c.var.db, c.var.user.pausedCategories)), attempts: await getExamAttempts(c.var.db, c.var.user.id) }));
+
+api.post("/exam/start", requireUser, async (c) => {
+  const { count, onlyStudying } = examStartSchema.parse(await c.req.json());
+  const questions = await startExam(c.var.db, count, onlyStudying ? c.var.user.pausedCategories : null);
+  if (questions.length === 0) return c.json({ error: "There are no exam questions to draw from" }, 400);
+  return c.json({ questions });
+});
+
+api.post("/exam/submit", requireUser, async (c) => {
+  const { answers } = examSubmitSchema.parse(await c.req.json());
+  const result = await submitExam(c.var.db, c.var.user.id, answers);
+  if (!result) return c.json({ error: "None of these questions are in the exam bank" }, 400);
+  return c.json(result);
+});
+
+// Replace the exam bank and the video list it refers to
+api.post("/exam/bank", requireAdmin, async (c) => {
+  const bank = examBankUploadSchema.parse(await c.req.json());
+  const videoIds = new Set(bank.videos.map((v) => v.id));
+  const unknown = bank.questions.flatMap((q) => q.videos).filter((id) => !videoIds.has(id));
+  if (unknown.length > 0) return c.json({ error: `Questions refer to videos that aren't in the list: ${[...new Set(unknown)].slice(0, 5).join(", ")}` }, 400);
+  await replaceExamBank(c.var.db, bank);
+  return c.json({ success: true, questions: bank.questions.length, videos: bank.videos.length });
 });
 
 // ===== Admin =====

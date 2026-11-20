@@ -1,6 +1,7 @@
 import { and, eq, isNotNull, isNull, lte, or, sql, type SQL } from "drizzle-orm";
 import {
   answerLog,
+  examAttempts,
   questions,
   reviewCards,
   sessions,
@@ -61,7 +62,8 @@ function questionsWithCards(db: Db, userId: string, scope: Scope, extra?: SQL) {
 // ===== Users =====
 
 export async function deleteUser(db: Db, userId: string): Promise<boolean> {
-  const [, , , deleted] = await db.batch([
+  const [, , , , deleted] = await db.batch([
+    db.delete(examAttempts).where(eq(examAttempts.userId, userId)),
     db.delete(answerLog).where(eq(answerLog.userId, userId)),
     db.delete(reviewCards).where(eq(reviewCards.userId, userId)),
     db.delete(sessions).where(eq(sessions.userId, userId)),

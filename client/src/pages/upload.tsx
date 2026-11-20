@@ -9,6 +9,52 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { JsonUpload } from "@shared/schema";
 
+// Replaces the mock exam bank and its video list from a JSON file: {"videos": [...], "questions": [...]}
+function ExamBankUpload() {
+  const { toast } = useToast();
+  const uploadMutation = useMutation({
+    mutationFn: (bank: unknown) =>
+      apiRequest<{ questions: number; videos: number }>("POST", "/api/exam/bank", bank),
+    onSuccess: (result) => {
+      toast({ title: "Exam bank replaced", description: `${result.questions} questions and ${result.videos} videos` });
+      queryClient.invalidateQueries({ queryKey: ["/api/exam/info"] });
+    },
+    onError: (error: Error) => toast({ title: "Upload failed", description: error.message, variant: "destructive" }),
+  });
+
+  const onFile = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      uploadMutation.mutate(JSON.parse(await file.text()));
+    } catch {
+      toast({ title: "Not valid JSON", description: file.name, variant: "destructive" });
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-xl font-serif">Mock exam bank</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          Choose the exam bank JSON file (with its "videos" and "questions"). It replaces the current exam questions and
+          video list; past exam scores are kept.
+        </p>
+        <input
+          type="file"
+          accept=".json,application/json"
+          disabled={uploadMutation.isPending}
+          onChange={(e) => { onFile(e.target.files?.[0]); e.target.value = ""; }}
+          className="block text-sm file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-2 file:text-primary-foreground"
+          data-testid="input-exam-bank"
+        />
+        {uploadMutation.isPending && <p className="text-sm text-muted-foreground">Uploading…</p>}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function UploadPage() {
   const { toast } = useToast();
   const [uploadedData, setUploadedData] = useState<JsonUpload | null>(null);
@@ -430,6 +476,8 @@ Example:
             </div>
           </CardContent>
         </Card>
+
+        <ExamBankUpload />
       </div>
     </div>
   );
